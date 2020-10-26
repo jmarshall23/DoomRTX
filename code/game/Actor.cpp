@@ -621,6 +621,7 @@ void idActor::Spawn( void ) {
 	}
 
 	finalBoss = spawnArgs.GetBool( "finalBoss" );
+	GetRenderEntity()->dxrModel = renderModelManager->CreateDXRMeshInstance(GetRenderEntity()->hModel);
 
 	FinishSetup();
 }
@@ -703,6 +704,7 @@ void idActor::SetupHead( void ) {
 		headEnt->SetOrigin( origin );
 		headEnt->SetAxis( renderEntity.axis );
 		headEnt->BindToJoint( this, joint, true );
+		headEnt->GetRenderEntity()->dxrModel = renderModelManager->CreateDXRMeshInstance(headEnt->GetRenderEntity()->hModel);
 	}
 }
 
