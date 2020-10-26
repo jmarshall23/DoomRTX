@@ -74,6 +74,19 @@ void GL_UpdateBottomLevelAccelStruct(idRenderModel* model) {
 	dxrVertex_t* sceneVertexes = (dxrVertex_t*)pVertexDataBegin;
 	dxrVertex_t* modelVertexes = &sceneVertexes[mesh->startSceneVertex];
 
+	// Sanity check our mesh
+	{
+		for (int i = 0; i < mesh->meshSurfaces.size(); i++)
+		{
+			const modelSurface_t* surface = model->Surface(i);
+			if (mesh->meshSurfaces[i].numIndexes != surface->geometry->numIndexes)
+			{
+				common->Warning("GL_UpdateBottomLevelAccelStruct: Surface index count changed since creation.");
+				return;
+			}
+		}
+	}
+
 	// TODO: Use a index buffer here : )
 	{
 		for (int i = 0; i < mesh->meshSurfaces.size(); i++)
