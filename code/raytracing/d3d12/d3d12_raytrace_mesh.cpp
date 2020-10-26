@@ -206,60 +206,60 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 	}
 
 	// Calculate the normals
-	//{
-	//	for (int i = 0; i < mesh->numSceneVertexes; i += 3)
-	//	{
-	//		float* pA = &sceneVertexes[mesh->startSceneVertex + i + 0].xyz[0];
-	//		float* pC = &sceneVertexes[mesh->startSceneVertex + i + 1].xyz[0];
-	//		float* pB = &sceneVertexes[mesh->startSceneVertex + i + 2].xyz[0];
-	//
-	//		float* tA = &sceneVertexes[mesh->startSceneVertex + i + 0].st[0];
-	//		float* tC = &sceneVertexes[mesh->startSceneVertex + i + 1].st[0];
-	//		float* tB = &sceneVertexes[mesh->startSceneVertex + i + 2].st[0];
-	//
-	//		idVec3 normal;
-	//		idVec3 tangent;
-	//
-	//		{
-	//			idVec3 dP0, dP1;
-	//			VectorSubtract(pB, pA, dP0);
-	//			VectorSubtract(pC, pA, dP1);
-	//
-	//			idVec3 dt0, dt1;
-	//			Vector2Subtract(tB, tA, dt0);
-	//			Vector2Subtract(tC, tA, dt1);
-	//
-	//			float r = 1.f / (dt0[0] * dt1[1] - dt1[0] * dt0[1]);
-	//
-	//			idVec3 sdir = idVec3(
-	//				(dt1[1] * dP0[0] - dt0[1] * dP1[0]) * r,
-	//				(dt1[1] * dP0[1] - dt0[1] * dP1[1]) * r,
-	//				(dt1[1] * dP0[2] - dt0[1] * dP1[2]) * r );
-	//
-	//			idVec3 tdir = idVec3(
-	//				(dt0[0] * dP1[0] - dt1[0] * dP0[0]) * r,
-	//				(dt0[0] * dP1[1] - dt1[0] * dP0[1]) * r,
-	//				(dt0[0] * dP1[2] - dt1[0] * dP0[2]) * r );
-	//
-	//			CrossProduct(dP0, dP1, normal);
-	//			VectorNormalize(normal);
-	//
-	//			idVec3 t;
-	//			VectorScale(normal, DotProduct(normal, sdir), t);
-	//			VectorSubtract(sdir, t, t);
-	//			VectorNormalize2(t, tangent); // Graham-Schmidt : t = normalize(t - n * (n.t))
-	//
-	//		}
-	//
-	//		sceneVertexes[mesh->startSceneVertex + i + 0].normal = normal;
-	//		sceneVertexes[mesh->startSceneVertex + i + 1].normal = normal;
-	//		sceneVertexes[mesh->startSceneVertex + i + 2].normal = normal;
-	//
-	//		memcpy(sceneVertexes[mesh->startSceneVertex + i + 0].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
-	//		memcpy(sceneVertexes[mesh->startSceneVertex + i + 1].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
-	//		memcpy(sceneVertexes[mesh->startSceneVertex + i + 2].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
-	//	}
-	//}
+	{
+		for (int i = 0; i < mesh->numSceneVertexes; i += 3)
+		{
+			float* pA = &sceneVertexes[mesh->startSceneVertex + i + 0].xyz[0];
+			float* pC = &sceneVertexes[mesh->startSceneVertex + i + 1].xyz[0];
+			float* pB = &sceneVertexes[mesh->startSceneVertex + i + 2].xyz[0];
+	
+			float* tA = &sceneVertexes[mesh->startSceneVertex + i + 0].st[0];
+			float* tC = &sceneVertexes[mesh->startSceneVertex + i + 1].st[0];
+			float* tB = &sceneVertexes[mesh->startSceneVertex + i + 2].st[0];
+	
+			idVec3 normal;
+			idVec3 tangent;
+	
+			{
+				idVec3 dP0, dP1;
+				VectorSubtract(pB, pA, dP0);
+				VectorSubtract(pC, pA, dP1);
+	
+				idVec3 dt0, dt1;
+				Vector2Subtract(tB, tA, dt0);
+				Vector2Subtract(tC, tA, dt1);
+	
+				float r = 1.f / (dt0[0] * dt1[1] - dt1[0] * dt0[1]);
+	
+				idVec3 sdir = idVec3(
+					(dt1[1] * dP0[0] - dt0[1] * dP1[0]) * r,
+					(dt1[1] * dP0[1] - dt0[1] * dP1[1]) * r,
+					(dt1[1] * dP0[2] - dt0[1] * dP1[2]) * r );
+	
+				idVec3 tdir = idVec3(
+					(dt0[0] * dP1[0] - dt1[0] * dP0[0]) * r,
+					(dt0[0] * dP1[1] - dt1[0] * dP0[1]) * r,
+					(dt0[0] * dP1[2] - dt1[0] * dP0[2]) * r );
+	
+				CrossProduct(dP0, dP1, normal);
+				VectorNormalize(normal);
+	
+				idVec3 t;
+				VectorScale(normal, DotProduct(normal, sdir), t);
+				VectorSubtract(sdir, t, t);
+				VectorNormalize2(t, tangent); // Graham-Schmidt : t = normalize(t - n * (n.t))
+	
+			}
+	
+			sceneVertexes[mesh->startSceneVertex + i + 0].normal = normal;
+			sceneVertexes[mesh->startSceneVertex + i + 1].normal = normal;
+			sceneVertexes[mesh->startSceneVertex + i + 2].normal = normal;
+	
+			memcpy(sceneVertexes[mesh->startSceneVertex + i + 0].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
+			memcpy(sceneVertexes[mesh->startSceneVertex + i + 1].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
+			memcpy(sceneVertexes[mesh->startSceneVertex + i + 2].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
+		}
+	}
 }
 
 void *GL_LoadDXRMesh(idRenderModel *model)  {

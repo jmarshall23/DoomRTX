@@ -161,7 +161,7 @@ float getFogFactor(float d)
 		gLightOutput[launchIndex] = float4(1, 1, 1, 1);
 		gLightOutput[launchIndex] = float4(1, 1, 1, 1);
 	}
-	else if(hit.lightColor.w > 0)
+	else if(hit.worldOrigin.w > 0)
 	{		 
           float2 dims = float2(DispatchRaysDimensions().xy);
 		  float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);

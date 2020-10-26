@@ -1,5 +1,5 @@
 #define KERNEL_SIZE         13
-#define HALF_KERNEL_SIZE    1
+#define HALF_KERNEL_SIZE    3
 
 #define NUM_THREADS_X       1024
 #define NUM_THREADS_Y       1
