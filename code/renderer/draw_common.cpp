@@ -318,7 +318,13 @@ void	RB_STD_DrawView( void ) {
 		//lightColor[2] = backEnd.lightScale * lightRegs[lightStage->color.registers[2]];
 		//lightColor[3] = lightRegs[lightStage->color.registers[3]];
 
-		GL_RegisterWorldLight(vLight->lightDef, vLight->lightDef->parms.origin.x, vLight->lightDef->parms.origin.y, vLight->lightDef->parms.origin.z, 90, 0, vLight->lightDef->parms.shaderParms[SHADERPARM_RED], vLight->lightDef->parms.shaderParms[SHADERPARM_GREEN], vLight->lightDef->parms.shaderParms[SHADERPARM_BLUE]);
+		float radiusHack = vLight->lightDef->parms.lightRadius.x;
+		if (radiusHack > vLight->lightDef->parms.lightRadius.y)
+			radiusHack = vLight->lightDef->parms.lightRadius.y;
+		if (radiusHack > vLight->lightDef->parms.lightRadius.z)
+			radiusHack = vLight->lightDef->parms.lightRadius.z;
+
+		GL_RegisterWorldLight(vLight->lightDef, vLight->lightDef->parms.origin.x, vLight->lightDef->parms.origin.y, vLight->lightDef->parms.origin.z, radiusHack, 0, vLight->lightDef->parms.shaderParms[SHADERPARM_RED] * 0.5, vLight->lightDef->parms.shaderParms[SHADERPARM_GREEN] * 0.5, vLight->lightDef->parms.shaderParms[SHADERPARM_BLUE] * 0.5);
 	}
 
 	//viewEntity_t* vEntity;

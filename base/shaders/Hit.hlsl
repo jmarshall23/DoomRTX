@@ -450,6 +450,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 						float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
 						ndotl += lightInfo[i].light_color.xyz * falloff * 2; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
 						spec_contrib += spec * falloff;
+						spec_lit += spec * falloff;
 					}
 			}	  			
 		}
@@ -530,36 +531,39 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   }
 
   
+		// Fire the secondary bounce
+		float3 bounce = float3(0, 0, 0);
+	if(payload.colorAndDistance.a != 1)
+	{
 
-
-	// Fire the secondary bounce
-	//{
-	//	uint2 pixIdx = DispatchRaysIndex().xy;
-	//	uint r = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
-	//	float3 bounce = float3(0, 0, 0);
-	//	for(int i = 1; i < 10; i++)
-	//	{
-	//		float3 worldDir = getCosHemisphereSample(r , orig_normal);
-	//		bounce += FireSecondRay(worldOrigin, 500, worldDir);
-	//	}
-	//	if(length(bounce) > 0)
-	//	{
-	//		ndotl += (bounce / 10);
-	//	}
-	//	//ndotl += FireSecondRay(worldOrigin, 500, orig_normal);
-	//}
+		{
+			uint2 pixIdx = DispatchRaysIndex().xy;
+			uint r = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
+			
+			for(int i = 1; i < 10; i++)
+			{
+				float3 worldDir = getCosHemisphereSample(r , orig_normal);
+				bounce += FireSecondRay(worldOrigin, 500, worldDir);
+			}
+			if(length(bounce) > 0)
+			{
+				bounce = (bounce / 10) * 2;
+			}
+			//ndotl += FireSecondRay(worldOrigin, 500, orig_normal);
+		}
+	}
 
   //hitColor = float3(InstanceID(), 0, 0);
   float3 spec_final = pow(spec_lit, 0.5);
-  ndotl = lerp(ndotl, spec_final, length(spec_final) * 1.5);
-  //ndotl += 0.025;
+  ndotl = lerp(ndotl, spec_final, length(spec_final));
+  ndotl += 0.015;
   //ndotl = max(ndotl, 0.1);
   //ndotl *= float3(227.0 / 255.0, 107.0 / 255.0, 0.0);  
 
-  payload.colorAndDistance = float4(hitColor, 1.0);//float4(hitColor * ndotl * debug, RayTCurrent());
-  payload.lightColor = float4(ndotl, BTriVertex[vertId + 0].st.z);
+  payload.colorAndDistance = float4(hitColor * ndotl, 1.0);//float4(hitColor * ndotl * debug, RayTCurrent());
+  payload.lightColor = float4(bounce, BTriVertex[vertId + 0].st.z);
   payload.worldOrigin.xyz = worldOrigin.xyz;
-  payload.worldOrigin.w = spec_contrib;
+  payload.worldOrigin.w = spec_final;
 
   payload.worldNormal.x = normal.x;
   payload.worldNormal.y = normal.y;

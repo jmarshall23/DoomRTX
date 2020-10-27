@@ -810,31 +810,6 @@ void GL_FinishDXRLoading(void)
 	raytracingDataInit = true;
 }
 
-void GL_CalcFov(float base_fov, float& fov_x, float& fov_y) {
-	float	x;
-	float	y;
-	float	ratio_x;
-	float	ratio_y;
-
-	// first, calculate the vertical fov based on a 640x480 view
-	x = 640.0f / tan(base_fov / 360.0f * idMath::PI);
-	y = atan2(480.0f, x);
-	fov_y = y * 360.0f / idMath::PI;
-
-	// 16:9
-	ratio_x = 16.0f;
-	ratio_y = 9.0f;
-
-	y = ratio_y / tan(fov_y / 360.0f * idMath::PI);
-	fov_x = atan2(ratio_x, y) * 360.0f / idMath::PI;
-
-	if (fov_x < base_fov) {
-		fov_x = base_fov;
-		x = ratio_x / tan(fov_x / 360.0f * idMath::PI);
-		fov_y = atan2(ratio_y, x) * 360.0f / idMath::PI;
-	}
-}
-
 void GL_Render(float x, float y, float z, idMat3 viewaxis)
 {
 	// On the last frame, the raytracing output was used as a copy source, to
@@ -888,7 +863,8 @@ void GL_Render(float x, float y, float z, idMat3 viewaxis)
 	//matrices[1] =
 	//	DirectX::XMMatrixPerspectiveFovRH(fovAngleY, m_aspectRatio, 0.1f, 1000.0f);
 	float fov_x, fov_y;
-	GL_CalcFov(110, fov_x, fov_y);
+	fov_x = tr.dxrRenderView.fov_x;
+	fov_y = tr.dxrRenderView.fov_y;
 	create_projection_matrix((float *)&matrices[1], 0.1, 1000.0f, fov_x, fov_y);
 
 	// Raytracing has to do the contrary of rasterization: rays are defined in

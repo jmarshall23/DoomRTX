@@ -170,7 +170,7 @@ float getFogFactor(float d)
 		
 		  RayDesc ray;
 		  HitInfo payload;
-		  payload.colorAndDistance = float4(0, 0, 0, 0);
+		  payload.colorAndDistance = float4(0, 0, 0, 1);
 
 		  ray.Origin = hit.worldOrigin + (hit.worldNormal * 10);
 		  ray.Direction = reflect(Direction, hit.worldNormal);
@@ -245,7 +245,7 @@ float getFogFactor(float d)
 		   {
 				//gOutput[launchIndex].xyz = lerp(gOutput[launchIndex], float4(payload.colorAndDistance.rgb, 1.f), 0.3);
 				float spec_contrib = hit.worldOrigin.w;
-				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4(payload.colorAndDistance.rgb * payload.lightColor.rgb * 8, 1.f), 0.3);
+				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4((payload.colorAndDistance.rgb + payload.lightColor.rgb) * 8 * hit.worldOrigin.w, 1.f), 0.3);
 		   }
 	}
 	
