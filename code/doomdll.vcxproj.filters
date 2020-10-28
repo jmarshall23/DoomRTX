@@ -67,6 +67,18 @@
     <Filter Include="AAS">
       <UniqueIdentifier>{b4c91b21-d331-4b28-bb64-abadcb48c6be}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Tools">
+      <UniqueIdentifier>{2ae25210-7b78-4d58-b777-4b18fa939bf4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Compilers">
+      <UniqueIdentifier>{c7a859e1-cf3b-4754-af7e-c8f79e18a0c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Compilers\dmap">
+      <UniqueIdentifier>{fa003439-3bc0-4fd7-8852-4754b9c0dbe0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Compilers\runaas">
+      <UniqueIdentifier>{27a7d071-2fc8-4c21-af78-2193dada8961}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -565,17 +577,38 @@
       <Filter>Raytracing\d3d12\nv_helpers_dx12</Filter>
     </ClInclude>
     <ClInclude Include="idlib\precompiled.h" />
-    <ClInclude Include="tools\compilers\aas\AASFile.h">
-      <Filter>AAS</Filter>
-    </ClInclude>
-    <ClInclude Include="tools\compilers\aas\AASFile_local.h">
-      <Filter>AAS</Filter>
-    </ClInclude>
-    <ClInclude Include="tools\compilers\aas\AASFileManager.h">
-      <Filter>AAS</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\MegaTexture.h">
       <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\dmap\dmap.h">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\compiler_public.h">
+      <Filter>Tools\Compilers</Filter>
+    </ClInclude>
+    <ClInclude Include="aas\AASFile.h">
+      <Filter>AAS</Filter>
+    </ClInclude>
+    <ClInclude Include="aas\AASFile_local.h">
+      <Filter>AAS</Filter>
+    </ClInclude>
+    <ClInclude Include="aas\AASFileManager.h">
+      <Filter>AAS</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\runaas\AASBuild_local.h">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\runaas\AASCluster.h">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\runaas\AASReach.h">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\runaas\Brush.h">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\compilers\runaas\BrushBSP.h">
+      <Filter>Tools\Compilers\runaas</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1210,20 +1243,89 @@
       <Filter>Raytracing\d3d12\nv_helpers_dx12</Filter>
     </ClCompile>
     <ClCompile Include="idlib\precompiled.cpp" />
-    <ClCompile Include="tools\compilers\aas\AASFile.cpp">
-      <Filter>AAS</Filter>
-    </ClCompile>
-    <ClCompile Include="tools\compilers\aas\AASFile_optimize.cpp">
-      <Filter>AAS</Filter>
-    </ClCompile>
-    <ClCompile Include="tools\compilers\aas\AASFile_sample.cpp">
-      <Filter>AAS</Filter>
-    </ClCompile>
-    <ClCompile Include="tools\compilers\aas\AASFileManager.cpp">
-      <Filter>AAS</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\MegaTexture.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\dmap.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\facebsp.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\gldraw.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\glfile.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\leakfile.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\map.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\output.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\portals.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\shadowopt3.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\tritjunction.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\tritools.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\ubrush.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\usurface.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\optimize.cpp">
+      <Filter>Tools\Compilers\dmap</Filter>
+    </ClCompile>
+    <ClCompile Include="aas\AASFile.cpp">
+      <Filter>AAS</Filter>
+    </ClCompile>
+    <ClCompile Include="aas\AASFile_optimize.cpp">
+      <Filter>AAS</Filter>
+    </ClCompile>
+    <ClCompile Include="aas\AASFile_sample.cpp">
+      <Filter>AAS</Filter>
+    </ClCompile>
+    <ClCompile Include="aas\AASFileManager.cpp">
+      <Filter>AAS</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASBuild.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASBuild_file.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASBuild_gravity.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASBuild_ledge.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASBuild_merge.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASCluster.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\AASReach.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\Brush.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\runaas\BrushBSP.cpp">
+      <Filter>Tools\Compilers\runaas</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
