@@ -1705,5 +1705,7 @@ void RE_FinishDXRLoading(void);
 void R_CopyImage(byte* source, int sourceX, int sourceY, int sourceWidth, byte* dest, int destX, int destY, int destWidth, int width, int height);
 
 void GL_UpdateTextureInfo(idRenderModel* model);
+void GL_BlitUIImageUV(int texnum, float u, float v, float u2, float v2, int destx, int desty, int w, int h);
+void GL_Upload32(int textureId, unsigned* data, int width, int height, bool mipmap, bool alpha);
 
 #endif /* !__TR_LOCAL_H__ */

@@ -343,7 +343,10 @@ x/y/w/h are in the 0,0 to 640,480 range
 =============
 */
 void idRenderSystemLocal::DrawStretchPic( float x, float y, float w, float h, float s1, float t1, float s2, float t2, const idMaterial *material ) {
-	guiModel->DrawStretchPic( x, y, w, h, s1, t1, s2, t2, material );
+// jmarshall
+	//guiModel->DrawStretchPic( x, y, w, h, s1, t1, s2, t2, material );
+	GL_BlitUIImageUV(material->GetAlbedoStage()->texture.image->texnum, s1, t1, s2, t2, x, y, w, h);
+// jmarshall end
 }
 
 /*

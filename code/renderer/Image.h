@@ -358,6 +358,8 @@ public:
 
 	void				PrintMemInfo( MemInfo_t *mi );
 
+	int					texnum;
+
 	// cvars
 	static idCVar		image_roundDown;			// round bad sizes down to nearest power of two
 	static idCVar		image_colorMipLevels;		// development aid to see texture mip usage

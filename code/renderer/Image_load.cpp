@@ -206,6 +206,11 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 	else if (depthParm == TD_BUMP) {
 		tr.normalMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
 	}
+	else {
+		texnum = globalImages->texnum;
+		GL_Upload32(globalImages->texnum, (unsigned int *)pic, width, height, false, false);
+		globalImages->texnum++;
+	}
 
 	filter = filterParm;
 	allowDownSize = allowDownSizeParm;

@@ -1268,6 +1268,7 @@ void idImageManager::PurgeAllImages() {
 		image = images[i];
 		image->PurgeImage();
 	}
+	texnum = 0;
 }
 
 /*
@@ -1529,6 +1530,8 @@ Init
 void idImageManager::Init() {
 
 	memset(imageHashTable, 0, sizeof(imageHashTable));
+
+	texnum = 0;
 
 	images.Resize( 1024, 1024 );
 
