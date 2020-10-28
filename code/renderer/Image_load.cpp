@@ -200,15 +200,24 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 
 	PurgeImage();
 
-	if (depthParm == TD_DIFFUSE) {
-		tr.diffuseMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte *)pic);
+	if (tr.diffuseMegaTexture != NULL && tr.normalMegaTexture != NULL)
+	{
+		if (depthParm == TD_DIFFUSE) {
+			tr.diffuseMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
+		}
+		else if (depthParm == TD_BUMP) {
+			tr.normalMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
+		}
+		else {
+			texnum = globalImages->texnum;
+			GL_Upload32(globalImages->texnum, (unsigned int*)pic, width, height, false, false);
+			globalImages->texnum++;
+		}
 	}
-	else if (depthParm == TD_BUMP) {
-		tr.normalMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
-	}
-	else {
+	else
+	{
 		texnum = globalImages->texnum;
-		GL_Upload32(globalImages->texnum, (unsigned int *)pic, width, height, false, false);
+		GL_Upload32(globalImages->texnum, (unsigned int*)pic, width, height, false, false);
 		globalImages->texnum++;
 	}
 

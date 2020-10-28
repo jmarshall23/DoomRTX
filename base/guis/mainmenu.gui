@@ -1,0 +1,10 @@
+windowDef Desktop { 
+	rect		0 ,0 ,640 ,480 
+	backcolor	0, 0, 0, 1
+	float selected	0
+	float roqon	0
+	float activate2 0
+	float doomme	1
+	menugui		1
+	
+}

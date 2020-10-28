@@ -211,7 +211,7 @@ float SCR_DrawFPS( float y ) {
 		s = va( "%ifps", fps );
 		w = strlen( s ) * BIGCHAR_WIDTH;
 
-		renderSystem->DrawBigStringExt( 635 - w, idMath::FtoiFast( y ) + 2, s, colorWhite, true, localConsole.charSetShader);
+		renderSystem->DrawBigStringExt( (renderSystem->GetScreenWidth() - 5) - w, idMath::FtoiFast( y ) + 2, s, colorWhite, true, localConsole.charSetShader);
 	}
 
 	return y + BIGCHAR_HEIGHT + 4;
