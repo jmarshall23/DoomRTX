@@ -194,12 +194,7 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 
 			CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
 			ThrowIfFailed(m_instanceProperties->Map(0, &readRange, reinterpret_cast<void**>(&current)));
-
-			for (int i = 0; i < tr.primaryWorld->localModels.Num(); i++)
-			{
-				memcpy(current, &meshInstanceData[i], sizeof(dxrMeshIntance_t));
-				current++;
-			}
+			memcpy(current, meshInstanceData, sizeof(meshInstanceData));
 			m_instanceProperties->Unmap(0, nullptr);
 		}
 
