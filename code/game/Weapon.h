@@ -69,7 +69,7 @@ public:
 	idPlayer*				GetOwner( void );
 	virtual bool			ShouldConstructScriptObjectAtSpawn( void ) const;
 
-	static void				CacheWeapon( const char *weaponName );
+	void					CacheWeapon( int weapNum, const char *weaponName );
 
 	// save games
 	void					Save( idSaveGame *savefile ) const;					// archives object for save game file
@@ -77,7 +77,7 @@ public:
 
 	// Weapon definition management
 	void					Clear( void );
-	void					GetWeaponDef( const char *objectname, int ammoinclip );
+	void					GetWeaponDef( const char *objectname, int ammoinclip, int weapNum, iceDxrModel *dxrInstance);
 	bool					IsLinked( void );
 	bool					IsWorldModelReady( void );
 

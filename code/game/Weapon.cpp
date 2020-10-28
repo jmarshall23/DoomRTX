@@ -212,7 +212,7 @@ bool idWeapon::ShouldConstructScriptObjectAtSpawn( void ) const {
 idWeapon::CacheWeapon
 ================
 */
-void idWeapon::CacheWeapon( const char *weaponName ) {
+void idWeapon::CacheWeapon(int weapNum, const char *weaponName ) {
 	const idDeclEntityDef *weaponDef;
 	const char *brassDefName;
 	const char *clipModelName;
@@ -754,7 +754,7 @@ void idWeapon::InitWorldModel( const idDeclEntityDef *def ) {
 idWeapon::GetWeaponDef
 ================
 */
-void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
+void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip, int weapNum, iceDxrModel* dxrInstance) {
 	const char *shader;
 	const char *objectType;
 	const char *vmodel;
@@ -824,6 +824,7 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 	// setup the view model
 	vmodel = weaponDef->dict.GetString( "model_view" );
 	SetModel( vmodel );
+	GetRenderEntity()->dxrModel = dxrInstance;
 
 	// setup the world model
 	InitWorldModel( weaponDef );

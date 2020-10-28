@@ -1177,7 +1177,16 @@ void idPlayer::SetupWeaponEntity( void ) {
 	for( w = 0; w < MAX_WEAPONS; w++ ) {
 		weap = spawnArgs.GetString( va( "def_weapon%d", w ) );
 		if ( weap && *weap ) {
-			idWeapon::CacheWeapon( weap );
+			weapon.GetEntity()->CacheWeapon( w, weap );
+
+// jmarshall
+			const idDeclEntityDef* weaponDef = gameLocal.FindEntityDef(weap, false);
+			idStr modelname = weaponDef->dict.GetString("model_view");
+			const idDeclModelDef* modelDef = static_cast<const idDeclModelDef*>(declManager->FindType(DECL_MODELDEF, modelname, false));
+
+			idRenderModel* model = renderModelManager->FindModel(modelDef->GetModelName());
+			weaponDxrModels[w] = renderModelManager->CreateDXRMeshInstance(model);
+// jmarshall end
 		}
 	}
 }
@@ -2825,7 +2834,7 @@ void idPlayer::CacheWeapons( void ) {
 		if ( inventory.weapons & ( 1 << w ) ) {
 			weap = spawnArgs.GetString( va( "def_weapon%d", w ) );
 			if ( weap != "" ) {
-				idWeapon::CacheWeapon( weap );
+				weapon.GetEntity()->CacheWeapon( w, weap );
 			} else {
 				inventory.weapons &= ~( 1 << w );
 			}
@@ -3831,7 +3840,7 @@ void idPlayer::Weapon_Combat( void ) {
 			currentWeapon = idealWeapon;
 			weaponGone = false;
 			animPrefix = spawnArgs.GetString( va( "def_weapon%d", currentWeapon ) );
-			weapon.GetEntity()->GetWeaponDef( animPrefix, inventory.clip[ currentWeapon ] );
+			weapon.GetEntity()->GetWeaponDef( animPrefix, inventory.clip[ currentWeapon ], currentWeapon, weaponDxrModels[currentWeapon]);
 			animPrefix.Strip( "weapon_" );
 
 			weapon.GetEntity()->NetCatchup();
@@ -3856,7 +3865,7 @@ void idPlayer::Weapon_Combat( void ) {
 				currentWeapon = idealWeapon;
 				weaponGone = false;
 				animPrefix = spawnArgs.GetString( va( "def_weapon%d", currentWeapon ) );
-				weapon.GetEntity()->GetWeaponDef( animPrefix, inventory.clip[ currentWeapon ] );
+				weapon.GetEntity()->GetWeaponDef( animPrefix, inventory.clip[ currentWeapon ], currentWeapon, weaponDxrModels[currentWeapon]);
 				animPrefix.Strip( "weapon_" );
 
 				weapon.GetEntity()->Raise();
@@ -4027,7 +4036,7 @@ void idPlayer::UpdateWeapon( void ) {
 	if ( !weapon.GetEntity()->IsLinked() ) {
 		if ( idealWeapon != -1 ) {
 			animPrefix = spawnArgs.GetString( va( "def_weapon%d", idealWeapon ) );
-			weapon.GetEntity()->GetWeaponDef( animPrefix, inventory.clip[ idealWeapon ] );
+			weapon.GetEntity()->GetWeaponDef( animPrefix, inventory.clip[ idealWeapon ], idealWeapon, weaponDxrModels[idealWeapon]);
 			assert( weapon.GetEntity()->IsLinked() );
 		} else {
 			return;

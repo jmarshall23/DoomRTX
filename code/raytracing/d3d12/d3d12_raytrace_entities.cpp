@@ -156,10 +156,7 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 
 			if (currententity->suppressSurfaceInViewID == HIDE_RENDERMODEL_EXCEPT_MIRROR)
 				continue;
-
-			if (currententity->weaponDepthHack)
-				continue;
-
+			
 			if (mesh->buffers.pResult.Get() != NULL)
 			{
 				if (skipSelfShadow)

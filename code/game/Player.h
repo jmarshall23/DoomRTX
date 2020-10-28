@@ -52,8 +52,6 @@ const int	LAND_RETURN_TIME = 300;
 const int	FOCUS_TIME = 300;
 const int	FOCUS_GUI_TIME = 500;
 
-const int MAX_WEAPONS = 16;
-
 const int DEAD_HEARTRATE = 0;			// fall to as you die
 const int LOWHEALTH_HEARTRATE_ADJ = 20; // 
 const int DYING_HEARTRATE = 30;			// used for volumen calc when dying/dead
@@ -683,6 +681,11 @@ private:
 	void					Event_LevelTrigger( void );
 	void					Event_Gibbed( void );
 	void					Event_GetIdealWeapon( void );
+
+
+// jmarshall
+	iceDxrModel* weaponDxrModels[MAX_WEAPONS];
+// jmarshall end
 };
 
 ID_INLINE bool idPlayer::IsReady( void ) {

@@ -85,6 +85,8 @@ class idLocationEntity;
 #define	ENTITYNUM_WORLD			(MAX_GENTITIES-2)
 #define	ENTITYNUM_MAX_NORMAL	(MAX_GENTITIES-2)
 
+const int MAX_WEAPONS = 16;
+
 //============================================================================
 
 void gameError( const char *fmt, ... );
