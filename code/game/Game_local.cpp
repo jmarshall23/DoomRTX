@@ -1186,10 +1186,6 @@ void idGameLocal::InitFromNewMap( const char *mapName, idRenderWorld *renderWorl
 	// free up any unused animations
 	animationLib.FlushUnusedAnims();
 
-// jmarshall
-	renderSystem->FinishDXRLoading();
-// jmarshall end
-
 	gamestate = GAMESTATE_ACTIVE;
 
 	Printf( "--------------------------------------\n" );

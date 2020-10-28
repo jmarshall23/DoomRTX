@@ -523,9 +523,6 @@ void GL_Init(HWND hwnd, HINSTANCE hinstance, int width, int height)
 	GL_InitClearPass(lightTexture);
 	GL_InitCompositePass(albedoTexture, lightTexture, compositeStagingTexture, compositeTexture, uiTexture);
 
-
-	GL_LoadMegaXML("base/mega/mega.xml");
-
 	DXGI_ADAPTER_DESC adapterDesc;	
     hardwareAdapter->GetDesc(&adapterDesc);
 
@@ -686,7 +683,7 @@ void RE_FinishDXRLoading(void) {
 
 void GL_FinishDXRLoading(void) 
 {
-	GL_FindMegaTile("intelredclouds", sky_map_x, sky_map_y, sky_map_w, sky_map_h);
+	tr.diffuseMegaTexture->FindMegaTile("intelredclouds", sky_map_x, sky_map_y, sky_map_w, sky_map_h);
 
 	GL_FinishVertexBufferAllocation();
 
@@ -829,7 +826,7 @@ void GL_Render(float x, float y, float z, idMat3 viewaxis)
 		m_commandList->ResourceBarrier(1, &transition);
 	}
 
-	if (r_finishDXRInit) {
+ 	if (r_finishDXRInit) {
 		GL_FinishDXRLoading();
 		r_finishDXRInit = false;
 	}

@@ -1211,13 +1211,13 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 	}
 
 	// load it if we aren't in a level preload
-	if ( image_preload.GetBool() && !insideLevelLoad ) {
+	//if ( image_preload.GetBool() && !insideLevelLoad ) {
 		image->referencedOutsideLevelLoad = true;
 		image->ActuallyLoadImage( true, false );	// check for precompressed, load is from front end
 		declManager->MediaPrint( "%ix%i %s\n", image->uploadWidth, image->uploadHeight, image->imgName.c_str() );
-	} else {
-		declManager->MediaPrint( "%s\n", image->imgName.c_str() );
-	}
+	//} else {
+	//	declManager->MediaPrint( "%s\n", image->imgName.c_str() );
+	//}
 
 	return image;
 }

@@ -58,9 +58,6 @@
     <Filter Include="Raytracing\libs">
       <UniqueIdentifier>{02eb5480-ba9c-4323-a9e0-b74d07baf34d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Raytracing\libs\xml">
-      <UniqueIdentifier>{a0b12e29-7bb3-4e73-ab27-9ab174d5f38b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Raytracing\d3d12">
       <UniqueIdentifier>{c8f4e0c7-e4e6-4363-8d1b-b6fea2ad0cd2}</UniqueIdentifier>
     </Filter>
@@ -537,9 +534,6 @@
     <ClInclude Include="ui\Winvar.h">
       <Filter>Ui</Filter>
     </ClInclude>
-    <ClInclude Include="raytracing\libs\xml\tinyxml2.h">
-      <Filter>Raytracing\libs\xml</Filter>
-    </ClInclude>
     <ClInclude Include="raytracing\d3d12\d3d12_local.h">
       <Filter>Raytracing\d3d12</Filter>
     </ClInclude>
@@ -579,6 +573,9 @@
     </ClInclude>
     <ClInclude Include="tools\compilers\aas\AASFileManager.h">
       <Filter>AAS</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\MegaTexture.h">
+      <Filter>Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1167,9 +1164,6 @@
     <ClCompile Include="raytracing\math\matrix.cpp">
       <Filter>Raytracing\math</Filter>
     </ClCompile>
-    <ClCompile Include="raytracing\libs\xml\tinyxml2.cpp">
-      <Filter>Raytracing\libs\xml</Filter>
-    </ClCompile>
     <ClCompile Include="raytracing\d3d12\d3d12_clear.cpp">
       <Filter>Raytracing\d3d12</Filter>
     </ClCompile>
@@ -1227,6 +1221,9 @@
     </ClCompile>
     <ClCompile Include="tools\compilers\aas\AASFileManager.cpp">
       <Filter>AAS</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\MegaTexture.cpp">
+      <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

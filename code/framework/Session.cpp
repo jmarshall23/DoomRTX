@@ -1612,6 +1612,8 @@ void idSessionLocal::ExecuteMapChange( bool noFadeWipe ) {
 	common->Printf( "--------- Map Initialization ---------\n" );
 	common->Printf( "Map: %s\n", mapString.c_str() );
 
+	renderSystem->InitMegaTexture();
+
 	// let the renderSystem load all the geometry
 	if ( !rw->InitFromMap( fullMapName ) ) {
 		common->Error( "couldn't load %s", fullMapName.c_str() );

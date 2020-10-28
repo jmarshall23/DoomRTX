@@ -267,6 +267,9 @@ public:
 
 	// Finishes DXR upload.
 	virtual void			FinishDXRLoading(void) = 0;
+
+	// Init's a new megatexture, should only be called at the start of level loading!
+	virtual void			InitMegaTexture(void) = 0;
 };
 
 extern idRenderSystem *			renderSystem;

@@ -71,6 +71,7 @@ struct dxrVertex_t {
 	idVec3 st;
 	idVec3 normal;
 	idVec4 vtinfo;
+	idVec4 normalVtInfo;
 	idVec4 tangent;
 };
 
@@ -134,7 +135,6 @@ void GL_LoadMegaXML(const char* path);
 void GL_LoadMegaTexture(D3D12_CPU_DESCRIPTOR_HANDLE &srvPtr);
 void GL_LoadMegaNormalTexture(D3D12_CPU_DESCRIPTOR_HANDLE& srvPtr);
 void GL_CreateInstanceInfo(D3D12_CPU_DESCRIPTOR_HANDLE& srvPtr);
-void GL_FindMegaTile(const char* name, float& x, float& y, float& width, float& height);
 
 void GL_InitCompositePass(tr_texture *albedoPass, tr_texture *lightPass, tr_texture* compositeStagingPass, tr_texture *compositePass, tr_texture* uiTexturePass);
 void GL_CompositePass(tr_texture* albedoPass, tr_texture* lightPass, tr_texture* compositeStagingPass, tr_texture* compositePas, ID3D12GraphicsCommandList4* cmdList, ID3D12CommandAllocator *commandAllocator);
@@ -158,5 +158,6 @@ void create_projection_matrix(float matrix[16], float znear, float zfar, float f
 void create_entity_matrix(float matrix[16], renderEntity_t* e);
 
 void GL_UpdateBottomLevelAccelStruct(idRenderModel* model);
+void GL_UpdateTextureInfo(idRenderModel* model);
 
 extern int numWorldLights;

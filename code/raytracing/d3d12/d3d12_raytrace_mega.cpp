@@ -3,36 +3,28 @@
 
 #include "precompiled.h"
 #include "d3d12_local.h"
-#include "../libs/xml/tinyxml2.h"
-
-struct MegaEntry_t {
-	char name[512];
-	int x;
-	int y;
-	int w;
-	int h;
-};
 
 struct MegaTexture_t {
 	ComPtr<ID3D12Resource> textureUploadHeap;
 	ComPtr<ID3D12Resource> texture2D;
 };
 
-std::vector<MegaEntry_t> megaEntries;
 MegaTexture_t megaTexture;
 MegaTexture_t megaTextureNormal;
 
 extern ComPtr<ID3D12DescriptorHeap> m_srvUavHeap;
 
 void GL_LoadMegaTexture(D3D12_CPU_DESCRIPTOR_HANDLE& srvPtr) {
-	int width;
-	int height;
+	int width = r_megaTextureSize.GetInteger();
+	int height = r_megaTextureSize.GetInteger();
 
-	byte* buffer;
-	LoadTGA("mega/mega.tga", &buffer, &width, &height, NULL);
+	//byte* buffer;
+	//LoadTGA("mega/mega.tga", &buffer, &width, &height, NULL);
 	//FILE* f = fopen("base/mega/mega.raw", "rb");
 	//fread(buffer, 1, width * height * 4, f);
 	//fclose(f);
+
+	byte* buffer = tr.diffuseMegaTexture->GetMegaBuffer();
 
 	// Create the texture.
 	{
@@ -83,20 +75,20 @@ void GL_LoadMegaTexture(D3D12_CPU_DESCRIPTOR_HANDLE& srvPtr) {
 		srvDesc.Texture2D.MipLevels = 1;
 		m_device->CreateShaderResourceView(megaTexture.texture2D.Get(), &srvDesc, srvPtr);
 	}
-
-	R_StaticFree(buffer);
 }
 
 
 void GL_LoadMegaNormalTexture(D3D12_CPU_DESCRIPTOR_HANDLE& srvPtr) {
-	int width;
-	int height;
+	int width = r_megaTextureSize.GetInteger();
+	int height = r_megaTextureSize.GetInteger();
 
-	byte* buffer;
-	LoadTGA("mega/mega_local.tga", &buffer, &width, &height, NULL);
+	//byte* buffer;
+	//LoadTGA("mega/mega_local.tga", &buffer, &width, &height, NULL);
 	//FILE* f = fopen("base/mega/mega.raw", "rb");
 	//fread(buffer, 1, width * height * 4, f);
 	//fclose(f);
+
+	byte* buffer = tr.normalMegaTexture->GetMegaBuffer();
 
 	// Create the texture.
 	{
@@ -147,124 +139,4 @@ void GL_LoadMegaNormalTexture(D3D12_CPU_DESCRIPTOR_HANDLE& srvPtr) {
 		srvDesc.Texture2D.MipLevels = 1;
 		m_device->CreateShaderResourceView(megaTextureNormal.texture2D.Get(), &srvDesc, srvPtr);
 	}
-
-	R_StaticFree(buffer);
-}
-
-void GL_FindMegaTile(const char *name, float &x, float &y, float &width, float &height)
-{
-	for (int i = 0; i < megaEntries.size(); i++) {
-		if (!strcmp(megaEntries[i].name, name)) {
-			x = megaEntries[i].x;
-			y = megaEntries[i].y;
-			width = megaEntries[i].w;
-			height = megaEntries[i].h;
-			return;
-		}
-	}
-
-	for(int i = 0; i < megaEntries.size(); i++) {
-		if(strstr(megaEntries[i].name, name)) {
-			x = megaEntries[i].x;
-			y = megaEntries[i].y;
-			width = megaEntries[i].w;
-			height = megaEntries[i].h;
-			return;
-		}
-	}
-	x = -1;
-	y = -1;
-	width = -1;
-	height = -1;
-}
-
-void GL_FindMegaTile(const char* name, float* x, float* y, float* width, float* height) {
-// atlas material hack
-	if (!strcmp(name, "iron01_ndark")) {
-		GL_FindMegaTile("iron01_m", x, y, width, height);
-		return;
-	}
-// atlas material hack
-
-	for (int i = 0; i < megaEntries.size(); i++) {
-		if (!strcmp(megaEntries[i].name, name)) {
-			*x = megaEntries[i].x;
-			*y = megaEntries[i].y;
-			*width = megaEntries[i].w;
-			*height = megaEntries[i].h;
-			return;
-		}
-	}
-
-	for (int i = 0; i < megaEntries.size(); i++) {
-		if (strstr(megaEntries[i].name, name)) {
-			*x = megaEntries[i].x;
-			*y = megaEntries[i].y;
-			*width = megaEntries[i].w;
-			*height = megaEntries[i].h;
-			return;
-		}
-	}
-	*x = -1;
-	*y = -1;
-	*width = -1;
-	*height = -1;
-}
-
-void Tileset_ParseTile(tinyxml2::XMLNode* tile) {
-//	tinyxml2::XMLNode* KeyNode = tile->FirstChildElement("Key");
-//	tinyxml2::XMLNode* NameNode = KeyNode->FirstChildElement("Name");
-//	tinyxml2::XMLNode* ShapeNode = KeyNode->FirstChildElement("Shape");
-//	tinyxml2::XMLNode* ValueNode = tile->FirstChildElement("Value");
-//	tinyxml2::XMLNode* FramesNode = ValueNode->FirstChildElement("Frames");
-//	tinyxml2::XMLNode* FrameNode = FramesNode->FirstChildElement("Frame");
-//
-//	tileRule.name = NameNode->FirstChild()->ToText()->Value();
-//	tileRule.hash = generateHashValue(tileRule.name.c_str(), tileRule.name.size());
-//	tileRule.shape = atoi(ShapeNode->FirstChild()->ToText()->Value());
-//
-//	while (FrameNode != NULL) {
-//		tileRule.frames.push_back(FrameNode->FirstChild()->ToText()->Value());
-//		FrameNode = FrameNode->NextSiblingElement("Frame");
-//	}
-
-	tinyxml2::XMLElement* elem = (tinyxml2::XMLElement*)tile;
-	const tinyxml2::XMLAttribute* attribute = elem->FirstAttribute();
-
-	MegaEntry_t entry;
-	idStr name = attribute->Value();
-	name.StripFileExtension();
-	strcpy(entry.name, name.c_str());
-
-	attribute = attribute->Next();
-	entry.x = atoi(attribute->Value());
-	attribute = attribute->Next();
-	entry.y = atoi(attribute->Value());
-	attribute = attribute->Next();
-	entry.w = atoi(attribute->Value());
-	attribute = attribute->Next();
-	entry.h = atoi(attribute->Value());
-	megaEntries.push_back(entry);
-}
-
-void GL_LoadMegaXML(const char *path) {
-	tinyxml2::XMLDocument doc;
-	doc.LoadFile(path);
-
-	common->Printf("Loading Mega XML %s...\n", path);
-
-	tinyxml2::XMLElement* root = doc.FirstChildElement();
-	if (root == NULL) {
-		Sys_Error("Failed to load mega XML");
-		return;
-	}
-
-	tinyxml2::XMLNode* tilesetTypeClassNode = root->FirstChild();
-	tinyxml2::XMLNode* tile = tilesetTypeClassNode;
-	while (tile != NULL) {
-		Tileset_ParseTile(tile);
-		tile = tile->NextSiblingElement("sprite");
-	}
-
-	common->Printf("%d mega entries...\n", megaEntries.size());
 }

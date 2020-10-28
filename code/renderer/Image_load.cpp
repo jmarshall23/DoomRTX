@@ -31,6 +31,8 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
+extern idStr imageProgramFileName;
+
 /*
 PROBLEM: compressed textures may break the zero clamp rule!
 */
@@ -197,6 +199,13 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 	byte		*shrunk;
 
 	PurgeImage();
+
+	if (depthParm == TD_DIFFUSE) {
+		tr.diffuseMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte *)pic);
+	}
+	else if (depthParm == TD_BUMP) {
+		tr.normalMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
+	}
 
 	filter = filterParm;
 	allowDownSize = allowDownSizeParm;

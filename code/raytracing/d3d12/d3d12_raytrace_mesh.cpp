@@ -167,6 +167,59 @@ void GL_UpdateBottomLevelAccelStruct(idRenderModel* model) {
 	mesh->bottomLevelAS.Generate(m_commandList.Get(), mesh->buffers.pScratch.Get(), mesh->buffers.pResult.Get(), false, nullptr);
 }
 
+void GL_UpdateTextureInfo(idRenderModel* model) {
+	dxrMesh_t* mesh = (dxrMesh_t*)model->GetDXRFrame(0);
+	if (mesh == NULL)
+		return;
+
+	dxrVertex_t* modelVertexes = &sceneVertexes[mesh->startSceneVertex];
+
+	// Sanity check our mesh
+	{
+		for (int i = 0; i < mesh->meshSurfaces.size(); i++)
+		{
+			const modelSurface_t* surface = model->Surface(i);
+			if (mesh->meshSurfaces[i].numIndexes != surface->geometry->numIndexes)
+			{
+				//common->Warning("GL_UpdateBottomLevelAccelStruct: Surface index count changed since creation.");
+				return;
+			}
+		}
+	}
+
+	// TODO: Use a index buffer here : )
+	{
+		for (int i = 0; i < mesh->meshSurfaces.size(); i++)
+		{
+			
+			const shaderStage_t* stage = model->Surface(i)->shader->GetAlbedoStage();
+
+			if (model->Surface(i)->shader->GetSort() == SS_DECAL)
+				continue;
+
+			if(stage == NULL)
+				continue;
+
+			float x, y, w, h;
+			idStr fileName = stage->texture.image->imgName.c_str();
+			fileName = fileName.StripFileExtension();
+			tr.diffuseMegaTexture->FindMegaTile(fileName.c_str(), x, y, w, h);
+			//if (x == -1) {
+			//	common->Warning("Failed to find image %s in atlas for %s!\n", fileName.c_str(), model->Surface(i)->shader->GetName());
+			//}
+
+			const modelSurface_t* surface = model->Surface(i);
+			for (int d = 0; d < mesh->meshSurfaces[i].numIndexes; d++)
+			{
+				int indexId = mesh->meshSurfaces[i].startIndex + d;
+				int meshIndexId = surface->geometry->indexes[d];
+
+				modelVertexes[indexId].vtinfo = idVec4(x, y, w, h);
+			}
+		}
+	}
+}
+
 void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 	mesh->startSceneVertex = sceneVertexes.size();
 
@@ -183,12 +236,11 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 
 		int materialInfo = 1;
 
-		float x, y, w, h;
-
 		if (fa->shader == NULL)
 			continue;
 
 		const shaderStage_t* stage = fa->shader->GetAlbedoStage();		
+		const shaderStage_t* normalStage = fa->shader->GetBumpStage();
 
 		if (fa->shader->GetEmissiveStage().isEnabled) {
 			materialInfo = 2;
@@ -197,19 +249,29 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 		if (fa->shader->GetSort() == SS_DECAL)
 			continue;
 
+		float x, y, w, h;
+		float nx = -1, ny = -1, nw = -1, nh = -1;
+
+		if (normalStage != NULL) {
+			idStr fileName = normalStage->texture.image->imgName.c_str();
+//			fileName = fileName.StripPath().StripFileExtension();
+			tr.normalMegaTexture->FindMegaTile(fileName.c_str(), nx, ny, nw, nh);
+		}
+
 		if (stage != NULL) {
 			idStr fileName = stage->texture.image->imgName.c_str();
-			fileName = fileName.StripPath().StripFileExtension();
-			GL_FindMegaTile(fileName.c_str(), x, y, w, h);
+			tr.diffuseMegaTexture->FindMegaTile(fileName.c_str(), x, y, w, h);
 		}
 		else {
 			continue;
 		}
+
 		if(x == -1 || y == -1 || x == -1 || h == -1) {
 			//x = -1;
 			//y = -1;
 			//w = -1;
 			//h = -1;
+			common->Printf("Failed to find mega info for %s\n", fa->shader->GetName());
 			continue;
 		}
 		
@@ -234,6 +296,10 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 			v.vtinfo[1] = y;
 			v.vtinfo[2] = w;
 			v.vtinfo[3] = h;
+			v.normalVtInfo[0] = nx;
+			v.normalVtInfo[1] = ny;
+			v.normalVtInfo[2] = nw;
+			v.normalVtInfo[3] = nh;
 
 			mesh->meshVertexes.push_back(v);
 			surf.numVertexes++;

@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #define __TR_LOCAL_H__
 
 #include "Image.h"
+#include "MegaTexture.h"
 
 class idRenderWorldLocal;
 
@@ -738,6 +739,8 @@ public:
 	virtual void			SetShuttleView(bool view) { };
 	virtual bool			SupportsFragmentPrograms(void) { return false; };// HUMANHEAD CJR
 	virtual int				VideoCardNumber(void) { return 0; }
+
+	virtual void			InitMegaTexture(void);
 	virtual void			FinishDXRLoading(void);
 public:
 	// internal functions
@@ -812,6 +815,9 @@ public:
 	unsigned short			gammaTable[256];	// brightness / gamma modify this
 
 	renderView_t			dxrRenderView;
+
+	iceMegaTexture*			diffuseMegaTexture;
+	iceMegaTexture*			normalMegaTexture;
 };
 
 extern backEndState_t		backEnd;
@@ -995,6 +1001,8 @@ extern idCVar r_debugPolygonFilled;
 extern idCVar r_materialOverride;		// override all materials
 
 extern idCVar r_debugRenderToTexture;
+
+extern idCVar r_megaTextureSize;
 
 /*
 ====================================================================
@@ -1681,7 +1689,6 @@ void LoadTGA(const char* name, byte** pic, int* width, int* height, ID_TIME_T* t
 
 void GL_FinishVertexBufferAllocation(void);
 void* GL_LoadDXRMesh(idRenderModel* model);
-void GL_FindMegaTile(const char* name, float* x, float* y, float* width, float* height);
 void GL_SetNumMapLights();
 void GL_RegisterWorldAreaLight(idVec3 normal, idVec3 mins, idVec3 maxs, int lightStyle, float radius, float r, float g, float b);
 void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, float radius, int lightStyle, float r, float g, float b);
@@ -1694,4 +1701,9 @@ void GL_Render(float x, float y, float z, idMat3 viewaxis);
 
 void GL_FinishDXRLoading(void);
 void RE_FinishDXRLoading(void);
+
+void R_CopyImage(byte* source, int sourceX, int sourceY, int sourceWidth, byte* dest, int destX, int destY, int destWidth, int width, int height);
+
+void GL_UpdateTextureInfo(idRenderModel* model);
+
 #endif /* !__TR_LOCAL_H__ */

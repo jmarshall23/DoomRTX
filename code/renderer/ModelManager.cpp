@@ -551,7 +551,7 @@ void idRenderModelManagerLocal::EndLevelLoad() {
 		if ( model->IsLevelLoadReferenced() && !model->IsLoaded() && model->IsReloadable() ) {
 
 			loadCount++;
-			model->LoadModel();
+			model->LoadModel();			
 
 			if ( ( loadCount & 15 ) == 0 ) {
 				session->PacifierUpdate();

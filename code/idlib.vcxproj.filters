@@ -140,6 +140,7 @@
     <ClCompile Include="idlib\math\Simd_Generic.cpp">
       <Filter>Math</Filter>
     </ClCompile>
+    <ClCompile Include="idlib\ImagePacker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="idlib\bv\Bounds.h">
@@ -312,5 +313,6 @@
     <ClInclude Include="idlib\math\Simd_Generic.h">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="idlib\ImagePacker.h" />
   </ItemGroup>
 </Project>

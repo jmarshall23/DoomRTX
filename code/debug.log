@@ -35,3 +35,18 @@
 [1026/191615.123:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
 [1026/191615.156:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
 [1026/191615.330:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1027/035508.779:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035508.780:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035513.782:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035513.783:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035519.756:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035519.797:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035524.759:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035524.799:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035529.762:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035529.802:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035534.766:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035534.805:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035539.771:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/035539.809:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
+[1027/201556.581:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202

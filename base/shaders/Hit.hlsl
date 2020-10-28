@@ -10,6 +10,7 @@ struct STriVertex {
   float3 st;
   float3 normal;
   float4 vtinfo;
+  float4 normalVtInfo;
   float4 tangent;
 };
 
@@ -370,7 +371,9 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   
   if(BTriVertex[vertId + 0].vtinfo.x != -1)
   {
+  
 	  float u = 0, v = 0;
+	  float nu, nv;
 	  for(int i = 0; i < 3; i++)
 	  {
 			u += BTriVertex[vertId + i].st.x * barycentrics[i];
@@ -380,18 +383,28 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 	  u = frac(u) / 16384;
 	  v = frac(v) / 16384;
 	  
+	  nu = u;
+	  nv = v;
+	  
 	  u = u * BTriVertex[vertId + 0].vtinfo.z;
 	  v = v * BTriVertex[vertId + 0].vtinfo.w;
 	  
 	  u = u + (BTriVertex[vertId + 0].vtinfo.x / 16384);
 	  v = v + (BTriVertex[vertId + 0].vtinfo.y / 16384);
 	  
+	  nu = nu * BTriVertex[vertId + 0].normalVtInfo.z;
+	  nv = nv * BTriVertex[vertId + 0].normalVtInfo.w;
+	  
+	  nu = nu + (BTriVertex[vertId + 0].normalVtInfo.x / 16384);
+	  nv = nv + (BTriVertex[vertId + 0].normalVtInfo.y / 16384);
 
-	  //u *= BTriVertex[vertId + 0].vtinfo.z + (BTriVertex[vertId + 0].vtinfo.x / 16384);
-	  //v *= BTriVertex[vertId + 0].vtinfo.w + (BTriVertex[vertId + 0].vtinfo.y / 16384);
-	  //hitColor = float3(u, v, 0);
 	  hitColor = MegaTexture.Load(int3(u * 16384, v * 16384, 0)).rgb; //normalize(BTriVertex[vertId + 0].vertex) * 4;
-	  hitNormalMap = MegaTextureNormal.Load(int3(u * 16384, v * 16384, 0)).rgb * 2.0 - 1.0;
+	  if(BTriVertex[vertId].normalVtInfo.x == -1) {
+		hitNormalMap = float3(0.5, 0.5, 1.0) * 2.0 - 1.0; //MegaTextureNormal.Load(int3(u * 16384, v * 16384, 0)).rgb * 2.0 - 1.0;
+	  }
+	  else {
+		hitNormalMap = MegaTextureNormal.Load(int3(nu * 16384, nv * 16384, 0)).rgb * 2.0 - 1.0;
+	  }
   }
   else
   {

@@ -1048,3 +1048,26 @@ idRenderSystemLocal::FinishDXRLoading
 void idRenderSystemLocal::FinishDXRLoading(void) {
 	RE_FinishDXRLoading();
 }
+
+/*
+====================
+idRenderSystemLocal::InitMegaTexture
+====================
+*/
+void idRenderSystemLocal::InitMegaTexture(void) {
+	if (diffuseMegaTexture != NULL) {
+		delete diffuseMegaTexture;
+		diffuseMegaTexture = NULL;
+	}
+
+	if (normalMegaTexture != NULL) {
+		delete normalMegaTexture;
+		normalMegaTexture = NULL;
+	}
+
+	diffuseMegaTexture = new iceMegaTexture();
+	diffuseMegaTexture->InitTexture();
+
+	normalMegaTexture = new iceMegaTexture();
+	normalMegaTexture->InitTexture();
+}

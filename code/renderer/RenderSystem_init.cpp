@@ -1561,6 +1561,9 @@ void idRenderSystemLocal::Init( void ) {
 	ambientLightVector[2] = 0.8925f;
 	ambientLightVector[3] = 1.0f;
 
+	diffuseMegaTexture = NULL;
+	normalMegaTexture = NULL;
+
 	memset( &backEnd, 0, sizeof( backEnd ) );
 
 	R_InitCvars();
@@ -1660,8 +1663,17 @@ idRenderSystemLocal::EndLevelLoad
 ========================
 */
 void idRenderSystemLocal::EndLevelLoad( void ) {
+	globalImages->EndLevelLoad();	
+// jmarshall
+	diffuseMegaTexture->BuildMegaTexture();
+	normalMegaTexture->BuildMegaTexture();
+
 	renderModelManager->EndLevelLoad();
-	globalImages->EndLevelLoad();
+
+	renderSystem->FinishDXRLoading();
+// jmarshall end
+
+
 	if ( r_forceLoadImages.GetBool() ) {
 		RB_ShowImages();
 	}
