@@ -19,6 +19,7 @@ RE_ShutdownRaytracingMap
 */
 void RE_ShutdownRaytracingMap(void) {
 	//r_finishDXRInit = 1;
+	GL_WaitForPreviousFrame();
 
 	raytracingDataInit = false;
 
@@ -51,5 +52,6 @@ void RE_ShutdownRaytracingMap(void) {
 
 	if (m_vertexBuffer.Get() != NULL) {
 		m_vertexBuffer->Release();
+		m_vertexBuffer = nullptr;
 	}
 }

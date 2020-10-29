@@ -2136,6 +2136,7 @@ void idRenderModelStatic::PurgeModel() {
 	surfaces.Clear();
 
 	purged = true;
+	dxrMeshFrames.Clear();
 }
 
 /*

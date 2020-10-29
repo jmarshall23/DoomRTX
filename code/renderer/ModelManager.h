@@ -94,6 +94,9 @@ public:
 
 	// Creates a DXR Mesh Instance.
 	virtual iceDxrModel* CreateDXRMeshInstance(idRenderModel* renderModel) = 0;
+
+	// Purges all of the render models.
+	virtual void			PurgeAllRenderModels(void) = 0;
 };
 
 // this will be statically pointed at a private implementation

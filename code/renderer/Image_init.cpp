@@ -1117,12 +1117,7 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 				continue;
 			}
 
-			if ( image->allowDownSize == allowDownSize && image->depth == depth ) {
-				// note that it is used this level load
-				image->levelLoadReferenced = true;
-				if ( image->partialImage != NULL ) {
-					image->partialImage->levelLoadReferenced = true;
-				}
+			if ( image->allowDownSize == allowDownSize && image->depth == depth && image->levelLoadReferenced) {				
 				return image;
 			}
 
@@ -1134,12 +1129,7 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 			if ( image->depth > depth ) {
 				depth = image->depth;
 			}
-			if ( image->allowDownSize == allowDownSize && image->depth == depth ) {
-				// the already created one is already the highest quality
-				image->levelLoadReferenced = true;
-				if ( image->partialImage != NULL ) {
-					image->partialImage->levelLoadReferenced = true;
-				}
+			if ( image->allowDownSize == allowDownSize && image->depth == depth && image->levelLoadReferenced ) {				
 				return image;
 			}
 
@@ -1149,11 +1139,11 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 			if ( image->partialImage != NULL ) {
 				image->partialImage->levelLoadReferenced = true;
 			}
-			if ( image_preload.GetBool() && !insideLevelLoad ) {
+			//if ( image_preload.GetBool() && !insideLevelLoad ) {
 				image->referencedOutsideLevelLoad = true;
 				image->ActuallyLoadImage( true, false );	// check for precompressed, load is from front end
 				declManager->MediaPrint( "%ix%i %s (reload for mixed referneces)\n", image->uploadWidth, image->uploadHeight, image->imgName.c_str() );
-			}
+			//}
 			return image;
 		}
 	}

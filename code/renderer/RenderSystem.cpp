@@ -1053,6 +1053,15 @@ void idRenderSystemLocal::FinishDXRLoading(void) {
 }
 
 /*
+===============
+idRenderSystemLocal::FreeRaytracingData
+===============
+*/
+void idRenderSystemLocal::FreeRaytracingData(void) {
+	RE_ShutdownRaytracingMap();
+}
+
+/*
 ====================
 idRenderSystemLocal::InitMegaTexture
 ====================

@@ -50,6 +50,13 @@ idList<fontInfoEx_t> idDeviceContext::fonts;
 
 int idDeviceContext::FindFont( const char *name ) {
 	int c = fonts.Num();
+
+// jmarshall - fix fonts causing memory leak!
+	if (c > 0) {
+		return 0;
+	}
+// jmarshall end
+
 	for (int i = 0; i < c; i++) {
 		if (idStr::Icmp(name, fonts[i].name) == 0) {
 			return i;

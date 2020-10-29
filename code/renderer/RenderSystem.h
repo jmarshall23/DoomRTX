@@ -270,6 +270,9 @@ public:
 
 	// Init's a new megatexture, should only be called at the start of level loading!
 	virtual void			InitMegaTexture(void) = 0;
+
+	// Free's all loaded raytracing data.
+	virtual void			FreeRaytracingData(void) = 0;
 };
 
 extern idRenderSystem *			renderSystem;

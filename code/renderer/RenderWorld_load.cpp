@@ -500,17 +500,19 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 	ID_TIME_T currentTimeStamp;
 	fileSystem->ReadFile( filename, NULL, &currentTimeStamp );
 
-	if ( name == mapName ) {
-		if ( currentTimeStamp != FILE_NOT_FOUND_TIMESTAMP && currentTimeStamp == mapTimeStamp ) {
-			common->Printf( "idRenderWorldLocal::InitFromMap: retaining existing map\n" );
-			FreeDefs();
-			TouchWorldModels();
-			AddWorldModelEntities();
-			ClearPortalStates();
-			return true;
-		}
-		common->Printf( "idRenderWorldLocal::InitFromMap: timestamp has changed, reloading.\n" );
-	}
+// jmarshall
+	//if ( name == mapName ) {
+	//	if ( currentTimeStamp != FILE_NOT_FOUND_TIMESTAMP && currentTimeStamp == mapTimeStamp ) {
+	//		common->Printf( "idRenderWorldLocal::InitFromMap: retaining existing map\n" );
+	//		FreeDefs();
+	//		TouchWorldModels();
+	//		AddWorldModelEntities();
+	//		ClearPortalStates();
+	//		return true;
+	//	}
+	//	common->Printf( "idRenderWorldLocal::InitFromMap: timestamp has changed, reloading.\n" );
+	//}
+// jmarshall end
 
 	FreeWorld();
 

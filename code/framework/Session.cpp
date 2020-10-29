@@ -397,6 +397,12 @@ void idSessionLocal::Stop() {
 
 	// drop all guis
 	SetGUI( NULL, NULL );
+
+	// Free all the raytracing data.
+	renderSystem->FreeRaytracingData();
+
+	// Purge the model system.
+	renderModelManager->PurgeAllRenderModels();
 }
 
 /*
@@ -1557,12 +1563,14 @@ void idSessionLocal::ExecuteMapChange( bool noFadeWipe ) {
 	UnloadMap();
 
 	// don't do the deferred caching if we are reloading the same map
-	if ( fullMapName == currentMapName ) {
-		reloadingSameMap = true;
-	} else {
+// jmarshall
+	//if ( fullMapName == currentMapName ) {
+	//	reloadingSameMap = true;
+	//} else {
 		reloadingSameMap = false;
 		currentMapName = fullMapName;
-	}
+	//}
+// jmarshall end
 
 	// note which media we are going to need to load
 	if ( !reloadingSameMap ) {

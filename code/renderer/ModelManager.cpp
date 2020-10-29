@@ -55,6 +55,7 @@ public:
 
 	virtual	void			PrintMemInfo( MemInfo_t *mi );
 	virtual iceDxrModel* CreateDXRMeshInstance(idRenderModel* renderModel);
+	virtual void			PurgeAllRenderModels(void);
 
 private:
 	idList<idRenderModel*>	models;
@@ -502,6 +503,22 @@ void idRenderModelManagerLocal::BeginLevelLoad() {
 
 	// purge unused triangle surface memory
 	R_PurgeTriSurfData( frameData );
+}
+
+/*
+=================
+idRenderModelManagerLocal::PurgeAllRenderModels
+=================
+*/
+void idRenderModelManagerLocal::PurgeAllRenderModels(void) {
+	for (int i = 0; i < models.Num(); i++) {
+		idRenderModel* model = models[i];
+
+		R_CheckForEntityDefsUsingModel(model);
+		model->PurgeModel();
+
+		model->SetLevelLoadReferenced(false);
+	}
 }
 
 /*

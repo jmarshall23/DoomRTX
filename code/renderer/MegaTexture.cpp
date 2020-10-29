@@ -48,7 +48,7 @@ iceMegaTexture::iceMegaTexture
 =====================
 */
 iceMegaTexture::~iceMegaTexture() {
-    for (int i = 0; i < megaEntries.Size(); i++)
+    for (int i = 0; i < megaEntries.Num(); i++)
     {
         delete megaEntries[i].data_copy;
         megaEntries[i].data_copy = NULL;

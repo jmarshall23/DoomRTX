@@ -47,6 +47,10 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 	// Add in the entities.
 	int numProcessedEntities = 1;
 
+	if (tr.viewDef == NULL) {
+		return;
+	}
+
 	{
 		viewEntity_t* vEntity;
 		int index = 0;
