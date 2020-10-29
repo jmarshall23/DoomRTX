@@ -245,7 +245,7 @@ float getFogFactor(float d)
 		   {
 				//gOutput[launchIndex].xyz = lerp(gOutput[launchIndex], float4(payload.colorAndDistance.rgb, 1.f), 0.3);
 				float spec_contrib = hit.worldOrigin.w;
-				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4((payload.colorAndDistance.rgb + payload.lightColor.rgb) * 8 * hit.worldOrigin.w, 1.f), 0.3);
+				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4((payload.colorAndDistance.rgb * payload.lightColor.rgb) * 8 * hit.worldOrigin.w, 1.f), 0.3);
 		   }
 	}
 	

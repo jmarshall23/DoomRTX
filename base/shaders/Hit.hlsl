@@ -58,6 +58,15 @@ float attenuation(float r, float f, float d, float3 normal, float3 dir) {
 	
 	return (r / pow(d, 1.3)) * angle;
 }
+
+float AttenuationPointLight( float3 fragmentInWorldSpace, float4 curLightPosInWorldSpace, float4 curLightExtents ) {
+	half falloffPower = curLightPosInWorldSpace.w;
+	half3 perAxis = 1.0f - saturate( abs( fragmentInWorldSpace - curLightPosInWorldSpace.xyz ) / curLightExtents.xyz );			
+	half attenuation = pow( perAxis.x * perAxis.y * perAxis.z, falloffPower );
+	
+	return attenuation;
+}
+
 float attenuation_arealight(float r, float f, float d, float3 normal, float3 dir) {
 	float angle = dot (dir, normal);
 	//float scalecos = 0.5;
@@ -449,9 +458,9 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 			normalLightDir.x = dot(tangent, centerLightDir);
 			normalLightDir.y = dot(binormal, centerLightDir);
 			normalLightDir.z = dot(orig_normal, centerLightDir);
-			float falloff = attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
+			float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
 			
-			falloff = clamp(falloff, 0.0, 1.0);
+			falloff = clamp(falloff, 0.0, 1.0) * dot( normalize(normalLightDir), hitNormalMap );
 			
 			//bool isShadowed = dot(normal, centerLightDir) < 0;	  
 			//if(!isShadowed)
@@ -461,7 +470,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 					{
 						float3 V = viewPos - worldOrigin;
 						float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
-						ndotl += lightInfo[i].light_color.xyz * falloff * 2; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
+						ndotl += lightInfo[i].light_color.xyz * falloff * 3; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
 						spec_contrib += spec * falloff;
 						spec_lit += spec * falloff;
 					}
@@ -546,35 +555,35 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   
 		// Fire the secondary bounce
 		float3 bounce = float3(0, 0, 0);
-	if(payload.colorAndDistance.a != 1)
-	{
-
-		{
-			uint2 pixIdx = DispatchRaysIndex().xy;
-			uint r = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
-			
-			for(int i = 1; i < 10; i++)
-			{
-				float3 worldDir = getCosHemisphereSample(r , orig_normal);
-				bounce += FireSecondRay(worldOrigin, 500, worldDir);
-			}
-			if(length(bounce) > 0)
-			{
-				bounce = (bounce / 10) * 2;
-			}
-			//ndotl += FireSecondRay(worldOrigin, 500, orig_normal);
-		}
-	}
+	//if(payload.colorAndDistance.a != 1)
+	//{
+	//
+	//	{
+	//		uint2 pixIdx = DispatchRaysIndex().xy;
+	//		uint r = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
+	//		
+	//		for(int i = 1; i < 10; i++)
+	//		{
+	//			float3 worldDir = getCosHemisphereSample(r , orig_normal);
+	//			bounce += FireSecondRay(worldOrigin, 500, worldDir);
+	//		}
+	//		if(length(bounce) > 0)
+	//		{
+	//			bounce = (bounce / 10) * 2;
+	//		}
+	//		//ndotl += FireSecondRay(worldOrigin, 500, orig_normal);
+	//	}
+	//}
 
   //hitColor = float3(InstanceID(), 0, 0);
   float3 spec_final = pow(spec_lit, 0.5);
   ndotl = lerp(ndotl, spec_final, length(spec_final));
-  ndotl += 0.015;
+  ndotl += 0.05;
   //ndotl = max(ndotl, 0.1);
   //ndotl *= float3(227.0 / 255.0, 107.0 / 255.0, 0.0);  
 
-  payload.colorAndDistance = float4(hitColor * ndotl, 1.0);//float4(hitColor * ndotl * debug, RayTCurrent());
-  payload.lightColor = float4(bounce, BTriVertex[vertId + 0].st.z);
+  payload.colorAndDistance = float4(hitColor, 1.0);//float4(hitColor * ndotl * debug, RayTCurrent());
+  payload.lightColor = float4(bounce + ndotl, BTriVertex[vertId + 0].st.z);
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = spec_final;
 

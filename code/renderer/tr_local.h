@@ -1691,7 +1691,7 @@ void GL_FinishVertexBufferAllocation(void);
 void* GL_LoadDXRMesh(idRenderModel* model);
 void GL_SetNumMapLights();
 void GL_RegisterWorldAreaLight(idVec3 normal, idVec3 mins, idVec3 maxs, int lightStyle, float radius, float r, float g, float b);
-void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, float radius, int lightStyle, float r, float g, float b);
+void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, idVec3 radius, int lightStyle, float r, float g, float b);
 void GL_ClearLights(void);
 
 void GL_Init(HWND hwnd, HINSTANCE hinstance, int width, int height);

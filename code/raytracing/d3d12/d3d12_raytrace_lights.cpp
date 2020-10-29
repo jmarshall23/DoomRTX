@@ -67,16 +67,20 @@ void GL_ClearLights(void) {
 	}
 }
 
-void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, float radius, int lightStyle, float r, float g, float b) {
+void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, idVec3 radius, int lightStyle, float r, float g, float b) {
 	glLight_t light = { };
 	light.origin_radius[0] = x;
 	light.origin_radius[1] = y;
 	light.origin_radius[2] = z;
-	light.origin_radius[3] = radius;
+	light.origin_radius[3] = 100;
 
 	light.light_color[0] = r;
 	light.light_color[1] = g;
 	light.light_color[2] = b;
+
+	light.light_color2[0] = radius.x;
+	light.light_color2[1] = radius.y;
+	light.light_color2[2] = radius.z;
 
 	light.absmin[0] = x;
 	light.absmin[1] = y;
