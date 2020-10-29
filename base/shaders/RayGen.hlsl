@@ -161,7 +161,7 @@ float getFogFactor(float d)
 		gLightOutput[launchIndex] = float4(1, 1, 1, 1);
 		gLightOutput[launchIndex] = float4(1, 1, 1, 1);
 	}
-	else if(hit.worldOrigin.w > 0 && false)
+	else if(hit.worldOrigin.w > 0 && hit.worldNormal.x == 0 && hit.worldNormal.y == 0 && hit.worldNormal.z != 0)
 	{		 
           float2 dims = float2(DispatchRaysDimensions().xy);
 		  float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);
@@ -245,7 +245,7 @@ float getFogFactor(float d)
 		   {
 				//gOutput[launchIndex].xyz = lerp(gOutput[launchIndex], float4(payload.colorAndDistance.rgb, 1.f), 0.3);
 				float spec_contrib = hit.worldOrigin.w;
-				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4((payload.colorAndDistance.rgb * payload.lightColor.rgb) * 8 * hit.worldOrigin.w, 1.f), 0.3);
+				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4((payload.colorAndDistance.rgb * payload.lightColor.rgb) * 3, 1.f), 0.3);
 		   }
 	}
 	
