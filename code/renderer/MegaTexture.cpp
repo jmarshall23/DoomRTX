@@ -89,7 +89,7 @@ void iceMegaTexture::RegisterTexture(const char* texturePath, int width, int hei
     int tileId = megaEntries.Num();
 
     if (isRegistered) {
-        common->Warning("iceMegaTexture::RegisterTexture: %s trying to be registered outside of registration!\n");
+        common->Warning("iceMegaTexture::RegisterTexture: %s trying to be registered outside of registration!\n", texturePath);
         return;
     }
 

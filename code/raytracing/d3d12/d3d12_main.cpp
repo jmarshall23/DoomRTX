@@ -667,10 +667,13 @@ void GL_EndRendering(void)
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 	// Present the frame.
-	ThrowIfFailed(m_swapChain->Present(0, 0));
+	ThrowIfFailed(m_swapChain->Present(1, 0));
 
 	uiTexture->dx_resource->WriteToSubresource(0, NULL, uiTextureBuffer, glConfig.vidWidth * 4, 1);
 	memset(uiTextureBuffer, 0, sizeof(byte) * 4 * glConfig.vidWidth * glConfig.vidHeight);	
+
+	// This helps the GPU when the raytracing work is pinning it up to 100%, not sure why.
+	Sleep(5);
 }
 
 void GL_Bind(int texnum)
