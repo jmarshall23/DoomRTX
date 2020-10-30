@@ -510,6 +510,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   ndotl = clamp(ndotl, 0.0, 1.0);
 
   //if(BTriVertex[vertId + 0].st.z >= 0)
+  float aoPixel = 1.0;
   {
 	for(int i = 4; i < 9; i++)
 	{
@@ -519,6 +520,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 		float3 worldDir = getCosHemisphereSample(r, normal);
 		if(IsLightShadowed(worldOrigin + (normal * 10), worldDir, 5 * ( i * 0.1), normal)) {
 			ndotl *= 0.1;
+			aoPixel *= 0.5;
 		}
 	}
   }
@@ -538,7 +540,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 				float3 worldDir = getCosHemisphereSample(r , orig_normal);
 				bounce += FireSecondRay(worldOrigin, 250, worldDir);
 			}
-			bounce = (bounce / 5);
+			bounce = (bounce / 5) * aoPixel;
 		}
 	}
 
