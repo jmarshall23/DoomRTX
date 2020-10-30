@@ -75,14 +75,6 @@ struct dxrVertex_t {
 	idVec4 tangent;
 };
 
-struct dxrSurface_t {
-	int startVertex;
-	int numVertexes;
-
-	int startMegaVertex;
-	int startIndex;
-	int numIndexes;
-};
 
 struct AccelerationStructureBuffers
 {
@@ -91,20 +83,29 @@ struct AccelerationStructureBuffers
 	ComPtr<ID3D12Resource> pInstanceDesc; // Hold the matrices of the instances
 };
 
-struct dxrMesh_t {
-	//int meshId;
 
+struct dxrSurface_t {
+	int startVertex;
+	int numVertexes;
+
+	int startMegaVertex;
+	int startIndex;
+	int numIndexes;
+
+	bool isOpaque;
+	AccelerationStructureBuffers buffers;
+
+	nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
+};
+
+struct dxrMesh_t {
 	std::vector<dxrVertex_t> meshVertexes;
 	std::vector<dxrVertex_t> meshTriVertexes;
 	std::vector<int> meshIndexes;
 	std::vector<dxrSurface_t> meshSurfaces;
 
 	int startSceneVertex;
-	int numSceneVertexes;
-
-	AccelerationStructureBuffers buffers;
-
-	nv_helpers_dx12::BottomLevelASGenerator bottomLevelAS;
+	int numSceneVertexes;	
 };
 
 void GL_FinishVertexBufferAllocation(void);
@@ -161,3 +162,6 @@ void GL_UpdateBottomLevelAccelStruct(idRenderModel* model);
 void GL_UpdateTextureInfo(idRenderModel* model);
 
 extern int numWorldLights;
+
+static const int STAT_FORCE_TRANSPARENT = 2;
+static const int STAT_FORCE_BLEND_TEST = 3;

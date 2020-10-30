@@ -52,6 +52,7 @@ HitInfo FirePrimaryRay() {
 	// Initialize the ray payload
   HitInfo payload;
   payload.colorAndDistance = float4(0, 0, 0, 0);
+  payload.decalColor = float4(0, 0, 0, 0);
   
   // Get the location within the dispatched 2D grid of work items
   // (often maps to pixels, so this could represent a pixel coordinate).
@@ -171,7 +172,8 @@ float getFogFactor(float d)
 		  RayDesc ray;
 		  HitInfo payload;
 		  payload.colorAndDistance = float4(0, 0, 0, 1);
-
+		  payload.decalColor = float4(0, 0, 0, 0);
+		  
 		  ray.Origin = hit.worldOrigin + (hit.worldNormal * 10);
 		  ray.Direction = reflect(Direction, hit.worldNormal);
 		  ray.TMin = 0;

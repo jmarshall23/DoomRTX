@@ -34,6 +34,7 @@ UINT64 m_fenceValue;
 
 ComPtr<IDxcBlob> m_rayGenLibrary;
 ComPtr<IDxcBlob> m_hitLibrary;
+ComPtr<IDxcBlob> m_anyHitLibrary;
 ComPtr<IDxcBlob> m_missLibrary;
 ComPtr<IDxcBlob> m_shadowLibrary;
 ComPtr<IDxcBlob> m_secondHitLibrary;
@@ -176,6 +177,8 @@ void GL_InitRaytracing(int width, int height) {
 	m_rayGenLibrary = nv_helpers_dx12::CompileShaderLibrary(L"base/shaders/RayGen.hlsl");
 	m_missLibrary = nv_helpers_dx12::CompileShaderLibrary(L"base/shaders/Miss.hlsl");
 	m_hitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"base/shaders/Hit.hlsl");
+	m_anyHitLibrary = nv_helpers_dx12::CompileShaderLibrary(L"base/shaders/Interaction_AnyHit.hlsl");
+
 	// #DXR Extra - Another ray type
 	m_shadowLibrary = nv_helpers_dx12::CompileShaderLibrary(L"base/shaders/ShadowRay.hlsl");
 	pipeline.AddLibrary(m_shadowLibrary.Get(),{ L"ShadowClosestHit", L"ShadowMiss" });
@@ -191,6 +194,7 @@ void GL_InitRaytracing(int width, int height) {
 	pipeline.AddLibrary(m_rayGenLibrary.Get(), { L"RayGen" });
 	pipeline.AddLibrary(m_missLibrary.Get(), { L"Miss" });
 	pipeline.AddLibrary(m_hitLibrary.Get(), { L"ClosestHit" });
+	pipeline.AddLibrary(m_anyHitLibrary.Get(), { L"InteractionAnyHit" });
 
 	// 3 different shaders can be invoked to obtain an intersection: an
 	// intersection shader is called
@@ -209,7 +213,7 @@ void GL_InitRaytracing(int width, int height) {
 
 	// Hit group for the triangles, with a shader simply interpolating vertex
 	// colors
-	pipeline.AddHitGroup(L"HitGroup", L"ClosestHit");
+	pipeline.AddHitGroup(L"HitGroup", L"ClosestHit", L"InteractionAnyHit");
 	// Hit group for all geometry when hit by a shadow ray
 	pipeline.AddHitGroup(L"ShadowHitGroup", L"ShadowClosestHit");
 	pipeline.AddHitGroup(L"SecondHitGroup", L"SecondClosestHit");
@@ -223,6 +227,7 @@ void GL_InitRaytracing(int width, int height) {
 	pipeline.AddRootSignatureAssociation(m_rayGenSignature.Get(), { L"RayGen" });
 	pipeline.AddRootSignatureAssociation(m_missSignature.Get(), { L"Miss" });
 	pipeline.AddRootSignatureAssociation(m_hitSignature.Get(), { L"HitGroup" });
+
 	// #DXR Extra - Another ray type
 	pipeline.AddRootSignatureAssociation(m_shadowSignature.Get(),{ L"ShadowHitGroup" });	
 	// #DXR Extra - Another ray type
@@ -236,7 +241,7 @@ void GL_InitRaytracing(int width, int height) {
 	// exchanged between shaders, such as the HitInfo structure in the HLSL code.
 	// It is important to keep this value as low as possible as a too high value
 	// would result in unnecessary memory consumption and cache trashing.
-	pipeline.SetMaxPayloadSize(16 * sizeof(float)); // RGB + distance, lightcolor.
+	pipeline.SetMaxPayloadSize(20 * sizeof(float)); // RGB + distance, lightcolor.
 
 	// Upon hitting a surface, DXR can provide several attributes to the hit. In
 	// our sample we just use the barycentric coordinates defined by the weights

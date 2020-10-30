@@ -50,3 +50,22 @@
 [1027/035539.771:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
 [1027/035539.809:WARNING:dns_config_service_win.cc(672)] Failed to read DnsConfig.
 [1027/201556.581:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235057.864:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.173:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.175:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.181:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.185:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.190:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.194:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.198:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.202:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.207:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.212:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.216:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.223:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.230:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.236:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.716:INFO:CONSOLE(0)] "Uncaught (in promise) #<Object>", source: https://127.0.0.1:61003/login/passphrase?passphrase=23da89d9-4402-4ad0-8f64-3510d246c0db (0)
+[1028/235058.735:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.766:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1028/235058.995:INFO:CONSOLE(0)] "Access to XMLHttpRequest at 'https://software.intel.com/sites/products/vtune/news.json?id=1603954258891' from origin 'https://127.0.0.1:61003' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.", source: https://127.0.0.1:61003/extension-ui/Session-1-1603954256727?passphrase=23da89d9-4402-4ad0-8f64-3510d246c0db (0)

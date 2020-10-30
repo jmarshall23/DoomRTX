@@ -5,26 +5,6 @@ struct ShadowHitInfo {
   float4 vertinfo;
 };
 
-struct STriVertex {
-  float3 vertex;
-  float3 st;
-  float3 normal;
-  float4 vtinfo;
-  float4 normalVtInfo;
-  float4 tangent;
-};
-
-struct SInstanceProperties
-{
-	int startVertex;
-};
-
-struct sceneLightInfo_t {
-	float4 origin_radius;
-	float4 light_color;
-	float4 light_clamp;
-	float4 light_color2;
-};
 
 // #DXR Extra: Perspective Camera
 cbuffer CameraParams : register(b0)
@@ -407,7 +387,9 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 	  nu = nu + (BTriVertex[vertId + 0].normalVtInfo.x / 16384);
 	  nv = nv + (BTriVertex[vertId + 0].normalVtInfo.y / 16384);
 
-	  hitColor = MegaTexture.Load(int3(u * 16384, v * 16384, 0)).rgb; //normalize(BTriVertex[vertId + 0].vertex) * 4;
+	  float4 megaColor = MegaTexture.Load(int3(u * 16384, v * 16384, 0)); //normalize(BTriVertex[vertId + 0].vertex) * 4;
+	  hitColor = megaColor.rgb;
+	  
 	  if(BTriVertex[vertId].normalVtInfo.x == -1) {
 		hitNormalMap = float3(0.5, 0.5, 1.0) * 2.0 - 1.0; //MegaTextureNormal.Load(int3(u * 16384, v * 16384, 0)).rgb * 2.0 - 1.0;
 	  }
@@ -442,98 +424,90 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   float spec_contrib = 0.0;
   float emissive = 1;
   float3 spec_lit = 0;
-  if(BTriVertex[vertId + 0].st.z != 2 && BTriVertex[vertId + 0].st.z != 3)
-  {
-	for(int i = 0; i < 64; i++)
-	{	 		
-		if(lightInfo[i].origin_radius.w == 0)
-			continue;
-		
-		if(lightInfo[i].origin_radius.w > 0) // point lights
-		{
-			float3 lightPos = (lightInfo[i].origin_radius.xyz);
-			float3 centerLightDir = lightPos - worldOrigin;
-			float lightDistance = length(centerLightDir);
-			float3 normalLightDir;
-			normalLightDir.x = dot(tangent, centerLightDir);
-			normalLightDir.y = dot(binormal, centerLightDir);
-			normalLightDir.z = dot(orig_normal, centerLightDir);
-			float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
-			
-			falloff = clamp(falloff, 0.0, 1.0) * dot( normalize(normalLightDir), hitNormalMap );
-			
-			//bool isShadowed = dot(normal, centerLightDir) < 0;	  
-			//if(!isShadowed)
-			if(falloff > 0)
-			{
-					if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
-					{
-						float3 V = viewPos - worldOrigin;
-						float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
-						ndotl += lightInfo[i].light_color.xyz * falloff * 3; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
-						spec_contrib += spec * falloff;
-						spec_lit += spec * falloff;
-					}
-			}	  			
-		}
-		else // area lights
-		{
-			// Project the point on our plane.
-			float3 v = worldOrigin - lightInfo[i].origin_radius.xyz; // origin_radius is the center of our plane.
-			float dist = dot(v, normal.xyz); // lightInfo[i].light_color.xyz is the normal, temp hack!
-			float3 plane_point = worldOrigin - dist * normal.xyz;
-			
-			float3 plane_normal = lightInfo[i].light_color.xyz;
-			
-			float x_sign = sign(normal[0]);
-			float y_sign = sign(normal[1]);
-			float z_sign = sign(normal[2]);
-			
-			// Clamp the point within the distance of the plane.
-			float3 plane_point_dist = plane_point - lightInfo[i].origin_radius.xyz;
-			plane_point_dist[0] = clamp(plane_point_dist[0], -lightInfo[i].light_clamp[0] * 0.5, lightInfo[i].light_clamp[0] * 0.5) * x_sign;
-			plane_point_dist[1] = clamp(plane_point_dist[1], -lightInfo[i].light_clamp[1] * 0.5, lightInfo[i].light_clamp[1] * 0.5) * y_sign;
-			plane_point_dist[2] = clamp(plane_point_dist[2], -lightInfo[i].light_clamp[2] * 0.5, lightInfo[i].light_clamp[2] * 0.5) * z_sign;
-			
-			float3 clamped_point = lightInfo[i].origin_radius.xyz + plane_point_dist;
-			
-			float3 centerLightDir = clamped_point - worldOrigin;			
-			float3 areaLightDir;
-			areaLightDir.x = dot(tangent, centerLightDir);
-			areaLightDir.y = dot(binormal, centerLightDir);
-			areaLightDir.z = dot(orig_normal, centerLightDir);
-			
-			float lightDistance = length(centerLightDir);
-			
-			float falloff = 0;
-						
-			falloff = attenuation(-lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(areaLightDir)) - 0.05;  						
-			falloff = clamp(falloff, 0.0, 1.0);
-						
-			if(falloff > 0)
-			{
-				if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
-				{
-					float3 v_old = viewPos - worldOrigin;
-					float3 V;
-					V.x = dot(tangent, v_old);
-					V.y = dot(binormal, v_old);
-					V.z = dot(normal, v_old);
-										
-					ndotl += clamp(falloff, 0.0, 1.0) * lightInfo[i].light_color2.xyz;
-					
-					
-					float spec = CalcPBR(V, hitNormalMap, normalize(areaLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
-					spec_lit += spec * falloff * pow(lightInfo[i].light_color2.xyz, 2);					
-				}
-			}
-		}
-	}
-  }
-  else
-  {
-	ndotl = float3(1, 1, 1);
-	emissive = 1;
+  for(int i = 0; i < 64; i++)
+  {	 		
+  	if(lightInfo[i].origin_radius.w == 0)
+  		continue;
+  	
+  	if(lightInfo[i].origin_radius.w > 0) // point lights
+  	{
+  		float3 lightPos = (lightInfo[i].origin_radius.xyz);
+  		float3 centerLightDir = lightPos - worldOrigin;
+  		float lightDistance = length(centerLightDir);
+  		float3 normalLightDir;
+  		normalLightDir.x = dot(tangent, centerLightDir);
+  		normalLightDir.y = dot(binormal, centerLightDir);
+  		normalLightDir.z = dot(orig_normal, centerLightDir);
+  		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
+  		
+  		falloff = clamp(falloff, 0.0, 1.0) * dot( normalize(normalLightDir), hitNormalMap );
+  		
+  		//bool isShadowed = dot(normal, centerLightDir) < 0;	  
+  		//if(!isShadowed)
+  		if(falloff > 0)
+  		{
+  				if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
+  				{
+  					float3 V = viewPos - worldOrigin;
+  					float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
+  					ndotl += lightInfo[i].light_color.xyz * falloff * 3; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
+  					spec_contrib += spec * falloff;
+  					spec_lit += spec * falloff;
+  				}
+  		}	  			
+  	}
+  	else // area lights
+  	{
+  		// Project the point on our plane.
+  		float3 v = worldOrigin - lightInfo[i].origin_radius.xyz; // origin_radius is the center of our plane.
+  		float dist = dot(v, normal.xyz); // lightInfo[i].light_color.xyz is the normal, temp hack!
+  		float3 plane_point = worldOrigin - dist * normal.xyz;
+  		
+  		float3 plane_normal = lightInfo[i].light_color.xyz;
+  		
+  		float x_sign = sign(normal[0]);
+  		float y_sign = sign(normal[1]);
+  		float z_sign = sign(normal[2]);
+  		
+  		// Clamp the point within the distance of the plane.
+  		float3 plane_point_dist = plane_point - lightInfo[i].origin_radius.xyz;
+  		plane_point_dist[0] = clamp(plane_point_dist[0], -lightInfo[i].light_clamp[0] * 0.5, lightInfo[i].light_clamp[0] * 0.5) * x_sign;
+  		plane_point_dist[1] = clamp(plane_point_dist[1], -lightInfo[i].light_clamp[1] * 0.5, lightInfo[i].light_clamp[1] * 0.5) * y_sign;
+  		plane_point_dist[2] = clamp(plane_point_dist[2], -lightInfo[i].light_clamp[2] * 0.5, lightInfo[i].light_clamp[2] * 0.5) * z_sign;
+  		
+  		float3 clamped_point = lightInfo[i].origin_radius.xyz + plane_point_dist;
+  		
+  		float3 centerLightDir = clamped_point - worldOrigin;			
+  		float3 areaLightDir;
+  		areaLightDir.x = dot(tangent, centerLightDir);
+  		areaLightDir.y = dot(binormal, centerLightDir);
+  		areaLightDir.z = dot(orig_normal, centerLightDir);
+  		
+  		float lightDistance = length(centerLightDir);
+  		
+  		float falloff = 0;
+  					
+  		falloff = attenuation(-lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(areaLightDir)) - 0.05;  						
+  		falloff = clamp(falloff, 0.0, 1.0);
+  					
+  		if(falloff > 0)
+  		{
+  			if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
+  			{
+  				float3 v_old = viewPos - worldOrigin;
+  				float3 V;
+  				V.x = dot(tangent, v_old);
+  				V.y = dot(binormal, v_old);
+  				V.z = dot(normal, v_old);
+  									
+  				ndotl += clamp(falloff, 0.0, 1.0) * lightInfo[i].light_color2.xyz;
+  				
+  				
+  				float spec = CalcPBR(V, hitNormalMap, normalize(areaLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
+  				spec_lit += spec * falloff * pow(lightInfo[i].light_color2.xyz, 2);					
+  			}
+  		}
+  	}
   }
 
   ndotl = clamp(ndotl, 0.0, 1.0);
@@ -578,11 +552,11 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   //hitColor = float3(InstanceID(), 0, 0);
   float3 spec_final = pow(spec_lit, 0.5);
   ndotl = lerp(ndotl, spec_final, length(spec_final));
-  ndotl += 0.05;
+  ndotl += 0.1;
   //ndotl = max(ndotl, 0.1);
   //ndotl *= float3(227.0 / 255.0, 107.0 / 255.0, 0.0);  
 
-  payload.colorAndDistance = float4(hitColor, 1.0);//float4(hitColor * ndotl * debug, RayTCurrent());
+  payload.colorAndDistance = float4((hitColor * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl)), 1.0);
   payload.lightColor = float4(bounce + ndotl, BTriVertex[vertId + 0].st.z);
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = spec_final;

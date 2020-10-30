@@ -2633,9 +2633,12 @@ void VPCALL idSIMD_Generic::DeriveTangents( idPlane *planes, idDrawVert *verts, 
 		n.y *= f;
 		n.z *= f;
 
-		planesPtr->SetNormal( n );
-		planesPtr->FitThroughPoint( a->xyz );
-		planesPtr++;
+		if (planesPtr != NULL)
+		{
+			planesPtr->SetNormal(n);
+			planesPtr->FitThroughPoint(a->xyz);
+			planesPtr++;
+		}
 
 		// area sign bit
 		area = d0[3] * d1[4] - d0[4] * d1[3];

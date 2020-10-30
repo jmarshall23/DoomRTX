@@ -209,6 +209,7 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 			tr.normalMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
 		}
 		else {
+			tr.diffuseMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
 			texnum = globalImages->texnum;
 			GL_Upload32(globalImages->texnum, (unsigned int*)pic, width, height, false, false);
 			globalImages->texnum++;

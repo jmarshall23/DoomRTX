@@ -62,13 +62,11 @@ std::vector<dxrMesh_t *> dxrMeshList;
 ComPtr<ID3D12Resource> m_vertexBuffer;
 D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
 std::vector<dxrVertex_t> sceneVertexes;
+std::vector<int> sceneIndexes;
 
 void GL_UpdateBottomLevelAccelStruct(idRenderModel* model) {	
 	dxrMesh_t* mesh = (dxrMesh_t * )model->GetDXRFrame(0);
 	if (mesh == NULL)
-		return;
-
-	if (mesh->buffers.pScratch.Get() == NULL)
 		return;
 
 	dxrVertex_t* sceneVertexes = (dxrVertex_t*)pVertexDataBegin;
@@ -103,68 +101,13 @@ void GL_UpdateBottomLevelAccelStruct(idRenderModel* model) {
 				modelVertexes[indexId].tangent[2] = surface->geometry->verts[meshIndexId].tangents[0][2];
 				modelVertexes[indexId].normal = surface->geometry->verts[meshIndexId].normal;
 			}
+
+			// !!Performance!! This should be a update rather then a full-regen, I can't do that though without causing a D3D12 Device Failure :(
+			// I had to re-write these changes because the device changes were so bad it nuked this file.
+			mesh->meshSurfaces[i].bottomLevelAS.Generate(m_commandList.Get(), mesh->meshSurfaces[i].buffers.pScratch.Get(), mesh->meshSurfaces[i].buffers.pResult.Get(), false, nullptr);
 		}
 	}
 
-	// Calculate the normals
-	//{
-	//	for (int i = 0; i < mesh->numSceneVertexes; i += 3)
-	//	{
-	//		float* pA = &sceneVertexes[mesh->startSceneVertex + i + 0].xyz[0];
-	//		float* pC = &sceneVertexes[mesh->startSceneVertex + i + 1].xyz[0];
-	//		float* pB = &sceneVertexes[mesh->startSceneVertex + i + 2].xyz[0];
-	//
-	//		float* tA = &sceneVertexes[mesh->startSceneVertex + i + 0].st[0];
-	//		float* tC = &sceneVertexes[mesh->startSceneVertex + i + 1].st[0];
-	//		float* tB = &sceneVertexes[mesh->startSceneVertex + i + 2].st[0];
-	//
-	//		idVec3 normal;
-	//		idVec3 tangent;
-	//
-	//		{
-	//			idVec3 dP0, dP1;
-	//			VectorSubtract(pB, pA, dP0);
-	//			VectorSubtract(pC, pA, dP1);
-	//
-	//			idVec3 dt0, dt1;
-	//			Vector2Subtract(tB, tA, dt0);
-	//			Vector2Subtract(tC, tA, dt1);
-	//
-	//			float r = 1.f / (dt0[0] * dt1[1] - dt1[0] * dt0[1]);
-	//
-	//			idVec3 sdir = idVec3(
-	//				(dt1[1] * dP0[0] - dt0[1] * dP1[0]) * r,
-	//				(dt1[1] * dP0[1] - dt0[1] * dP1[1]) * r,
-	//				(dt1[1] * dP0[2] - dt0[1] * dP1[2]) * r);
-	//
-	//			idVec3 tdir = idVec3(
-	//				(dt0[0] * dP1[0] - dt1[0] * dP0[0]) * r,
-	//				(dt0[0] * dP1[1] - dt1[0] * dP0[1]) * r,
-	//				(dt0[0] * dP1[2] - dt1[0] * dP0[2]) * r);
-	//
-	//			CrossProduct(dP0, dP1, normal);
-	//			VectorNormalize(normal);
-	//
-	//			idVec3 t;
-	//			VectorScale(normal, DotProduct(normal, sdir), t);
-	//			VectorSubtract(sdir, t, t);
-	//			VectorNormalize2(t, tangent); // Graham-Schmidt : t = normalize(t - n * (n.t))
-	//
-	//		}
-	//
-	//		sceneVertexes[mesh->startSceneVertex + i + 0].normal = normal;
-	//		sceneVertexes[mesh->startSceneVertex + i + 1].normal = normal;
-	//		sceneVertexes[mesh->startSceneVertex + i + 2].normal = normal;
-	//
-	//		memcpy(sceneVertexes[mesh->startSceneVertex + i + 0].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
-	//		memcpy(sceneVertexes[mesh->startSceneVertex + i + 1].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
-	//		memcpy(sceneVertexes[mesh->startSceneVertex + i + 2].tangent.ToFloatPtr(), tangent.ToFloatPtr(), sizeof(float) * 3);
-	//	}
-	//}
-
-	// !!Performance!! This should be a update rather then a full-regen, I can't do that though without causing a D3D12 Device Failure :(
-	// I had to re-write these changes because the device changes were so bad it nuked this file.
-	mesh->bottomLevelAS.Generate(m_commandList.Get(), mesh->buffers.pScratch.Get(), mesh->buffers.pResult.Get(), false, nullptr);
 }
 
 void GL_UpdateTextureInfo(idRenderModel* model) {
@@ -194,9 +137,6 @@ void GL_UpdateTextureInfo(idRenderModel* model) {
 			
 			const shaderStage_t* stage = model->Surface(i)->shader->GetAlbedoStage();
 
-			if (model->Surface(i)->shader->GetSort() == SS_DECAL)
-				continue;
-
 			if(stage == NULL)
 				continue;
 
@@ -222,6 +162,7 @@ void GL_UpdateTextureInfo(idRenderModel* model) {
 
 void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 	mesh->startSceneVertex = sceneVertexes.size();
+	mesh->numSceneVertexes = 0;
 
 	for (int i = 0; i < model->NumSurfaces(); i++)
 	{
@@ -242,12 +183,18 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 		const shaderStage_t* stage = fa->shader->GetAlbedoStage();		
 		const shaderStage_t* normalStage = fa->shader->GetBumpStage();
 
-		if (fa->shader->GetEmissiveStage().isEnabled) {
-			materialInfo = 2;
+		if (fa->shader->GetSort() == SS_DECAL) {
+			surf.isOpaque = false;
+			materialInfo = STAT_FORCE_TRANSPARENT;
 		}
-
-		if (fa->shader->GetSort() == SS_DECAL)
-			continue;
+		else if (stage && stage->drawStateBits & (GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS)) {
+			surf.isOpaque = false;
+			materialInfo = STAT_FORCE_BLEND_TEST;
+		}
+		else
+		{
+			surf.isOpaque = true;
+		}
 
 		float x, y, w, h;
 		float nx = -1, ny = -1, nw = -1, nh = -1;
@@ -272,7 +219,7 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 			//w = -1;
 			//h = -1;
 			common->Printf("Failed to find mega info for %s\n", fa->shader->GetName());
-			continue;
+		//	continue;
 		}
 		
 		surf.startVertex = mesh->meshVertexes.size();
@@ -437,35 +384,39 @@ void GL_FinishVertexBufferAllocation(void) {
 	for(int i = 0; i < dxrMeshList.size(); i++)
 	{
 		dxrMesh_t* mesh = dxrMeshList[i];
-		mesh->bottomLevelAS.AddVertexBuffer(m_vertexBuffer.Get(), mesh->startSceneVertex * sizeof(dxrVertex_t), mesh->numSceneVertexes, sizeof(dxrVertex_t), NULL, 0);
 
-		// Adding all vertex buffers and not transforming their position.
-		//for (const auto& buffer : vVertexBuffers) {
-		//	bottomLevelAS.AddVertexBuffer(buffer.first.Get(), 0, buffer.second,
-		//		sizeof(Vertex), 0, 0);
-		//}
+		for (int d = 0; d < mesh->meshSurfaces.size(); d++) {
+			dxrSurface_t* dxrSurf = &mesh->meshSurfaces[d];
+			dxrSurf->bottomLevelAS.AddVertexBuffer(m_vertexBuffer.Get(), (mesh->startSceneVertex + dxrSurf->startIndex) * sizeof(dxrVertex_t), dxrSurf->numIndexes, sizeof(dxrVertex_t), NULL, 0, dxrSurf->isOpaque);
 
-		// The AS build requires some scratch space to store temporary information.
-		// The amount of scratch memory is dependent on the scene complexity.
-		UINT64 scratchSizeInBytes = 0;
-		// The final AS also needs to be stored in addition to the existing vertex
-		// buffers. It size is also dependent on the scene complexity.
-		UINT64 resultSizeInBytes = 0;
+			// Adding all vertex buffers and not transforming their position.
+			//for (const auto& buffer : vVertexBuffers) {
+			//	bottomLevelAS.AddVertexBuffer(buffer.first.Get(), 0, buffer.second,
+			//		sizeof(Vertex), 0, 0);
+			//}
 
-		mesh->bottomLevelAS.ComputeASBufferSizes(m_device.Get(), false, &scratchSizeInBytes,
-			&resultSizeInBytes);
+			// The AS build requires some scratch space to store temporary information.
+			// The amount of scratch memory is dependent on the scene complexity.
+			UINT64 scratchSizeInBytes = 0;
+			// The final AS also needs to be stored in addition to the existing vertex
+			// buffers. It size is also dependent on the scene complexity.
+			UINT64 resultSizeInBytes = 0;
 
-		// Once the sizes are obtained, the application is responsible for allocating
-		// the necessary buffers. Since the entire generation will be done on the GPU,
-		// we can directly allocate those on the default heap	
-		mesh->buffers.pScratch = nv_helpers_dx12::CreateBuffer(m_device.Get(), scratchSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, nv_helpers_dx12::kDefaultHeapProps);
-		mesh->buffers.pResult = nv_helpers_dx12::CreateBuffer(m_device.Get(), resultSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, nv_helpers_dx12::kDefaultHeapProps);
+			dxrSurf->bottomLevelAS.ComputeASBufferSizes(m_device.Get(), false, &scratchSizeInBytes,
+				&resultSizeInBytes);
 
-		// Build the acceleration structure. Note that this call integrates a barrier
-		// on the generated AS, so that it can be used to compute a top-level AS right
-		// after this method.
+			// Once the sizes are obtained, the application is responsible for allocating
+			// the necessary buffers. Since the entire generation will be done on the GPU,
+			// we can directly allocate those on the default heap	
+			dxrSurf->buffers.pScratch = nv_helpers_dx12::CreateBuffer(m_device.Get(), scratchSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, nv_helpers_dx12::kDefaultHeapProps);
+			dxrSurf->buffers.pResult = nv_helpers_dx12::CreateBuffer(m_device.Get(), resultSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, nv_helpers_dx12::kDefaultHeapProps);
 
-		mesh->bottomLevelAS.Generate(m_commandList.Get(), mesh->buffers.pScratch.Get(), mesh->buffers.pResult.Get(), false, nullptr);
+			// Build the acceleration structure. Note that this call integrates a barrier
+			// on the generated AS, so that it can be used to compute a top-level AS right
+			// after this method.
+
+			dxrSurf->bottomLevelAS.Generate(m_commandList.Get(), dxrSurf->buffers.pScratch.Get(), dxrSurf->buffers.pResult.Get(), false, nullptr);
+		}
 	}
 
 	// Flush the command list and wait for it to finish

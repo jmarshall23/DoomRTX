@@ -148,8 +148,6 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 			if (mesh == NULL)
 				continue;
 		
-			meshInstanceData[index + numWorldVisMeshes].startVertex = mesh->startSceneVertex;
-		
 			bool skipSelfShadow = false;
 			for (int f = 0; f < qmodel->NumSurfaces(); f++) {
 				if (qmodel->Surface(f)->shader->GetEmissiveStage().isEnabled) {
@@ -161,19 +159,24 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 			if (currententity->suppressSurfaceInViewID == HIDE_RENDERMODEL_EXCEPT_MIRROR)
 				continue;
 			
-			if (mesh->buffers.pResult.Get() != NULL)
-			{
-				if (skipSelfShadow)
+			for (int i = 0; i < mesh->meshSurfaces.size(); i++) {
+				if (mesh->meshSurfaces[i].buffers.pResult.Get() != NULL)
 				{
-					m_topLevelASGenerator.AddInstance(mesh->buffers.pResult.Get(), (DirectX::XMMATRIX&)currententity->dxrTransform, index + numWorldVisMeshes, 0x20);
+					if (skipSelfShadow)
+					{
+						m_topLevelASGenerator.AddInstance(mesh->meshSurfaces[i].buffers.pResult.Get(), (DirectX::XMMATRIX&)currententity->dxrTransform, index + numWorldVisMeshes, 0x20);
+					}
+					else
+					{
+						m_topLevelASGenerator.AddInstance(mesh->meshSurfaces[i].buffers.pResult.Get(), (DirectX::XMMATRIX&)currententity->dxrTransform, index + numWorldVisMeshes, 0xFF);
+					}
 				}
-				else
-				{
-					m_topLevelASGenerator.AddInstance(mesh->buffers.pResult.Get(), (DirectX::XMMATRIX&)currententity->dxrTransform, index + numWorldVisMeshes, 0xFF);
-				}
-			}
-			numVisMeshes++;
-			index++;
+
+				meshInstanceData[index + numWorldVisMeshes].startVertex = mesh->startSceneVertex + mesh->meshSurfaces[i].startIndex;
+
+				numVisMeshes++;
+				index++;
+			}			
 		}
 
 		if (numVisMeshes > MAX_VISEDICTS) {

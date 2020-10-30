@@ -1648,10 +1648,10 @@ void R_DeriveTangents( srfTriangles_t *tri, bool allocFacePlanes ) {
 	int				i;
 	idPlane			*planes;
 
-	if ( tri->dominantTris != NULL ) {
-		R_DeriveUnsmoothedTangents( tri );
-		return;
-	}
+	//if ( tri->dominantTris != NULL ) {
+	//	R_DeriveUnsmoothedTangents( tri );
+	//	return;
+	//}
 
 	if ( tri->tangentsCalculated ) {
 		return;

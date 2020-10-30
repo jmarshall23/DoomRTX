@@ -35,16 +35,19 @@ void RE_ShutdownRaytracingMap(void) {
 	// Let's delete all of our acceleration structures.
 	for(int i = 0; i < dxrMeshList.size(); i++)
 	{
-		if (dxrMeshList[i]->buffers.pInstanceDesc.Get() != NULL) {
-			dxrMeshList[i]->buffers.pInstanceDesc->Release();
-		}
+		for (int d = 0; d < dxrMeshList[i]->meshSurfaces.size(); d++)
+		{
+			if (dxrMeshList[i]->meshSurfaces[d].buffers.pInstanceDesc.Get() != NULL) {
+				dxrMeshList[i]->meshSurfaces[d].buffers.pInstanceDesc->Release();
+			}
 
-		if (dxrMeshList[i]->buffers.pResult.Get() != NULL) {
-			dxrMeshList[i]->buffers.pResult->Release();
-		}
+			if (dxrMeshList[i]->meshSurfaces[d].buffers.pResult.Get() != NULL) {
+				dxrMeshList[i]->meshSurfaces[d].buffers.pResult->Release();
+			}
 
-		if (dxrMeshList[i]->buffers.pScratch.Get() != NULL) {
-			dxrMeshList[i]->buffers.pScratch->Release();
+			if (dxrMeshList[i]->meshSurfaces[d].buffers.pScratch.Get() != NULL) {
+				dxrMeshList[i]->meshSurfaces[d].buffers.pScratch->Release();
+			}
 		}
 	}
 
