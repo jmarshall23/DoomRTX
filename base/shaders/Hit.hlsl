@@ -186,7 +186,7 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
      	// Acceleration structure
      	SceneBVH,
      	// Flags can be used to specify the behavior upon hitting a surface
-     	RAY_FLAG_NONE,
+     	RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
      	// Instance inclusion mask, which can be used to mask out some geometry to
      	// this ray by and-ing the mask with a geometry mask. The 0xFF flag then
      	// indicates no geometry will be masked
@@ -240,11 +240,8 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
 		{
 			float3 lightPos = (lightInfo[i].origin_radius.xyz);
 			float3 centerLightDir = lightPos - bounceWorldOrigin;
-			float lightDistance = length(centerLightDir);
-			
-			float angle = dot (normalize(centerLightDir), bounceNormal);
-			
-			r = (lightInfo[i].origin_radius.w / pow(lightDistance, 1.3)) - 1.0;
+			r = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
+  		
 			//r = r * angle;
 		}
 		else // area lights
@@ -261,7 +258,7 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
 		
 		r = clamp(r, 0.0, 1.0);
 		
-		result += float3(r, r, r) * lightInfo[i].light_color2.xyz;
+		result += float3(r, r, r) * lightInfo[i].light_color.xyz;
 		numLights++;
 	}	
 	
@@ -414,8 +411,8 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   float3 normal = BTriVertex[vertId + 0].normal;
   float3 orig_normal = BTriVertex[vertId + 0].normal;
   bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
-  if (isBackFacing)
-	normal = -normal;
+  //if (isBackFacing)
+	//normal = -normal;
 	
   float3 tangent = BTriVertex[vertId + 0].tangent;
   float3 binormal = cross(tangent, orig_normal);
@@ -536,23 +533,19 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 	//		uint2 pixIdx = DispatchRaysIndex().xy;
 	//		uint r = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
 	//		
-	//		for(int i = 1; i < 10; i++)
+	//		for(int i = 0; i < 10; i++)
 	//		{
 	//			float3 worldDir = getCosHemisphereSample(r , orig_normal);
-	//			bounce += FireSecondRay(worldOrigin, 500, worldDir);
+	//			bounce += FireSecondRay(worldOrigin, 250, worldDir);
 	//		}
-	//		if(length(bounce) > 0)
-	//		{
-	//			bounce = (bounce / 10) * 2;
-	//		}
-	//		//ndotl += FireSecondRay(worldOrigin, 500, orig_normal);
+	//		bounce = (bounce / 10) * 2;
 	//	}
 	//}
 
   //hitColor = float3(InstanceID(), 0, 0);
   float3 spec_final = pow(spec_lit, 0.5);
-  ndotl = lerp(ndotl, spec_final, length(spec_final));
-  ndotl += 0.1;
+  ndotl = lerp(ndotl, spec_final * 2, length(spec_final));
+  ndotl += 0.025;
   //ndotl = max(ndotl, 0.1);
   //ndotl *= float3(227.0 / 255.0, 107.0 / 255.0, 0.0);  
 
