@@ -254,6 +254,8 @@ public:
 	idImage *			hashNext;				// for hash chains to speed lookup
 
 	int					refCount;				// overall ref count
+
+	idVec3				averageColor;
 };
 
 ID_INLINE idImage::idImage() {

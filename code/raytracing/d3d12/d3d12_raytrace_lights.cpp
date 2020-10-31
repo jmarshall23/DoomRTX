@@ -142,7 +142,7 @@ void GL_RegisterWorldAreaLight(idVec3 normal, idVec3 mins, idVec3 maxs, int ligh
 	// Quake sub divides geometry(lovely) so to hack around that don't add any area lights that are near already registered area lights!
 	for (int i = 0; i < numWorldLights; i++) {
 		float dist = idMath::Distance(light.origin_radius.ToVec3(), worldLights[i].origin_radius.ToVec3());
-		if (dist < 15)
+		if (dist < 50 && worldLights[i].isAreaLight)
 			return;
 	}
 

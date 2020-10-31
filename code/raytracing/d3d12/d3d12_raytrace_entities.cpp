@@ -149,12 +149,12 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 				continue;
 		
 			bool skipSelfShadow = false;
-			for (int f = 0; f < qmodel->NumSurfaces(); f++) {
-				if (qmodel->Surface(f)->shader->GetEmissiveStage().isEnabled) {
-					skipSelfShadow = true;
-					break;
-				}
-			}
+			//for (int f = 0; f < qmodel->NumSurfaces(); f++) {
+			//	if (qmodel->Surface(f)->shader->GetEmissiveStage().isEnabled) {
+			//		skipSelfShadow = true;
+			//		break;
+			//	}
+			//}
 
 			if (currententity->suppressSurfaceInViewID == HIDE_RENDERMODEL_EXCEPT_MIRROR)
 				continue;

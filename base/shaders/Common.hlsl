@@ -29,7 +29,8 @@ struct STriVertex {
   float3 normal;
   float4 vtinfo;
   float4 normalVtInfo;
-  float4 tangent;
+  float3 tangent;
+  float3 imageAveragePixel;
 };
 
 
@@ -48,3 +49,4 @@ struct sceneLightInfo_t {
 
 #define STAT_FORCE_TRANSPARENT 2
 #define STAT_FORCE_BLEND_TEST 3
+

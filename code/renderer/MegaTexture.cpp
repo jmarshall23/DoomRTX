@@ -30,7 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "tr_local.h"
 
-idCVar r_megaTextureSize("r_megaTextureSize", "8192", CVAR_INTEGER | CVAR_ROM, "size of the megatexture");
+idCVar r_megaTextureSize("r_megaTextureSize", "16384", CVAR_INTEGER | CVAR_ROM, "size of the megatexture");
 
 /*
 =====================

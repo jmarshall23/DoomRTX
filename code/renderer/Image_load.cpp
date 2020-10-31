@@ -200,10 +200,31 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 
 	PurgeImage();
 
+	averageColor.Zero();
 	if (tr.diffuseMegaTexture != NULL && tr.normalMegaTexture != NULL)
 	{
 		if (depthParm == TD_DIFFUSE) {
 			tr.diffuseMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
+
+			int numNonAlphaPixels = 0;
+			for (int i = 0; i < width * height; i+=4)
+			{
+				if (pic[i + 3] == 255)
+				{
+					averageColor.x += pic[i + 0];
+					averageColor.y += pic[i + 1];
+					averageColor.z += pic[i + 2];
+					numNonAlphaPixels++;
+				}
+			}
+
+			averageColor.x /= (float)numNonAlphaPixels;
+			averageColor.y /= (float)numNonAlphaPixels;
+			averageColor.z /= (float)numNonAlphaPixels;
+
+			averageColor.x /= 255.0f;
+			averageColor.y /= 255.0f;
+			averageColor.z /= 255.0f;
 		}
 		else if (depthParm == TD_BUMP) {
 			tr.normalMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);

@@ -225,6 +225,7 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
 	uint bounceVertId = BInstanceProperties[int(payload.payload_vert_info.y)].startVertex + (payload.payload_vert_info.x);
 	float3 bounceNormal = BTriVertex[bounceVertId].normal;
     float3 bounceWorldOrigin = payload.payload_color.xyz;	
+	float3 bounceAverage = BTriVertex[bounceVertId].imageAveragePixel;
 	float3 result = float3(0, 0, 0);
 	int numLights = 0;
 	for(int i = 0; i < 64; i++)
@@ -232,8 +233,8 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
 		if(lightInfo[i].origin_radius.w == 0)
 			continue;
 			
-		if(abs(lightInfo[i].origin_radius.w) > 400)
-			continue;
+		//if(abs(lightInfo[i].origin_radius.w) > 400)
+		//	continue;
 		
 		float r = 0; 
 		if(lightInfo[i].origin_radius.w > 0) // point lights
@@ -262,7 +263,7 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
 		numLights++;
 	}	
 	
-	return result;
+	return result * bounceAverage;
 }
 
 // better noise function available at https://github.com/ashima/webgl-noise
@@ -481,7 +482,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   		areaLightDir.z = dot(orig_normal, centerLightDir);
   		
   		float lightDistance = length(centerLightDir);
-  		
+		 		
   		float falloff = 0;
   					
   		falloff = attenuation(-lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(areaLightDir)) - 0.05;  						
@@ -489,7 +490,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   					
   		if(falloff > 0)
   		{
-  			if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
+  			//if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
   			{
   				float3 v_old = viewPos - worldOrigin;
   				float3 V;
