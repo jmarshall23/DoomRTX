@@ -1,0 +1,154 @@
+/*
+==================================================================
+**********Doom Reborn Mod Map Objects Model Textures**************
+==================================================================
+*/
+
+
+// Lamp 
+
+models/drm_mapobjects/lamp/lamp
+
+{
+
+    qer_editorimage	models/drm_mapobjects/lamp/lamp_ed.tga
+    diffusemap	    	models/drm_mapobjects/lamp/lamp_d.tga
+    specularmap         models/drm_mapobjects/lamp/lamp_s.tga
+    bumpmap             models/drm_mapobjects/lamp/lamp_local.tga
+}
+
+// Lamp Light
+
+models/drm_mapobjects/lamp/lamp_light
+
+{
+	noshadows
+
+	{
+		blend add
+		map models/drm_mapobjects/lamp/lamp_light.tga
+	}
+}
+
+
+// Lamp Bulb
+
+models/drm_mapobjects/lamp/lamp_bulb
+
+{
+	noshadows
+
+	{
+		blend add
+		map models/drm_mapobjects/lamp/lamp_bulb.tga
+	}
+	{
+		blend specularmap
+		map	models/drm_mapobjects/lamp/lamp_bulb.tga
+	}
+
+    specularmap         models/drm_mapobjects/lamp/lamp_bulb.tga
+
+}
+
+// Pole
+
+models/drm_mapobjects/pole/pole
+
+{
+    qer_editorimage	models/drm_mapobjects/pole/pole_ed.tga
+    diffusemap	    	models/drm_mapobjects/pole/pole_d.tga
+    specularmap         models/drm_mapobjects/pole/pole_s.tga
+    bumpmap             models/drm_mapobjects/pole/pole_local.tga
+}
+
+// Candelabra
+
+models/drm_mapobjects/candelabra/candelabra
+
+{
+	//noShadows
+	noselfShadow
+
+    qer_editorimage	models/drm_mapobjects/candelabra/candelabra_ed.tga
+    diffusemap	    	models/drm_mapobjects/candelabra/candelabra_d.tga
+    specularmap         models/drm_mapobjects/candelabra/candelabra_s.tga
+    bumpmap		models/drm_mapobjects/candelabra/candelabra_local.tga
+}
+
+// Candelabra Candle
+
+models/drm_mapobjects/candelabra/candle
+
+{
+		//noShadows
+      		noselfShadow
+
+		renderbump  -size 512 512 -colorMap -aa 1 -trace .125 models/mapobjects/hell/Site3/archviletemple/candle_d_local.tga models/mapobjects/hell/Site3/archviletemple/candle_d_hi.lwo
+
+
+
+		
+					 
+		diffusemap		models/mapobjects/hell/Site3/archviletemple/candle_d.tga
+		bumpmap			models/mapobjects/hell/Site3/archviletemple/candle_d_local.tga
+		specularmap	 	models/mapobjects/hell/Site3/archviletemple/candle_d_s.tga
+   	   {
+			blend	 add
+			map	models/mapobjects/hell/Site3/archviletemple/candle_d_add.tga
+			rgb	candle[ time * .42 ]
+
+	   }
+		
+		
+}
+
+
+
+// Candelabra Flame
+
+models/drm_mapobjects/candelabra/flame
+{
+ qer_editorimage textures/particles/candlefire.tga
+ noSelfShadow
+ noShadows
+ twosided
+ deform sprite
+
+ 	{
+ 	blend add
+ 	map textures/particles/candlefire.tga
+ 	scale 1 / 16 , 1
+	scroll table16[ time * 6 ] , 0
+ 	}
+ 
+}
+
+// Candelabra Glow
+
+models/drm_mapobjects/candelabra/glow
+{
+ qer_editorimage textures/decals/candleglow.tga
+
+ noSelfShadow
+ noShadows
+ twosided
+ deform sprite
+
+ 	{
+ 	blend add
+ 	map textures/decals/candleglow.tga
+	rgb 	candle[ time * .4 ]
+  	}
+}
+
+// Tea Monsters Torch Tree /*Added in by >>GameHacKeR<<*/
+
+models/drm_mapobjects/torchtree/torchtreeout
+{
+ qer_editorimage md5/world/torchtree/textures/torchtree_d.png
+
+diffusemap	models/md5/world/textures/torchtree_d.png
+bumpmap		models/md5/world/textures/torchtree_n.png
+specularmap	models/md5/world/textures/torchtree_s.png
+}

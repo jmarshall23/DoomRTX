@@ -1,0 +1,145 @@
+/*
+==================================================================
+*********************Doom Reborn Mod Shaders**********************
+==================================================================
+*/
+
+
+textures/drm_textures/shader_textures/nukage_shader1
+{
+qer_editorimage textures/drm_textures/shader_textures/nukage_shader1_ed.tga
+discrete
+nonsolid
+water
+twosided
+diffusemap textures/drm_textures/shader_textures/nukage_shader1_d.tga
+translucent
+deform turbulent sinTable 0.0175 (time*0.15) 10
+
+emissive 800 0 0.5 0
+}
+
+/*Water 2 added by >>GameHacKeR<<*/
+
+textures/drm_textures/shader_textures/water_shader1
+{
+qer_editorimage textures/drm_textures/shader_textures/water_shader1_ed.tga
+discrete
+nonsolid
+water
+twosided
+diffusemap textures/drm_textures/shader_textures/water_shader1_d.tga
+translucent
+deform turbulent sinTable 0.0175 (time*0.15) 10
+
+{
+vertexProgram heatHazeWithMask.vfp
+vertexParm 0 time * 0.1 , time * 0.5
+vertexParm 1 1.5
+fragmentProgram heatHazeWithMask.vfp
+fragmentMap 0 _currentRender
+fragmentMap 1 textures/sfx/vp1.tga
+fragmentMap 2 textures/drm_textures/shader_textures/vp_water_w.tga
+}
+
+{
+blend filter
+map textures/drm_textures/shader_textures/water_shader1_d.tga
+translate time*0,time*-.01
+
+}
+}
+
+/*lava added by >>GameHacKeR<<*/
+
+textures/drm_textures/shader_textures/lava_shader1
+{
+qer_editorimage textures/drm_textures/shader_textures/lava_shader1_ed.tga
+discrete
+nonsolid
+water
+twosided
+diffusemap textures/drm_textures/shader_textures/lava_shader1_d.tga
+translucent
+deform turbulent sinTable 0.0175 (time*0.15) 10
+
+{
+vertexProgram heatHazeWithMask.vfp
+vertexParm 0 time * 0.1 , time * 0.5
+vertexParm 1 1.5
+fragmentProgram heatHazeWithMask.vfp
+fragmentMap 0 _currentRender
+fragmentMap 1 textures/sfx/vp1.tga
+fragmentMap 2 textures/drm_textures/shader_textures/vp_water_w.tga
+}
+
+{
+blend filter
+map textures/drm_textures/shader_textures/lava_shader1_d.tga
+translate time*.0,time*-.01
+
+}
+}
+
+/*lavarock added by >>GameHacKeR<<*/
+
+textures/drm_textures/shader_textures/lavarock
+{
+qer_editorimage textures/drm_textures/shader_textures/lavarock_ed.tga
+discrete
+nonsolid
+water
+twosided
+diffusemap textures/drm_textures/shader_textures/lavarock_d.tga
+translucent
+deform turbulent sinTable 0.0175 (time*0.15) 10
+
+{
+vertexProgram heatHazeWithMask.vfp
+vertexParm 0 time * 0.1 , time * 0.5
+vertexParm 1 1.5
+fragmentProgram heatHazeWithMask.vfp
+fragmentMap 0 _currentRender
+fragmentMap 1 textures/sfx/vp1.tga
+fragmentMap 2 textures/drm_textures/shader_textures/vp_water_w.tga
+}
+
+{
+blend filter
+map textures/drm_textures/shader_textures/lavarockblend_d.tga
+translate time*.0,time*-.01
+
+}
+}
+
+/*Brown slime added by >>GameHacKeR<<*/
+
+textures/drm_textures/shader_textures/brown_shader1
+{
+qer_editorimage textures/drm_textures/shader_textures/brown_shader1_ed.tga
+discrete
+nonsolid
+water
+twosided
+diffusemap textures/drm_textures/shader_textures/brown_shader1_d.tga
+translucent
+deform turbulent sinTable 0.0175 (time*0.15) 10
+
+{
+vertexProgram heatHazeWithMask.vfp
+vertexParm 0 time * 0.1 , time * 0.5
+vertexParm 1 1.5
+fragmentProgram heatHazeWithMask.vfp
+fragmentMap 0 _currentRender
+fragmentMap 1 textures/sfx/vp1.tga
+fragmentMap 2 textures/drm_textures/shader_textures/vp_water_w.tga
+}
+
+{
+blend filter
+map textures/drm_textures/shader_textures/brown_shader1_d.tga
+translate time*.0,time*-.01
+
+}
+}
+

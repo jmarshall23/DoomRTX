@@ -1,0 +1,29 @@
+/*
+=========================================
+  Doom Reborn Mod - Engine GFX modifyed
+=========================================
+*/
+
+
+console
+{
+	{
+		//blend	add
+		map	guis/drm_assets/drm_splash/console_bg.tga
+		linear		// no mip maps
+		//scroll	time * 0 , time * .5
+		
+	}
+}
+
+splashScreen
+{
+	{  
+          forceHighQuality  
+          blend blend  
+          map guis/drm_assets/drm_splash/launch.tga 	
+	}
+}
+
+
+

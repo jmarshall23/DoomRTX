@@ -1,0 +1,3391 @@
+/*
+==================================================================
+*******************Doom Reborn Mod Textures***********************
+==================================================================
+*/
+
+textures/drm_textures/step7
+
+{
+    qer_editorimage	textures/drm_textures/step7_ed.tga
+    diffusemap	        textures/drm_textures/step7_d.tga
+    specularmap         textures/drm_textures/step7_s.tga
+    bumpmap             textures/drm_textures/step7_local.tga
+}
+
+textures/drm_textures/metal5
+
+{
+    qer_editorimage	textures/drm_textures/metal5_ed.tga
+    diffusemap	        textures/drm_textures/metal5_d.tga
+    specularmap         textures/drm_textures/metal5_s.tga
+    bumpmap             textures/drm_textures/metal5_local.tga
+}
+
+
+textures/drm_textures/flat2light
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/flat2light_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/flat2light_ed.tga
+    diffusemap	        textures/drm_textures/flat2light_d.tga
+    specularmap         textures/drm_textures/flat2light_s.tga
+    bumpmap             textures/drm_textures/flat2light_local.tga
+}
+
+textures/drm_textures/gray1
+
+{
+    qer_editorimage	textures/drm_textures/gray1_ed.tga
+    diffusemap	        textures/drm_textures/gray1_d.tga
+    specularmap         textures/drm_textures/gray1_s.tga
+    bumpmap             textures/drm_textures/gray1_local.tga
+}
+
+textures/drm_textures/graypois
+
+{
+    qer_editorimage	textures/drm_textures/graypois_ed.tga
+    diffusemap	        textures/drm_textures/graypois_d.tga
+    specularmap         textures/drm_textures/graypois_s.tga
+    bumpmap             textures/drm_textures/graypois_local.tga
+}
+
+textures/drm_textures/metal6
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/metal6_add.tga
+	}		
+
+    qer_editorimage	textures/drm_textures/metal6_ed.tga
+    diffusemap	        textures/drm_textures/metal6_d.tga
+    specularmap         textures/drm_textures/metal6_s.tga
+    bumpmap             textures/drm_textures/metal6_local.tga
+}
+
+textures/drm_textures/metal3
+
+{
+    qer_editorimage	textures/drm_textures/metal3_ed.tga
+    diffusemap	        textures/drm_textures/metal3_d.tga
+    specularmap         textures/drm_textures/metal3_s.tga
+    bumpmap             textures/drm_textures/metal3_local.tga
+}
+
+textures/drm_textures/bigbrik3
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/bigbrik3_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/bigbrik3_ed.tga
+    diffusemap	        textures/drm_textures/bigbrik3_d.tga
+    specularmap         textures/drm_textures/bigbrik3_s.tga
+    bumpmap             textures/drm_textures/bigbrik3_local.tga
+}
+
+textures/drm_textures/spcdoor1
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/spcdoor1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/spcdoor1_ed.tga
+    diffusemap	        textures/drm_textures/spcdoor1_d.tga
+    specularmap         textures/drm_textures/spcdoor1_s.tga
+    bumpmap             textures/drm_textures/spcdoor1_local.tga
+}
+
+textures/drm_textures/pancase2
+
+{
+    qer_editorimage	textures/drm_textures/pancase2_ed.tga
+    diffusemap	        textures/drm_textures/pancase2_d.tga
+    specularmap         textures/drm_textures/pancase2_s.tga
+    bumpmap             textures/drm_textures/pancase2_local.tga
+}
+
+textures/drm_textures/Tekgren1
+
+{
+    qer_editorimage	textures/drm_textures/Tekgren1_ed.tga
+    diffusemap	        textures/drm_textures/Tekgren1_d.tga
+    specularmap         textures/drm_textures/Tekgren1_s.tga
+    bumpmap             textures/drm_textures/Tekgren1_local.tga
+}
+
+textures/drm_textures/rock1
+
+{
+    qer_editorimage	textures/drm_textures/rock1_ed.tga
+    diffusemap	        textures/drm_textures/rock1_d.tga
+    specularmap         textures/drm_textures/rock1_s.tga
+    bumpmap             textures/drm_textures/rock1_local.tga
+}
+
+textures/drm_textures/rock2
+
+{
+    qer_editorimage	textures/drm_textures/rock2_ed.tga
+    diffusemap	        textures/drm_textures/rock2_d.tga
+    specularmap         textures/drm_textures/rock2_s.tga
+    bumpmap             textures/drm_textures/rock2_local.tga
+}
+
+textures/drm_textures/flat8
+
+{
+    qer_editorimage	textures/drm_textures/flat8_ed.tga
+    diffusemap	        textures/drm_textures/flat8_d.tga
+    specularmap         textures/drm_textures/flat8_s.tga
+    bumpmap             textures/drm_textures/flat8_local.tga
+}
+
+textures/drm_textures/marbfac2
+
+{
+    qer_editorimage	textures/drm_textures/marbfac2_ed.tga
+    diffusemap	        textures/drm_textures/marbfac2_d.tga
+    specularmap         textures/drm_textures/marbfac2_s.tga
+    bumpmap             textures/drm_textures/marbfac2_local.tga
+}
+
+textures/drm_textures/modwall4
+
+{
+    qer_editorimage	textures/drm_textures/modwall4_ed.tga
+    diffusemap	        textures/drm_textures/modwall4_d.tga
+    specularmap         textures/drm_textures/modwall4_s.tga
+    bumpmap             textures/drm_textures/modwall4_local.tga
+}
+
+textures/drm_textures/stucco1
+
+{
+    qer_editorimage	textures/drm_textures/stucco1_ed.tga
+    diffusemap	        textures/drm_textures/stucco1_d.tga
+    specularmap         textures/drm_textures/stucco1_s.tga
+    bumpmap             textures/drm_textures/stucco1_local.tga
+}
+
+textures/drm_textures/stucco3
+
+{
+    qer_editorimage	textures/drm_textures/stucco3_ed.tga
+    diffusemap	        textures/drm_textures/stucco3_d.tga
+    specularmap         textures/drm_textures/stucco3_s.tga
+    bumpmap             textures/drm_textures/stucco3_local.tga
+}
+
+textures/drm_textures/telegate4
+
+{
+    qer_editorimage	textures/drm_textures/telegate4_ed.tga
+    diffusemap	        textures/drm_textures/telegate4_d.tga
+    specularmap         textures/drm_textures/telegate4_s.tga
+    bumpmap             textures/drm_textures/telegate4_local.tga
+}
+
+
+textures/drm_textures/modwall1
+
+{
+    qer_editorimage	textures/drm_textures/modwall1_ed.tga
+    diffusemap	        textures/drm_textures/modwall1_d.tga
+    specularmap         textures/drm_textures/modwall1_s.tga
+    bumpmap             textures/drm_textures/modwall1_local.tga
+}
+
+textures/drm_textures/rock12
+
+{
+    qer_editorimage	textures/drm_textures/rock12_ed.tga
+    diffusemap	        textures/drm_textures/rock12_d.tga
+    specularmap         textures/drm_textures/rock12_s.tga
+    bumpmap             textures/drm_textures/rock12_local.tga
+}
+
+textures/drm_textures/wood5
+
+{
+    qer_editorimage	textures/drm_textures/wood5_ed.tga
+    diffusemap	        textures/drm_textures/wood5_d.tga
+    specularmap         textures/drm_textures/wood5_s.tga
+    bumpmap             textures/drm_textures/wood5_local.tga
+}
+
+textures/drm_textures/woodvert
+
+{
+    qer_editorimage	textures/drm_textures/woodvert_ed.tga
+    diffusemap	        textures/drm_textures/woodvert_d.tga
+    specularmap         textures/drm_textures/woodvert_s.tga
+    bumpmap             textures/drm_textures/woodvert_local.tga
+}
+
+
+textures/drm_textures/wood1
+
+{
+    qer_editorimage	textures/drm_textures/wood1_ed.tga
+    diffusemap	        textures/drm_textures/wood1_d.tga
+    specularmap         textures/drm_textures/wood1_s.tga
+    bumpmap             textures/drm_textures/wood1_local.tga
+}
+
+textures/drm_textures/bigdoor6
+
+{
+    qer_editorimage	textures/drm_textures/bigdoor6_ed.tga
+    diffusemap	        textures/drm_textures/bigdoor6_d.tga
+    specularmap         textures/drm_textures/bigdoor6_s.tga
+    bumpmap             textures/drm_textures/bigdoor6_local.tga
+}
+
+textures/drm_textures/wood4
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/wood4_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/wood4_ed.tga
+    diffusemap	        textures/drm_textures/wood4_d.tga
+    specularmap         textures/drm_textures/wood4_s.tga
+    bumpmap             textures/drm_textures/wood4_local.tga
+}
+
+textures/drm_textures/ickwall6
+
+{
+    qer_editorimage	textures/drm_textures/ickwall6_ed.tga
+    diffusemap	        textures/drm_textures/ickwall6_d.tga
+    specularmap         textures/drm_textures/ickwall6_s.tga
+    bumpmap             textures/drm_textures/ickwall6_local.tga
+}
+
+
+textures/drm_textures/ickwall4
+
+{
+    qer_editorimage	textures/drm_textures/ickwall4_ed.tga
+    diffusemap	        textures/drm_textures/ickwall4_d.tga
+    specularmap         textures/drm_textures/ickwall4_s.tga
+    bumpmap             textures/drm_textures/ickwall4_local.tga
+}
+
+
+textures/drm_textures/ickwall1
+
+{
+    qer_editorimage	textures/drm_textures/ickwall1_ed.tga
+    diffusemap	        textures/drm_textures/ickwall1_d.tga
+    specularmap         textures/drm_textures/ickwall1_s.tga
+    bumpmap             textures/drm_textures/ickwall1_local.tga
+}
+
+textures/drm_textures/step2
+
+{
+    qer_editorimage	textures/drm_textures/step2_ed.tga
+    diffusemap	        textures/drm_textures/step2_d.tga
+    specularmap         textures/drm_textures/step2_s.tga
+    bumpmap             textures/drm_textures/step2_local.tga
+}
+
+textures/drm_textures/step4
+
+{
+    qer_editorimage	textures/drm_textures/step4_ed.tga
+    diffusemap	        textures/drm_textures/step4_d.tga
+    specularmap         textures/drm_textures/step4_s.tga
+    bumpmap             textures/drm_textures/step4_local.tga
+}
+
+textures/drm_textures/poison
+
+{
+    qer_editorimage	textures/drm_textures/poison_ed.tga
+    diffusemap	        textures/drm_textures/poison_d.tga
+    specularmap         textures/drm_textures/poison_s.tga
+    bumpmap             textures/drm_textures/poison_local.tga
+}
+
+textures/drm_textures/floor0_3
+
+{
+    qer_editorimage	textures/drm_textures/floor0_3_ed.tga
+    diffusemap	        textures/drm_textures/floor0_3_d.tga
+    specularmap         textures/drm_textures/floor0_3_s.tga
+    bumpmap             textures/drm_textures/floor0_3_local.tga
+}
+
+textures/drm_textures/floor0_2
+
+{
+    qer_editorimage	textures/drm_textures/floor0_2_ed.tga
+    diffusemap	        textures/drm_textures/floor0_2_d.tga
+    specularmap         textures/drm_textures/floor0_2_s.tga
+    bumpmap             textures/drm_textures/floor0_2_local.tga
+}
+
+textures/drm_textures/planet1
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/planet1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/planet1_ed.tga
+    diffusemap	        textures/drm_textures/planet1_d.tga
+    specularmap         textures/drm_textures/planet1_s.tga
+    bumpmap             textures/drm_textures/planet1_local.tga
+}
+
+textures/drm_textures/tekwall3
+
+{
+    qer_editorimage	textures/drm_textures/tekwall3_ed.tga
+    diffusemap	        textures/drm_textures/tekwall3_d.tga
+    specularmap         textures/drm_textures/tekwall3_s.tga
+    bumpmap             textures/drm_textures/tekwall3_local.tga
+}
+
+textures/drm_textures/exitdoorhd
+
+{
+    qer_editorimage	textures/drm_textures/exitdoorhd_ed.tga
+    diffusemap	        textures/drm_textures/exitdoorhd_d.tga
+    specularmap         textures/drm_textures/exitdoorhd_s.tga
+    bumpmap             textures/drm_textures/exitdoorhd_local.tga
+}
+
+textures/drm_textures/door1
+
+{
+    qer_editorimage	textures/drm_textures/door1_ed.tga
+    diffusemap	        textures/drm_textures/door1_d.tga
+    specularmap         textures/drm_textures/door1_s.tga
+    bumpmap             textures/drm_textures/door1_local.tga
+}
+
+textures/drm_textures/gstvine1
+
+{
+    qer_editorimage	textures/drm_textures/gstvine1_ed.tga
+    diffusemap	        textures/drm_textures/gstvine1_d.tga
+    specularmap         textures/drm_textures/gstvine1_s.tga
+    bumpmap             textures/drm_textures/gstvine1_local.tga
+}
+
+textures/drm_textures/gstface1
+
+{
+    qer_editorimage	textures/drm_textures/gstface1_ed.tga
+    diffusemap	        textures/drm_textures/gstface1_d.tga
+    specularmap         textures/drm_textures/gstface1_s.tga
+    bumpmap             textures/drm_textures/gstface1_local.tga
+}
+
+textures/drm_textures/faces1
+
+{
+    qer_editorimage	textures/drm_textures/faces1_ed.tga
+    diffusemap	        textures/drm_textures/faces1_d.tga
+    specularmap         textures/drm_textures/faces1_s.tga
+    bumpmap             textures/drm_textures/faces1_local.tga
+}
+
+textures/drm_textures/ghorn
+
+{
+    qer_editorimage	textures/drm_textures/ghorn_ed.tga
+    diffusemap	        textures/drm_textures/ghorn_d.tga
+    specularmap         textures/drm_textures/ghorn_s.tga
+    bumpmap             textures/drm_textures/ghorn_local.tga
+}
+
+textures/drm_textures/gbald
+
+{
+    qer_editorimage	textures/drm_textures/gbald_ed.tga
+    diffusemap	        textures/drm_textures/gbald_d.tga
+    specularmap         textures/drm_textures/gbald_s.tga
+    bumpmap             textures/drm_textures/gbald_local.tga
+}
+
+textures/drm_textures/glion
+
+{
+    qer_editorimage	textures/drm_textures/glion_ed.tga
+    diffusemap	        textures/drm_textures/glion_d.tga
+    specularmap         textures/drm_textures/glion_s.tga
+    bumpmap             textures/drm_textures/glion_local.tga
+}
+
+
+textures/drm_textures/sladskul
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/sladskul_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/sladskul_ed.tga
+    diffusemap	        textures/drm_textures/sladskul_d.tga
+    specularmap         textures/drm_textures/sladskul_s.tga
+    bumpmap             textures/drm_textures/sladskul_local.tga
+}
+
+textures/drm_textures/redrock
+
+{
+    qer_editorimage	textures/drm_textures/redrock_ed.tga
+    diffusemap	        textures/drm_textures/redrock_d.tga
+    specularmap         textures/drm_textures/redrock_s.tga
+    bumpmap             textures/drm_textures/redrock_local.tga
+}
+
+textures/drm_textures/brovine
+
+{
+    qer_editorimage	textures/drm_textures/brovine_ed.tga
+    diffusemap	        textures/drm_textures/brovine_d.tga
+    specularmap         textures/drm_textures/brovine_s.tga
+    bumpmap             textures/drm_textures/brovine_local.tga
+}
+
+textures/drm_textures/skspine1
+
+{
+    qer_editorimage	textures/drm_textures/skspine1_ed.tga
+    diffusemap	        textures/drm_textures/skspine1_d.tga
+    specularmap         textures/drm_textures/skspine1_s.tga
+    bumpmap             textures/drm_textures/skspine1_local.tga
+}
+
+textures/drm_textures/graytall
+
+{
+    qer_editorimage	textures/drm_textures/graytall_ed.tga
+    diffusemap	        textures/drm_textures/graytall_d.tga
+    specularmap         textures/drm_textures/graytall_s.tga
+    bumpmap             textures/drm_textures/graytall_local.tga
+}
+
+textures/drm_textures/grayvine
+
+{
+    qer_editorimage	textures/drm_textures/grayvine_ed.tga
+    diffusemap	        textures/drm_textures/grayvine_d.tga
+    specularmap         textures/drm_textures/grayvine_s.tga
+    bumpmap             textures/drm_textures/grayvine_local.tga
+}
+
+textures/drm_textures/flat5_8
+
+{
+    qer_editorimage	textures/drm_textures/flat5_8_ed.tga
+    diffusemap	        textures/drm_textures/flat5_8_d.tga
+    specularmap         textures/drm_textures/flat5_8_s.tga
+    bumpmap             textures/drm_textures/flat5_8_local.tga
+}
+
+textures/drm_textures/stongarg
+
+{
+    qer_editorimage	textures/drm_textures/stongarg_ed.tga
+    diffusemap	        textures/drm_textures/stongarg_d.tga
+    specularmap         textures/drm_textures/stongarg_s.tga
+    bumpmap             textures/drm_textures/stongarg_local.tga
+}
+
+textures/drm_textures/Flatceil4_3_2
+
+{
+    qer_editorimage	textures/drm_textures/Flatceil4_3_ed.tga
+    diffusemap	        textures/drm_textures/Flatceil4_3_d.tga
+    specularmap         textures/drm_textures/Flatceil4_3_s.tga
+    bumpmap             textures/drm_textures/Flatceil4_3_local.tga
+}
+
+textures/drm_textures/Flatceil4_2_2
+
+{
+    qer_editorimage	textures/drm_textures/Flatceil4_2_ed.tga
+    diffusemap	        textures/drm_textures/Flatceil4_2_d.tga
+    specularmap         textures/drm_textures/Flatceil4_2_s.tga
+    bumpmap             textures/drm_textures/Flatceil4_2_local.tga
+}
+
+textures/drm_textures/redbrick1
+
+{
+    qer_editorimage	textures/drm_textures/redbrick1_ed.tga
+    diffusemap	        textures/drm_textures/redbrick1_d.tga
+    specularmap         textures/drm_textures/redbrick1_s.tga
+    bumpmap             textures/drm_textures/redbrick1_local.tga
+}
+
+textures/drm_textures/fireblu2
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/fireblu2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/fireblu2_ed.tga
+    diffusemap	        textures/drm_textures/fireblu2_d.tga
+    specularmap         textures/drm_textures/fireblu2_s.tga
+    bumpmap             textures/drm_textures/fireblu2_local.tga
+}
+
+textures/drm_textures/skinedge
+
+{
+    qer_editorimage	textures/drm_textures/skinedge_ed.tga
+    diffusemap	        textures/drm_textures/skinedge_d.tga
+    specularmap         textures/drm_textures/skinedge_s.tga
+    bumpmap             textures/drm_textures/skinedge_local.tga
+}
+
+textures/drm_textures/Sflr6_4
+
+{
+    qer_editorimage	textures/drm_textures/Sflr6_4_ed.tga
+    diffusemap	        textures/drm_textures/Sflr6_4_d.tga
+    specularmap         textures/drm_textures/Sflr6_4_s.tga
+    bumpmap             textures/drm_textures/Sflr6_4_local.tga
+}
+
+textures/drm_textures/Sflr7_1
+
+{
+    qer_editorimage	textures/drm_textures/Sflr7_1_ed.tga
+    diffusemap	        textures/drm_textures/Sflr7_1_d.tga
+    specularmap         textures/drm_textures/Sflr7_1_s.tga
+    bumpmap             textures/drm_textures/Sflr7_1_local.tga
+}
+
+textures/drm_textures/Sflr7_4
+
+{
+    qer_editorimage	textures/drm_textures/Sflr7_4_ed.tga
+    diffusemap	        textures/drm_textures/Sflr7_4_d.tga
+    specularmap         textures/drm_textures/Sflr7_4_s.tga
+    bumpmap             textures/drm_textures/Sflr7_4_local.tga
+}
+
+textures/drm_textures/Sflr6_1
+
+{
+    qer_editorimage	textures/drm_textures/Sflr6_1_ed.tga
+    diffusemap	        textures/drm_textures/Sflr6_1_d.tga
+    specularmap         textures/drm_textures/Sflr6_1_s.tga
+    bumpmap             textures/drm_textures/Sflr6_1_local.tga
+}
+
+textures/drm_textures/floor7_3
+
+{
+    qer_editorimage	textures/drm_textures/floor7_3_ed.tga
+    diffusemap	        textures/drm_textures/floor7_3_d.tga
+    specularmap         textures/drm_textures/floor7_3_s.tga
+    bumpmap             textures/drm_textures/floor7_3_local.tga
+}
+
+textures/drm_textures/Flat_Floor5_4
+
+{
+    qer_editorimage	textures/drm_textures/Flat_Floor5_4_ed.tga
+    diffusemap	        textures/drm_textures/Flat_Floor5_4_d.tga
+    specularmap         textures/drm_textures/Flat_Floor5_4_s.tga
+    bumpmap             textures/drm_textures/Flat_Floor5_4_local.tga
+}
+
+
+textures/drm_textures/gray7
+
+{
+    qer_editorimage	textures/drm_textures/gray7_ed.tga
+    diffusemap	        textures/drm_textures/gray7_d.tga
+    specularmap         textures/drm_textures/gray7_s.tga
+    bumpmap             textures/drm_textures/gray7_local.tga
+}
+
+
+textures/drm_textures/dooryel2
+
+{
+    qer_editorimage	textures/drm_textures/dooryel2_ed.tga
+    diffusemap	        textures/drm_textures/dooryel2_d.tga
+    specularmap         textures/drm_textures/dooryel2_s.tga
+    bumpmap             textures/drm_textures/dooryel2_local.tga
+}
+
+textures/drm_textures/firemag2
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/firemag2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/firemag2_ed.tga
+    diffusemap	        textures/drm_textures/firemag2_d.tga
+    specularmap         textures/drm_textures/firemag2_s.tga
+    bumpmap             textures/drm_textures/firemag2_local.tga
+}
+
+textures/drm_textures/comp01
+
+{
+    qer_editorimage	textures/drm_textures/comp01_ed.tga
+    diffusemap	        textures/drm_textures/comp01_d.tga
+    specularmap         textures/drm_textures/comp01_s.tga
+    bumpmap             textures/drm_textures/comp01_local.tga
+}
+
+textures/drm_textures/flat17
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/flat17_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/flat17_ed.tga
+    diffusemap	        textures/drm_textures/flat17_d.tga
+    specularmap         textures/drm_textures/flat17_s.tga
+    bumpmap             textures/drm_textures/flat17_local.tga
+}
+
+
+textures/drm_textures/sw2satyr
+
+{
+    qer_editorimage	textures/drm_textures/sw2satyr_ed.tga
+    diffusemap	        textures/drm_textures/sw2satyr_d.tga
+    specularmap         textures/drm_textures/sw2satyr_s.tga
+    bumpmap             textures/drm_textures/sw2satyr_local.tga
+}
+
+textures/drm_textures/Tanrock2
+
+{
+    qer_editorimage	textures/drm_textures/Tanrock2_ed.tga
+    diffusemap	        textures/drm_textures/Tanrock2_d.tga
+    specularmap         textures/drm_textures/Tanrock2_s.tga
+    bumpmap             textures/drm_textures/Tanrock2_local.tga
+}
+
+textures/drm_textures/flat1_3
+
+{
+    qer_editorimage	textures/drm_textures/flat1_3_ed.tga
+    diffusemap	        textures/drm_textures/flat1_3_d.tga
+    specularmap         textures/drm_textures/flat1_3_s.tga
+    bumpmap             textures/drm_textures/flat1_3_local.tga
+}
+
+textures/drm_textures/gray5
+
+{
+    qer_editorimage	textures/drm_textures/gray5_ed.tga
+    diffusemap	        textures/drm_textures/gray5_d.tga
+    specularmap         textures/drm_textures/gray5_s.tga
+    bumpmap             textures/drm_textures/gray5_local.tga
+}
+
+textures/drm_textures/flat1_1
+
+{
+    qer_editorimage	textures/drm_textures/flat1_1_ed.tga
+    diffusemap	        textures/drm_textures/flat1_1_d.tga
+    specularmap         textures/drm_textures/flat1_1_s.tga
+    bumpmap             textures/drm_textures/flat1_1_local.tga
+}
+
+textures/drm_textures/pipe1
+
+{
+    qer_editorimage	textures/drm_textures/pipe1_ed.tga
+    diffusemap	        textures/drm_textures/pipe1_d.tga
+    specularmap         textures/drm_textures/pipe1_s.tga
+    bumpmap             textures/drm_textures/pipe1_local.tga
+}
+
+
+textures/drm_textures/metal4
+
+{
+    qer_editorimage	textures/drm_textures/metal4_ed.tga
+    diffusemap	        textures/drm_textures/metal4_d.tga
+    specularmap         textures/drm_textures/metal4_s.tga
+    bumpmap             textures/drm_textures/metal4_local.tga
+}
+
+
+textures/drm_textures/bronze2
+
+{
+    qer_editorimage	textures/drm_textures/bronze2_ed.tga
+    diffusemap	        textures/drm_textures/bronze2_d.tga
+    specularmap         textures/drm_textures/bronze2_s.tga
+    bumpmap             textures/drm_textures/bronze2_local.tga
+}
+
+textures/drm_textures/Floor8_4
+
+{
+    qer_editorimage	textures/drm_textures/Floor8_4_ed.tga
+    diffusemap	        textures/drm_textures/Floor8_4_d.tga
+    specularmap         textures/drm_textures/Floor8_4_s.tga
+    bumpmap             textures/drm_textures/Floor8_4_local.tga
+}
+
+textures/drm_textures/zimmer7
+
+{
+    qer_editorimage	textures/drm_textures/zimmer7_ed.tga
+    diffusemap	        textures/drm_textures/zimmer7_d.tga
+    specularmap         textures/drm_textures/zimmer7_s.tga
+    bumpmap             textures/drm_textures/zimmer7_local.tga
+}
+
+textures/drm_textures/eyewall
+
+{
+    qer_editorimage	textures/drm_textures/eyewall_ed.tga
+    diffusemap	        textures/drm_textures/eyewall_d.tga
+    specularmap         textures/drm_textures/eyewall_s.tga
+    bumpmap             textures/drm_textures/eyewall_local.tga
+}
+
+textures/drm_textures/ceil2
+
+{
+	{
+		blend add
+		map textures/drm_textures/ceil2_add.tga
+	}
+    qer_editorimage	textures/drm_textures/ceil2_ed.tga
+    diffusemap	        textures/drm_textures/ceil2_d.tga
+    specularmap         textures/drm_textures/ceil2_s.tga
+    bumpmap             textures/drm_textures/ceil2_local.tga
+}
+
+textures/drm_textures/mfloor2
+
+{
+    qer_editorimage	textures/drm_textures/mfloor2_ed.tga
+    diffusemap	        textures/drm_textures/mfloor2_d.tga
+    specularmap         textures/drm_textures/mfloor2_s.tga
+    bumpmap             textures/drm_textures/mfloor2_local.tga
+}
+
+textures/drm_textures/mfloor1
+
+{
+    qer_editorimage	textures/drm_textures/mfloor1_ed.tga
+    diffusemap	        textures/drm_textures/mfloor1_d.tga
+    specularmap         textures/drm_textures/mfloor1_s.tga
+    bumpmap             textures/drm_textures/mfloor1_local.tga
+}
+
+textures/drm_textures/flat9
+
+{
+    qer_editorimage	textures/drm_textures/flat9_ed.tga
+    diffusemap	        textures/drm_textures/flat9_d.tga
+    specularmap         textures/drm_textures/flat9_s.tga
+    bumpmap             textures/drm_textures/flat9_local.tga
+}
+
+textures/drm_textures/midspace
+
+{
+    qer_editorimage	textures/drm_textures/midspace_ed.tga
+    diffusemap	        textures/drm_textures/midspace_d.tga
+    specularmap         textures/drm_textures/midspace_s.tga
+    bumpmap             textures/drm_textures/midspace_local.tga
+}
+
+textures/drm_textures/bigbrik2
+
+{
+    qer_editorimage	textures/drm_textures/bigbrik2_ed.tga
+    diffusemap	        textures/drm_textures/bigbrik2_d.tga
+    specularmap         textures/drm_textures/bigbrik2_s.tga
+    bumpmap             textures/drm_textures/bigbrik2_local.tga
+}
+
+textures/drm_textures/Gpanel
+
+{
+    qer_editorimage	textures/drm_textures/Gpanel_ed.tga
+    diffusemap	        textures/drm_textures/Gpanel_d.tga
+    specularmap         textures/drm_textures/Gpanel_s.tga
+    bumpmap             textures/drm_textures/Gpanel_local.tga
+}
+
+textures/drm_textures/Hpanel
+
+{
+    qer_editorimage	textures/drm_textures/Hpanel_ed.tga
+    diffusemap	        textures/drm_textures/Hpanel_d.tga
+    specularmap         textures/drm_textures/Hpanel_s.tga
+    bumpmap             textures/drm_textures/Hpanel_local.tga
+}
+
+
+textures/drm_textures/Flatfloor0_7
+
+{
+    qer_editorimage	textures/drm_textures/Flatfloor0_7_ed.tga
+    diffusemap	        textures/drm_textures/Flatfloor0_7_d.tga
+    specularmap         textures/drm_textures/Flatfloor0_7_s.tga
+    bumpmap             textures/drm_textures/Flatfloor0_7_local.tga
+}
+
+textures/drm_textures/redwall3
+
+{
+    qer_editorimage	textures/drm_textures/redwall3_ed.tga
+    diffusemap	        textures/drm_textures/redwall3_d.tga
+    specularmap         textures/drm_textures/redwall3_s.tga
+    bumpmap             textures/drm_textures/redwall3_local.tga
+}
+
+textures/drm_textures/Flat5_1
+
+{
+    qer_editorimage	textures/drm_textures/Flat5_1_ed.tga
+    diffusemap	        textures/drm_textures/Flat5_1_d.tga
+    specularmap         textures/drm_textures/Flat5_1_s.tga
+    bumpmap             textures/drm_textures/Flat5_1_local.tga
+} 
+
+textures/drm_textures/Flat3
+
+{
+    qer_editorimage	textures/drm_textures/Flat3_ed.tga
+    diffusemap	        textures/drm_textures/Flat3_d.tga
+    specularmap         textures/drm_textures/Flat3_s.tga
+    bumpmap             textures/drm_textures/Flat3_local.tga
+} 
+
+textures/drm_textures/redwall
+
+{
+    qer_editorimage	textures/drm_textures/redwall_ed.tga
+    diffusemap	        textures/drm_textures/redwall_d.tga
+    specularmap         textures/drm_textures/redwall_s.tga
+    bumpmap             textures/drm_textures/redwall_local.tga
+}
+
+textures/drm_textures/lite5
+
+{
+	
+	{
+		blend add
+		map textures/drm_textures/lite5_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/lite5_ed.tga
+    diffusemap	        textures/drm_textures/lite5_d.tga
+    specularmap         textures/drm_textures/lite5_s.tga
+    bumpmap             textures/drm_textures/lite5_local.tga
+}
+
+textures/drm_textures/wood3
+
+{
+    qer_editorimage	textures/drm_textures/wood3_ed.tga
+    diffusemap	        textures/drm_textures/wood3_d.tga
+    specularmap         textures/drm_textures/wood3_s.tga
+    bumpmap             textures/drm_textures/wood3_local.tga
+}
+
+textures/drm_textures/compblue
+
+{
+	{
+		blend add
+		map textures/drm_textures/compblue_add.tga
+	}
+    qer_editorimage	textures/drm_textures/compblue_ed.tga
+    diffusemap	        textures/drm_textures/compblue_d.tga
+    specularmap         textures/drm_textures/compblue_s.tga
+    bumpmap             textures/drm_textures/compblue_local.tga
+}
+
+textures/drm_textures/ashwall4
+
+{
+    qer_editorimage	textures/drm_textures/ashwall4_ed.tga
+    diffusemap	        textures/drm_textures/ashwall4_d.tga
+    specularmap         textures/drm_textures/ashwall4_s.tga
+    bumpmap             textures/drm_textures/ashwall4_local.tga
+}
+
+
+textures/drm_textures/tekwall5
+
+{
+    qer_editorimage	textures/drm_textures/tekwall5_ed.tga
+    diffusemap	        textures/drm_textures/tekwall5_d.tga
+    specularmap         textures/drm_textures/tekwall5_s.tga
+    bumpmap             textures/drm_textures/tekwall5_local.tga
+}
+
+textures/drm_textures/doorhi
+
+{
+    qer_editorimage	textures/drm_textures/doorhi_ed.tga
+    diffusemap	        textures/drm_textures/doorhi_d.tga
+    specularmap         textures/drm_textures/doorhi_s.tga
+    bumpmap             textures/drm_textures/doorhi_local.tga
+}
+
+textures/drm_textures/Flat22
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/Flat22_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/Flat22_ed.tga
+    diffusemap	        textures/drm_textures/Flat22_d.tga
+    specularmap         textures/drm_textures/Flat22_s.tga
+    bumpmap             textures/drm_textures/Flat22_local.tga
+}
+
+textures/drm_textures/skinwall1
+
+{
+    qer_editorimage	textures/drm_textures/skinwall1_ed.tga
+    diffusemap	        textures/drm_textures/skinwall1_d.tga
+    specularmap         textures/drm_textures/skinwall1_s.tga
+    bumpmap             textures/drm_textures/skinwall1_local.tga
+}
+
+
+textures/drm_textures/facewall3
+
+{
+    qer_editorimage	textures/drm_textures/facewall3_ed.tga
+    diffusemap	        textures/drm_textures/facewall3_d.tga
+    specularmap         textures/drm_textures/facewall3_s.tga
+    bumpmap             textures/drm_textures/facewall3_local.tga
+}
+
+textures/drm_textures/facewall2
+
+{
+	
+	{
+		blend add
+		map textures/drm_textures/facewall2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/facewall2_ed.tga
+    diffusemap	        textures/drm_textures/facewall2_d.tga
+    specularmap         textures/drm_textures/facewall2_s.tga
+    bumpmap             textures/drm_textures/facewall2_local.tga
+}
+
+
+textures/drm_textures/facewall1
+
+{
+    qer_editorimage	textures/drm_textures/facewall1_ed.tga
+    diffusemap	        textures/drm_textures/facewall1_d.tga
+    specularmap         textures/drm_textures/facewall1_s.tga
+    bumpmap             textures/drm_textures/facewall1_local.tga
+}
+
+textures/drm_textures/woodgarg
+
+{
+    qer_editorimage	textures/drm_textures/woodgarg_ed.tga
+    diffusemap	        textures/drm_textures/woodgarg_d.tga
+    specularmap         textures/drm_textures/woodgarg_s.tga
+    bumpmap             textures/drm_textures/woodgarg_local.tga
+}
+
+textures/drm_textures/woodskul
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/woodskul_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/woodskul_ed.tga
+    diffusemap	        textures/drm_textures/woodskul_d.tga
+    specularmap         textures/drm_textures/woodskul_s.tga
+    bumpmap             textures/drm_textures/woodskul_local.tga
+}
+
+textures/drm_textures/Flatceil3_3
+
+{
+    qer_editorimage	textures/drm_textures/Flatceil3_3_ed.tga
+    diffusemap	        textures/drm_textures/Flatceil3_3_d.tga
+    specularmap         textures/drm_textures/Flatceil3_3_s.tga
+    bumpmap             textures/drm_textures/Flatceil3_3_local.tga
+}
+
+textures/drm_textures/Flatceil3_4
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/Flatceil3_4_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/Flatceil3_4_ed.tga
+    diffusemap	        textures/drm_textures/Flatceil3_4_d.tga
+    specularmap         textures/drm_textures/Flatceil3_4_s.tga
+    bumpmap             textures/drm_textures/Flatceil3_4_local.tga
+}
+
+textures/drm_textures/Flatceil4_2
+
+{
+    qer_editorimage	textures/drm_textures/Flatceil4_2_ed.tga
+    diffusemap	        textures/drm_textures/Flatceil4_2_d.tga
+    specularmap         textures/drm_textures/Flatceil4_2_s.tga
+    bumpmap             textures/drm_textures/Flatceil4_2_local.tga
+}
+
+
+textures/drm_textures/Sp_rock1 
+
+{
+    qer_editorimage	textures/drm_textures/Sp_rock1_ed.tga
+    diffusemap	        textures/drm_textures/Sp_rock1_d.tga
+    specularmap         textures/drm_textures/Sp_rock1_s.tga
+    bumpmap             textures/drm_textures/Sp_rock1_local.tga
+}
+
+textures/drm_textures/marble1 
+
+{
+    qer_editorimage	textures/drm_textures/marble1_ed.tga
+    diffusemap	        textures/drm_textures/marble1_d.tga
+    specularmap         textures/drm_textures/marble1_s.tga
+    bumpmap             textures/drm_textures/marble1_local.tga
+}
+
+textures/drm_textures/marble3 
+
+{
+    qer_editorimage	textures/drm_textures/marble3_ed.tga
+    diffusemap	        textures/drm_textures/marble3_d.tga
+    specularmap         textures/drm_textures/marble3_s.tga
+    bumpmap             textures/drm_textures/marble3_local.tga
+}
+
+textures/drm_textures/Flatfloor4_6
+
+{
+    qer_editorimage	textures/drm_textures/Flatfloor4_6_ed.tga
+    diffusemap	        textures/drm_textures/Flatfloor4_6_d.tga
+    specularmap         textures/drm_textures/Flatfloor4_6_s.tga
+    bumpmap             textures/drm_textures/Flatfloor4_6_local.tga
+}
+
+textures/drm_textures/graybig
+
+{
+    qer_editorimage	textures/drm_textures/graybig_ed.tga
+    diffusemap	        textures/drm_textures/graybig_d.tga
+    specularmap         textures/drm_textures/graybig_s.tga
+    bumpmap             textures/drm_textures/graybig_local.tga
+}
+
+textures/drm_textures/compohso
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/compohso_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/compohso_ed.tga
+    diffusemap	        textures/drm_textures/compohso_d.tga
+    specularmap         textures/drm_textures/compohso_s.tga
+    bumpmap             textures/drm_textures/compohso_local.tga
+}
+
+textures/drm_textures/steplad1
+
+{
+    qer_editorimage	textures/drm_textures/steplad1_ed.tga
+    diffusemap	        textures/drm_textures/steplad1_d.tga
+    specularmap         textures/drm_textures/steplad1_s.tga
+    bumpmap             textures/drm_textures/steplad1_local.tga
+}
+
+textures/drm_textures/Flatceil4_3
+
+{
+    qer_editorimage	textures/drm_textures/Flatceil4_3_ed.tga
+    diffusemap	        textures/drm_textures/Flatceil4_3_d.tga
+    specularmap         textures/drm_textures/Flatceil4_3_s.tga
+    bumpmap             textures/drm_textures/Flatceil4_3_local.tga
+}
+
+textures/drm_textures/ICKWALL7
+
+{
+    qer_editorimage	textures/drm_textures/ICKWALL7_ed.tga
+    diffusemap	        textures/drm_textures/ICKWALL7_d.tga
+    specularmap         textures/drm_textures/ICKWALL7_s.tga
+    bumpmap             textures/drm_textures/ICKWALL7_local.tga
+}
+
+textures/drm_textures/ICKWALL3
+
+{
+    qer_editorimage	textures/drm_textures/ICKWALL3_ed.tga
+    diffusemap	        textures/drm_textures/ICKWALL3_d.tga
+    specularmap         textures/drm_textures/ICKWALL3_s.tga
+    bumpmap             textures/drm_textures/ICKWALL3_local.tga
+}
+
+textures/drm_textures/ICKWALL2
+
+{
+    qer_editorimage	textures/drm_textures/ICKWALL2_ed.tga
+    diffusemap	        textures/drm_textures/ICKWALL2_d.tga
+    specularmap         textures/drm_textures/ICKWALL2_s.tga
+    bumpmap             textures/drm_textures/ICKWALL2_local.tga
+}
+
+textures/drm_textures/compute4
+
+{
+    qer_editorimage	textures/drm_textures/compute4_ed.tga
+    diffusemap	        textures/drm_textures/compute4_d.tga
+    specularmap         textures/drm_textures/compute4_s.tga
+    bumpmap             textures/drm_textures/compute4_local.tga
+}
+
+textures/drm_textures/crate1flat
+
+{
+    qer_editorimage	textures/drm_textures/crate1flat_ed.tga
+    diffusemap	        textures/drm_textures/crate1flat_d.tga
+    specularmap         textures/drm_textures/crate1flat_s.tga
+    bumpmap             textures/drm_textures/crate1flat_local.tga
+}
+
+textures/drm_textures/cempois
+
+{
+    qer_editorimage	textures/drm_textures/cempois_ed.tga
+    diffusemap	        textures/drm_textures/cempois_d.tga
+    specularmap         textures/drm_textures/cempois_s.tga
+    bumpmap             textures/drm_textures/cempois_local.tga
+}
+
+textures/drm_textures/cement9
+
+{
+    qer_editorimage	textures/drm_textures/cement9_ed.tga
+    diffusemap	        textures/drm_textures/cement9_d.tga
+    specularmap         textures/drm_textures/cement9_s.tga
+    bumpmap             textures/drm_textures/cement9_local.tga
+}
+
+textures/drm_textures/cement8
+
+{
+    qer_editorimage	textures/drm_textures/cement8_ed.tga
+    diffusemap	        textures/drm_textures/cement8_d.tga
+    specularmap         textures/drm_textures/cement8_s.tga
+    bumpmap             textures/drm_textures/cement8_local.tga
+}
+
+textures/drm_textures/cement7
+
+{
+    qer_editorimage	textures/drm_textures/cement7_ed.tga
+    diffusemap	        textures/drm_textures/cement7_d.tga
+    specularmap         textures/drm_textures/cement7_s.tga
+    bumpmap             textures/drm_textures/cement7_local.tga
+}
+
+textures/drm_textures/cement6
+
+{
+    qer_editorimage	textures/drm_textures/cement6_ed.tga
+    diffusemap	        textures/drm_textures/cement6_d.tga
+    specularmap         textures/drm_textures/cement6_s.tga
+    bumpmap             textures/drm_textures/cement6_local.tga
+}
+
+textures/drm_textures/cement5
+
+{
+    qer_editorimage	textures/drm_textures/cement5_ed.tga
+    diffusemap	        textures/drm_textures/cement5_d.tga
+    specularmap         textures/drm_textures/cement5_s.tga
+    bumpmap             textures/drm_textures/cement5_local.tga
+}
+
+textures/drm_textures/cement4
+
+{
+    qer_editorimage	textures/drm_textures/cement4_ed.tga
+    diffusemap	        textures/drm_textures/cement4_d.tga
+    specularmap         textures/drm_textures/cement4_s.tga
+    bumpmap             textures/drm_textures/cement4_local.tga
+}
+
+textures/drm_textures/cement3
+
+{
+    qer_editorimage	textures/drm_textures/cement3_ed.tga
+    diffusemap	        textures/drm_textures/cement3_d.tga
+    specularmap         textures/drm_textures/cement3_s.tga
+    bumpmap             textures/drm_textures/cement3_local.tga
+}
+
+textures/drm_textures/cement2
+
+{
+    qer_editorimage	textures/drm_textures/cement2_ed.tga
+    diffusemap	        textures/drm_textures/cement2_d.tga
+    specularmap         textures/drm_textures/cement2_s.tga
+    bumpmap             textures/drm_textures/cement2_local.tga
+}
+
+textures/drm_textures/cement1
+
+{
+    qer_editorimage	textures/drm_textures/cement1_ed.tga
+    diffusemap	        textures/drm_textures/cement1_d.tga
+    specularmap         textures/drm_textures/cement1_s.tga
+    bumpmap             textures/drm_textures/cement1_local.tga
+}
+
+textures/drm_textures/tekgren3
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/tekgren3_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/tekgren3_ed.tga
+    diffusemap	        textures/drm_textures/tekgren3_d.tga
+    specularmap         textures/drm_textures/tekgren3_s.tga
+    bumpmap             textures/drm_textures/tekgren3_local.tga
+}
+
+
+textures/drm_textures/tele3
+
+{
+    qer_editorimage	textures/drm_textures/tele3_ed.tga
+    diffusemap	        textures/drm_textures/tele3_d.tga
+    specularmap         textures/drm_textures/tele3_s.tga
+    bumpmap             textures/drm_textures/tele3_local.tga
+}
+
+textures/drm_textures/tele2
+
+{
+    qer_editorimage	textures/drm_textures/tele2_ed.tga
+    diffusemap	        textures/drm_textures/tele2_d.tga
+    specularmap         textures/drm_textures/tele2_s.tga
+    bumpmap             textures/drm_textures/tele2_local.tga
+}
+
+textures/drm_textures/gstone1
+
+{
+    qer_editorimage	textures/drm_textures/gstone1_ed.tga
+    diffusemap	        textures/drm_textures/gstone1_d.tga
+    specularmap         textures/drm_textures/gstone1_s.tga
+    bumpmap             textures/drm_textures/gstone1_local.tga
+}
+
+textures/drm_textures/redwall2
+
+{
+    qer_editorimage	textures/drm_textures/redwall2_ed.tga
+    diffusemap	        textures/drm_textures/redwall2_d.tga
+    specularmap         textures/drm_textures/redwall2_s.tga
+    bumpmap             textures/drm_textures/redwall2_local.tga
+}
+
+textures/drm_textures/crategflat
+
+{
+    qer_editorimage	textures/drm_textures/crategflat_ed.tga
+    diffusemap	        textures/drm_textures/crategflat_d.tga
+    specularmap         textures/drm_textures/crategflat_s.tga
+    bumpmap             textures/drm_textures/crategflat_local.tga
+}
+
+textures/drm_textures/cratewide1
+
+{
+    qer_editorimage	textures/drm_textures/cratewide1_ed.tga
+    diffusemap	        textures/drm_textures/cratewide1_d.tga
+    specularmap         textures/drm_textures/cratewide1_s.tga
+    bumpmap             textures/drm_textures/cratewide1_local.tga
+}
+
+textures/drm_textures/cratewide2
+
+{
+    qer_editorimage	textures/drm_textures/cratewide2_ed.tga
+    diffusemap	        textures/drm_textures/cratewide2_d.tga
+    specularmap         textures/drm_textures/cratewide2_s.tga
+    bumpmap             textures/drm_textures/cratewide2_local.tga
+}
+
+textures/drm_textures/crate2
+
+{
+    qer_editorimage	textures/drm_textures/crate2_ed.tga
+    diffusemap	        textures/drm_textures/crate2_d.tga
+    specularmap         textures/drm_textures/crate2_s.tga
+    bumpmap             textures/drm_textures/crate2_local.tga
+}
+
+textures/drm_textures/crate1
+
+{
+    qer_editorimage	textures/drm_textures/crate1_ed.tga
+    diffusemap	        textures/drm_textures/crate1_d.tga
+    specularmap         textures/drm_textures/crate1_s.tga
+    bumpmap             textures/drm_textures/crate1_local.tga
+}
+
+textures/drm_textures/teklite
+
+{
+    qer_editorimage	textures/drm_textures/teklite_ed.tga
+    diffusemap	        textures/drm_textures/teklite_d.tga
+    specularmap         textures/drm_textures/teklite_s.tga
+    bumpmap             textures/drm_textures/teklite_local.tga
+}
+
+textures/drm_textures/pipes_wall_2
+
+{
+    qer_editorimage	textures/drm_textures/pipes_wall_2_ed.tga
+    diffusemap	        textures/drm_textures/pipes_wall_2_d.tga
+    specularmap         textures/drm_textures/pipes_wall_2_s.tga
+    bumpmap             textures/drm_textures/pipes_wall_2_local.tga
+}
+
+textures/drm_textures/comtallc
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/comtallc_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/comtallc_ed.tga
+    diffusemap	        textures/drm_textures/comtallc_d.tga
+    specularmap         textures/drm_textures/comtallc_.tga
+    bumpmap             textures/drm_textures/comtallc_local.tga
+}
+
+textures/drm_textures/liteblu4
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/liteblu4_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/liteblu4_ed.tga
+    diffusemap	        textures/drm_textures/liteblu4_d.tga
+    specularmap         textures/drm_textures/liteblu4_.tga
+    bumpmap             textures/drm_textures/liteblu4_local.tga
+}
+
+textures/drm_textures/teklite2
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/teklite2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/teklite2_ed.tga
+    diffusemap	        textures/drm_textures/teklite2_d.tga
+    specularmap         textures/drm_textures/teklite2_.tga
+    bumpmap             textures/drm_textures/teklite2_local.tga
+}
+
+textures/drm_textures/liteblu1
+
+{
+	{
+		blend 	add
+		map	textures/drm_textures/liteblu1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/liteblu1_ed.tga
+    diffusemap	        textures/drm_textures/liteblu1_d.tga
+    specularmap         textures/drm_textures/liteblu1_s.tga
+    bumpmap             textures/drm_textures/liteblu1_local.tga
+}
+
+textures/drm_textures/spcdoor3
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/spcdoor3_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/spcdoor3_ed.tga
+    diffusemap	        textures/drm_textures/spcdoor3_d.tga
+    specularmap         textures/drm_textures/spcdoor3_.tga
+    bumpmap             textures/drm_textures/spcdoor3_local.tga
+}
+
+
+textures/drm_textures/spacew4
+
+{
+    qer_editorimage	textures/drm_textures/spacew4_ed.tga
+    diffusemap	        textures/drm_textures/spacew4_d.tga
+    specularmap         textures/drm_textures/spacew4_.tga
+    bumpmap             textures/drm_textures/spacew4_local.tga
+}
+
+textures/drm_textures/zdoorER
+
+{
+    qer_editorimage	textures/drm_textures/zdoorER_ed.tga
+    diffusemap	        textures/drm_textures/zdoorER_d.tga
+    specularmap         textures/drm_textures/zdoorER_.tga
+    bumpmap             textures/drm_textures/zdoorER_local.tga
+}
+
+textures/drm_textures/zdoorE
+
+{
+    qer_editorimage	textures/drm_textures/zdoorE_ed.tga
+    diffusemap	        textures/drm_textures/zdoorE_d.tga
+    specularmap         textures/drm_textures/zdoorE_.tga
+    bumpmap             textures/drm_textures/zdoorE_local.tga
+}
+
+textures/drm_textures/zdoorR1
+
+{
+    qer_editorimage	textures/drm_textures/zdoorR1_ed.tga
+    diffusemap	        textures/drm_textures/zdoorR1_d.tga
+    specularmap         textures/drm_textures/zdoorR1_s.tga
+    bumpmap             textures/drm_textures/zdoorR1_local.tga
+}
+
+
+textures/drm_textures/zdoorf1
+
+{
+    qer_editorimage	textures/drm_textures/zdoorf1_ed.tga
+    diffusemap	        textures/drm_textures/zdoorf1_d.tga
+    specularmap         textures/drm_textures/zdoorf1_s.tga
+    bumpmap             textures/drm_textures/zdoorf1_local.tga
+}
+
+textures/drm_textures/zdoorL1
+
+{
+    qer_editorimage	textures/drm_textures/zdoorL1_ed.tga
+    diffusemap	        textures/drm_textures/zdoorL1_d.tga
+    specularmap         textures/drm_textures/zdoorL1_s.tga
+    bumpmap             textures/drm_textures/zdoorL1_local.tga
+}
+
+
+textures/drm_textures/zzwolf12
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf12_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf12_d.tga
+    specularmap         textures/drm_textures/zzwolf12_s.tga
+    bumpmap             textures/drm_textures/zzwolf12_local.tga
+}
+
+textures/drm_textures/zzwolf11
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf11_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf11_d.tga
+    specularmap         textures/drm_textures/zzwolf11_s.tga
+    bumpmap             textures/drm_textures/zzwolf11_local.tga
+}
+
+textures/drm_textures/zzwolf10
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf10_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf10_d.tga
+    specularmap         textures/drm_textures/zzwolf10_s.tga
+    bumpmap             textures/drm_textures/zzwolf10_local.tga
+}
+
+textures/drm_textures/zzwolf9
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf9_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf9_d.tga
+    specularmap         textures/drm_textures/zzwolf9_s.tga
+    bumpmap             textures/drm_textures/zzwolf9_local.tga
+}
+
+textures/drm_textures/zzwolf8
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf8_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf8_d.tga
+    specularmap         textures/drm_textures/zzwolf8_s.tga
+    bumpmap             textures/drm_textures/zzwolf8_local.tga
+}
+
+textures/drm_textures/zzwolf7
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf7_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf7_d.tga
+    specularmap         textures/drm_textures/zzwolf7_s.tga
+    bumpmap             textures/drm_textures/zzwolf7_local.tga
+}
+
+textures/drm_textures/zzwolf6
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf6_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf6_d.tga
+    specularmap         textures/drm_textures/zzwolf6_s.tga
+    bumpmap             textures/drm_textures/zzwolf6_local.tga
+}
+
+textures/drm_textures/zzwolf5
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf5_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf5_d.tga
+    specularmap         textures/drm_textures/zzwolf5_s.tga
+    bumpmap             textures/drm_textures/zzwolf5_local.tga
+}
+
+textures/drm_textures/zzwolf4
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf4_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf4_d.tga
+    specularmap         textures/drm_textures/zzwolf4_s.tga
+    bumpmap             textures/drm_textures/zzwolf4_local.tga
+}
+
+textures/drm_textures/zzwolf3
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf3_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf3_d.tga
+    specularmap         textures/drm_textures/zzwolf3_s.tga
+    bumpmap             textures/drm_textures/zzwolf3_local.tga
+}
+
+textures/drm_textures/zzwolf2
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf2_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf2_d.tga
+    specularmap         textures/drm_textures/zzwolf2_s.tga
+    bumpmap             textures/drm_textures/zzwolf2_local.tga
+}
+
+textures/drm_textures/zzwolf1
+
+{
+    qer_editorimage	textures/drm_textures/zzwolf1_ed.tga
+    diffusemap	        textures/drm_textures/zzwolf1_d.tga
+    specularmap         textures/drm_textures/zzwolf1_s.tga
+    bumpmap             textures/drm_textures/zzwolf1_local.tga
+}
+
+textures/drm_textures/liteblu3
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/liteblu3_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/liteblu3_ed.tga
+    diffusemap	        textures/drm_textures/liteblu3_d.tga
+    specularmap         textures/drm_textures/liteblu3_s.tga
+    bumpmap             textures/drm_textures/liteblu3_local.tga
+}
+
+
+textures/drm_textures/brick
+
+{
+    qer_editorimage	textures/drm_textures/brick_ed.tga
+    diffusemap	        textures/drm_textures/brick_d.tga
+    specularmap         textures/drm_textures/brick_s.tga
+    bumpmap             textures/drm_textures/brick_local.tga
+}
+
+textures/drm_textures/startan3
+
+{
+    qer_editorimage	textures/drm_textures/startan3_ed.tga
+    diffusemap	        textures/drm_textures/startan3_d.tga
+    specularmap         textures/drm_textures/startan3_s.tga
+    bumpmap             textures/drm_textures/startan3_local.tga
+}
+
+textures/drm_textures/flat14
+
+{
+    qer_editorimage	textures/drm_textures/flat14_ed.tga
+    diffusemap	        textures/drm_textures/flat14_d.tga
+    specularmap         textures/drm_textures/flat14_s.tga
+    bumpmap             textures/drm_textures/flat14_local.tga
+}
+
+textures/drm_textures/floor4_8
+
+{
+    qer_editorimage	textures/drm_textures/floor4_8_ed.tga
+    diffusemap	        textures/drm_textures/floor4_8_d.tga
+    specularmap         textures/drm_textures/floor4_8_s.tga
+    bumpmap             textures/drm_textures/floor4_8_local.tga
+}
+
+textures/drm_textures/ceil3_5
+
+{
+    qer_editorimage	textures/drm_textures/ceil3_5_ed.tga
+    diffusemap	        textures/drm_textures/ceil3_5_d.tga
+    specularmap         textures/drm_textures/ceil3_5_s.tga
+    bumpmap             textures/drm_textures/ceil3_5_local.tga
+}
+
+textures/drm_textures/compute2
+
+{
+	
+	{
+		blend add 
+		map textures/drm_textures/compute2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/compute2_ed.tga
+    diffusemap	        textures/drm_textures/compute2_d.tga
+    specularmap         textures/drm_textures/compute2_s.tga
+    bumpmap             textures/drm_textures/compute2_local.tga
+}
+
+textures/drm_textures/brown1
+
+{
+    qer_editorimage	textures/drm_textures/brown1_ed.tga
+    diffusemap	        textures/drm_textures/brown1_d.tga
+    specularmap         textures/drm_textures/brown1_s.tga
+    bumpmap             textures/drm_textures/brown1_local.tga
+}
+
+textures/drm_textures/starg3
+
+{
+    qer_editorimage	textures/drm_textures/starg3_ed.tga
+    diffusemap	        textures/drm_textures/starg3_d.tga
+    specularmap         textures/drm_textures/starg3_s.tga
+    bumpmap             textures/drm_textures/starg3_local.tga
+}
+
+textures/drm_textures/stargr1
+
+{
+    qer_editorimage	textures/drm_textures/stargr1_ed.tga
+    diffusemap	        textures/drm_textures/stargr1_d.tga
+    specularmap         textures/drm_textures/stargr1_s.tga
+    bumpmap             textures/drm_textures/stargr1_local.tga
+}
+
+textures/drm_textures/browngrn
+
+{
+    qer_editorimage	textures/drm_textures/browngrn_ed.tga
+    diffusemap	        textures/drm_textures/browngrn_d.tga
+    specularmap         textures/drm_textures/browngrn_s.tga
+    bumpmap             textures/drm_textures/browngrn_local.tga
+}
+
+
+textures/drm_textures/floor7_1 
+
+{
+    qer_editorimage	textures/drm_textures/floor7_1_ed.tga
+    diffusemap	        textures/drm_textures/floor7_1_d.tga
+    specularmap         textures/drm_textures/floor7_1_s.tga
+    bumpmap             textures/drm_textures/floor7_1_local.tga
+}
+
+textures/drm_textures/floor5_2 
+
+{
+    qer_editorimage	textures/drm_textures/floor5_2_ed.tga
+    diffusemap	        textures/drm_textures/floor5_2_d.tga
+    specularmap         textures/drm_textures/floor5_2_s.tga
+    bumpmap             textures/drm_textures/floor5_2_local.tga
+}
+
+textures/drm_textures/floor5_1 
+
+{
+    qer_editorimage	textures/drm_textures/floor5_1_ed.tga
+    diffusemap	        textures/drm_textures/floor5_1_d.tga
+    specularmap         textures/drm_textures/floor5_1_s.tga
+    bumpmap             textures/drm_textures/floor5_1_local.tga
+}
+
+textures/drm_textures/nuke24
+
+{
+    qer_editorimage	textures/drm_textures/nuke24_ed.tga
+    diffusemap	        textures/drm_textures/nuke24_d.tga
+    specularmap         textures/drm_textures/nuke24_s.tga
+    bumpmap             textures/drm_textures/nuke24_local.tga
+}
+
+textures/drm_textures/comptile1
+{
+	
+	{
+		blend add 
+		map textures/drm_textures/comptile1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/comptile1_ed.tga
+    diffusemap	        textures/drm_textures/comptile1_d.tga
+    specularmap         textures/drm_textures/comptile1_s.tga
+    bumpmap             textures/drm_textures/comptile1_local.tga
+}
+
+textures/drm_textures/step1
+
+{
+    qer_editorimage	textures/drm_textures/step1_ed.tga
+    diffusemap	        textures/drm_textures/step1_d.tga
+    specularmap         textures/drm_textures/step1_s.tga
+    bumpmap             textures/drm_textures/step1_local.tga
+}
+
+textures/drm_textures/tlite6_5
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/tlite6_5_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/tlite6_5_ed.tga
+    diffusemap	        textures/drm_textures/tlite6_5_d.tga
+    specularmap         textures/drm_textures/tlite6_5_s.tga
+    bumpmap             textures/drm_textures/tlite6_5_local.tga
+}
+
+textures/drm_textures/comptall
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/comptall_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/comptall_ed.tga
+    diffusemap	        textures/drm_textures/comptall_d.tga
+    specularmap         textures/drm_textures/comptall_s.tga
+    bumpmap             textures/drm_textures/comptall_local.tga
+}
+
+textures/drm_textures/planets1
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/planets1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/planets1_ed.tga
+    diffusemap	        textures/drm_textures/planets1_d.tga
+    specularmap         textures/drm_textures/planets1_s.tga
+    bumpmap             textures/drm_textures/planets1_local.tga
+}
+
+textures/drm_textures/doortrak 
+
+{
+    qer_editorimage	textures/drm_textures/doortrak_ed.tga
+    diffusemap	        textures/drm_textures/doortrak_d.tga
+    specularmap         textures/drm_textures/doortrak_s.tga
+    bumpmap             textures/drm_textures/doortrak_local.tga
+}
+
+textures/drm_textures/brown96 
+
+{
+    qer_editorimage	textures/drm_textures/brown96_ed.tga
+    diffusemap	        textures/drm_textures/brown96_d.tga
+    specularmap         textures/drm_textures/brown96_s.tga
+    bumpmap             textures/drm_textures/brown96_local.tga
+}
+
+textures/drm_textures/brown144
+
+{
+    qer_editorimage	textures/drm_textures/brown144_ed.tga
+    diffusemap	        textures/drm_textures/brown144_d.tga
+    specularmap         textures/drm_textures/brown144_s.tga
+    bumpmap             textures/drm_textures/brown144_local.tga
+}
+
+textures/drm_textures/tlite6_6 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/tlite6_6_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/tlite6_6_ed.tga
+    diffusemap	        textures/drm_textures/tlite6_6_d.tga
+    specularmap         textures/drm_textures/tlite6_6_s.tga
+    bumpmap             textures/drm_textures/tlite6_6_local.tga
+}
+
+textures/drm_textures/ceil5_2 
+
+{
+    qer_editorimage	textures/drm_textures/ceil5_2_ed.tga
+    diffusemap	        textures/drm_textures/ceil5_2_d.tga
+    specularmap         textures/drm_textures/ceil5_2_s.tga
+    bumpmap             textures/drm_textures/ceil5_2_local.tga
+}
+
+textures/drm_textures/floor6_2 
+
+{
+    qer_editorimage	textures/drm_textures/floor6_2_ed.tga
+    diffusemap	        textures/drm_textures/floor6_2_d.tga
+    specularmap         textures/drm_textures/floor6_2_s.tga
+    bumpmap             textures/drm_textures/floor6_2_local.tga
+}
+
+textures/drm_textures/startan1 
+
+{
+    qer_editorimage	textures/drm_textures/startan1_ed.tga
+    diffusemap	        textures/drm_textures/startan1_d.tga
+    specularmap         textures/drm_textures/startan1_s.tga
+    bumpmap             textures/drm_textures/startan1_local.tga
+}
+
+textures/drm_textures/doorstop 
+
+{
+    qer_editorimage	textures/drm_textures/doorstop_ed.tga
+    diffusemap	        textures/drm_textures/doorstop_d.tga
+    specularmap         textures/drm_textures/doorstop_s.tga
+    bumpmap             textures/drm_textures/doorstop_local.tga
+}
+
+textures/drm_textures/floor7_2
+
+{
+    qer_editorimage	textures/drm_textures/floor7_2_ed.tga
+    diffusemap	        textures/drm_textures/floor7_2_d.tga
+    specularmap         textures/drm_textures/floor7_2_s.tga
+    bumpmap             textures/drm_textures/floor7_2_local.tga
+}
+
+textures/drm_textures/sladwall
+
+{
+    qer_editorimage	textures/drm_textures/sladwall_ed.tga
+    diffusemap	        textures/drm_textures/sladwall_d.tga
+    specularmap         textures/drm_textures/sladwall_s.tga
+    bumpmap             textures/drm_textures/sladwall_local.tga
+}
+
+textures/drm_textures/tekwall1
+
+{
+    qer_editorimage	textures/drm_textures/tekwall1_ed.tga
+    diffusemap	        textures/drm_textures/tekwall1_d.tga
+    specularmap         textures/drm_textures/tekwall1_s.tga
+    bumpmap             textures/drm_textures/tekwall1_local.tga
+}
+
+textures/drm_textures/step6
+
+{
+    qer_editorimage	textures/drm_textures/step6_ed.tga
+    diffusemap	        textures/drm_textures/step6_d.tga
+    specularmap         textures/drm_textures/step6_s.tga
+    bumpmap             textures/drm_textures/step6_local.tga
+}
+
+textures/drm_textures/tekwall4 
+
+{
+    qer_editorimage	textures/drm_textures/tekwall4_ed.tga
+    diffusemap	        textures/drm_textures/tekwall4_d.tga
+    specularmap         textures/drm_textures/tekwall4_s.tga
+    bumpmap             textures/drm_textures/tekwall4_local.tga
+}
+
+textures/drm_textures/flat20 
+
+{
+    qer_editorimage	textures/drm_textures/flat20_ed.tga
+    diffusemap	        textures/drm_textures/flat20_d.tga
+    specularmap         textures/drm_textures/flat20_s.tga
+    bumpmap             textures/drm_textures/flat20_local.tga
+}
+
+textures/drm_textures/sw1strtn 
+
+{
+    qer_editorimage	textures/drm_textures/sw1strtn_ed.tga
+    diffusemap	        textures/drm_textures/sw1strtn_d.tga
+    specularmap         textures/drm_textures/sw1strtn_s.tga
+    bumpmap             textures/drm_textures/sw1strtn_local.tga
+}
+
+textures/drm_textures/compspan 
+
+{
+    qer_editorimage	textures/drm_textures/compspan_ed.tga
+    diffusemap	        textures/drm_textures/compspan_d.tga
+    specularmap         textures/drm_textures/compspan_s.tga
+    bumpmap             textures/drm_textures/compspan_local.tga
+}
+
+textures/drm_textures/flat18 
+
+{
+    qer_editorimage	textures/drm_textures/flat18_ed.tga
+    diffusemap	        textures/drm_textures/flat18_d.tga
+    specularmap         textures/drm_textures/flat18_s.tga
+    bumpmap             textures/drm_textures/flat18_local.tga
+}
+
+textures/drm_textures/lite3 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/lite3_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/lite3_ed.tga
+    diffusemap	        textures/drm_textures/lite3_d.tga
+    specularmap         textures/drm_textures/lite3_s.tga
+    bumpmap             textures/drm_textures/lite3_local.tga
+}
+
+textures/drm_textures/ceil5_1 
+
+{
+    qer_editorimage	textures/drm_textures/ceil5_1_ed.tga
+    diffusemap	        textures/drm_textures/ceil5_1_d.tga
+    specularmap         textures/drm_textures/ceil5_1_s.tga
+    bumpmap             textures/drm_textures/ceil5_1_local.tga
+}
+
+textures/drm_textures/flat5_5 
+
+{
+    qer_editorimage	textures/drm_textures/flat5_5_ed.tga
+    diffusemap	        textures/drm_textures/flat5_5_d.tga
+    specularmap         textures/drm_textures/flat5_5_s.tga
+    bumpmap             textures/drm_textures/flat5_5_local.tga
+}
+
+textures/drm_textures/tlite6_1 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/tlite6_1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/tlite6_1_ed.tga
+    diffusemap	        textures/drm_textures/tlite6_1_d.tga
+    specularmap         textures/drm_textures/tlite6_1_s.tga
+    bumpmap             textures/drm_textures/tlite6_1_local.tga
+}
+
+textures/drm_textures/tlite6_4 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/tlite6_4_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/tlite6_4_ed.tga
+    diffusemap	        textures/drm_textures/tlite6_4_d.tga
+    specularmap         textures/drm_textures/tlite6_4_s.tga
+    bumpmap             textures/drm_textures/tlite6_4_local.tga
+}
+
+textures/drm_textures/sw1comp {
+
+    qer_editorimage	textures/drm_textures/sw1comp_ed.tga
+    diffusemap	        textures/drm_textures/sw1comp_d.tga
+    specularmap         textures/drm_textures/sw1comp_s.tga
+    bumpmap             textures/drm_textures/sw1comp_local.tga
+
+}
+
+textures/drm_textures/stone4 
+
+{
+    qer_editorimage	textures/drm_textures/stone4_ed.tga
+    diffusemap	        textures/drm_textures/stone4_d.tga
+    specularmap         textures/drm_textures/stone4_s.tga
+    bumpmap             textures/drm_textures/stone4_local.tga
+}
+
+textures/drm_textures/flat5_4 
+
+{
+    qer_editorimage	textures/drm_textures/flat5_4_ed.tga
+    diffusemap	        textures/drm_textures/flat5_4_d.tga
+    specularmap         textures/drm_textures/flat5_4_s.tga
+    bumpmap             textures/drm_textures/flat5_4_local.tga
+}
+
+textures/drm_textures/f_water 
+
+{
+    qer_editorimage	textures/drm_textures/f_water_ed.tga
+    diffusemap	        textures/drm_textures/f_water_d.tga
+    specularmap         textures/drm_textures/f_water_s.tga
+    bumpmap             textures/drm_textures/f_water_local.tga
+}
+
+textures/drm_textures/starg1 
+
+{
+    qer_editorimage	textures/drm_textures/starg1_ed.tga
+    diffusemap	        textures/drm_textures/starg1_d.tga
+    specularmap         textures/drm_textures/starg1_s.tga
+    bumpmap             textures/drm_textures/starg1_local.tga
+}
+
+textures/drm_textures/pipewall2 
+
+{
+    qer_editorimage	textures/drm_textures/pipewall2_ed.tga
+    diffusemap	        textures/drm_textures/pipewall2_d.tga
+    specularmap         textures/drm_textures/pipewall2_s.tga
+    bumpmap             textures/drm_textures/pipewall2_local.tga
+}
+
+textures/drm_textures/spacew3 
+
+{
+    qer_editorimage	textures/drm_textures/spacew3_ed.tga
+    diffusemap	        textures/drm_textures/spacew3_d.tga
+    specularmap         textures/drm_textures/spacew3_s.tga
+    bumpmap             textures/drm_textures/spacew3_local.tga
+}
+
+textures/drm_textures/spacew2 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/spacew2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/spacew2_ed.tga
+    diffusemap	        textures/drm_textures/spacew2_d.tga
+    specularmap         textures/drm_textures/spacew2_s.tga
+    bumpmap             textures/drm_textures/spacew2_local.tga
+}
+
+textures/drm_textures/spcdoor2 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/spcdoor2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/spcdoor2_ed.tga
+    diffusemap	        textures/drm_textures/spcdoor2_d.tga
+    specularmap         textures/drm_textures/spcdoor2_s.tga
+    bumpmap             textures/drm_textures/spcdoor2_local.tga
+}
+
+textures/drm_textures/shawn2 
+
+{
+    qer_editorimage	textures/drm_textures/shawn2_ed.tga
+    diffusemap	        textures/drm_textures/shawn2_d.tga
+    specularmap         textures/drm_textures/shawn2_s.tga
+    bumpmap             textures/drm_textures/shawn2_local.tga
+}
+
+textures/drm_textures/door3 
+
+{
+    qer_editorimage	textures/drm_textures/door3_ed.tga
+    diffusemap	        textures/drm_textures/door3_d.tga
+    specularmap         textures/drm_textures/door3_s.tga
+    bumpmap             textures/drm_textures/door3_local.tga
+}
+
+textures/drm_textures/compsta1 
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/compsta1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/compsta1_ed.tga
+    diffusemap	        textures/drm_textures/compsta1_d.tga
+    specularmap         textures/drm_textures/compsta1_s.tga
+    bumpmap             textures/drm_textures/compsta1_local.tga
+}
+
+textures/drm_textures/compsta2 
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/compsta2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/compsta2_ed.tga
+    diffusemap	        textures/drm_textures/compsta2_d.tga
+    specularmap         textures/drm_textures/compsta2_s.tga
+    bumpmap             textures/drm_textures/compsta2_local.tga
+}
+
+textures/drm_textures/grass2 
+
+{
+    qer_editorimage	textures/drm_textures/grass2_ed.tga
+    diffusemap	        textures/drm_textures/grass2_d.tga
+    specularmap         textures/drm_textures/grass2_s.tga
+    bumpmap             textures/drm_textures/grass2_local.tga
+}
+
+
+textures/drm_textures/bigbrik1 
+
+{
+    qer_editorimage	textures/drm_textures/bigbrik1_ed.tga
+    diffusemap	        textures/drm_textures/bigbrik1_d.tga
+    specularmap         textures/drm_textures/bigbrik1_s.tga
+    bumpmap             textures/drm_textures/bigbrik1_local.tga
+}
+
+textures/drm_textures/floor5_3 
+
+{
+    qer_editorimage	textures/drm_textures/floor5_3_ed.tga
+    diffusemap	        textures/drm_textures/floor5_3_d.tga
+    specularmap         textures/drm_textures/floor5_3_s.tga
+    bumpmap             textures/drm_textures/floor5_3_local.tga
+}
+
+textures/drm_textures/cratop2 
+
+{
+    qer_editorimage	textures/drm_textures/cratop2_ed.tga
+    diffusemap	        textures/drm_textures/cratop2_d.tga
+    specularmap         textures/drm_textures/cratop2_s.tga
+    bumpmap             textures/drm_textures/cratop2_local.tga
+}
+
+textures/drm_textures/gate3 
+
+{
+    qer_editorimage	textures/drm_textures/gate3_ed.tga
+    diffusemap	        textures/drm_textures/gate3_d.tga
+    specularmap         textures/drm_textures/gate3_s.tga
+    bumpmap             textures/drm_textures/gate3_local.tga
+}
+
+textures/drm_textures/logo 
+
+{
+    qer_editorimage	textures/drm_textures/logo_ed.tga
+    diffusemap	        textures/drm_textures/logo_d.tga
+    specularmap         textures/drm_textures/logo_s.tga
+    bumpmap             textures/drm_textures/logo_local.tga
+}
+
+textures/drm_textures/doom2enter 
+
+{
+    qer_editorimage	textures/drm_textures/doom2enter_ed.tga
+    diffusemap	        textures/drm_textures/doom2enter_d.tga
+    specularmap         textures/drm_textures/doom2enter_s.tga
+    bumpmap             textures/drm_textures/doom2enter_local.tga
+}
+
+textures/drm_textures/doom1enter 
+
+{
+    qer_editorimage	textures/drm_textures/doom1enter_ed.tga
+    diffusemap	        textures/drm_textures/doom1enter_d.tga
+    specularmap         textures/drm_textures/doom1enter_s.tga
+    bumpmap             textures/drm_textures/doom1enter_local.tga
+}
+
+textures/drm_textures/support3 
+
+{
+    qer_editorimage	textures/drm_textures/support3_ed.tga
+    diffusemap	        textures/drm_textures/support3_d.tga
+    specularmap         textures/drm_textures/support3_s.tga
+    bumpmap             textures/drm_textures/support3_local.tga
+}
+
+textures/drm_textures/bigdoor1 
+
+{
+    qer_editorimage	textures/drm_textures/bigdoor1_ed.tga
+    diffusemap	        textures/drm_textures/bigdoor1_d.tga
+    specularmap         textures/drm_textures/bigdoor1_s.tga
+    bumpmap             textures/drm_textures/bigdoor1_local.tga
+}
+
+textures/drm_textures/doorblu 
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/doorblu_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/doorblu_ed.tga
+    diffusemap	        textures/drm_textures/doorblu_d.tga
+    specularmap         textures/drm_textures/doorblu_s.tga
+    bumpmap             textures/drm_textures/doorblu_local.tga
+}
+
+textures/drm_textures/bigdoor3 
+
+{
+    qer_editorimage	textures/drm_textures/bigdoor3_ed.tga
+    diffusemap	        textures/drm_textures/bigdoor3_d.tga
+    specularmap         textures/drm_textures/bigdoor3_s.tga
+    bumpmap             textures/drm_textures/bigdoor3_local.tga
+}
+
+textures/drm_textures/pipewall1 
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/pipewall1_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/pipewall1_ed.tga
+    diffusemap	        textures/drm_textures/pipewall1_d.tga
+    specularmap         textures/drm_textures/pipewall1_s.tga
+    bumpmap             textures/drm_textures/pipewall1_local.tga
+}
+
+textures/drm_textures/flat1 
+
+{
+    qer_editorimage	textures/drm_textures/flat1_ed.tga
+    diffusemap	        textures/drm_textures/flat1_d.tga
+    specularmap         textures/drm_textures/flat1_s.tga
+    bumpmap             textures/drm_textures/flat1_local.tga
+}
+
+textures/drm_textures/flat_floor0_3 
+
+{
+    qer_editorimage	textures/drm_textures/flat_floor0_3_ed.tga
+    diffusemap	        textures/drm_textures/flat_floor0_3_d.tga
+    specularmap         textures/drm_textures/flat_floor0_3_s.tga
+    bumpmap             textures/drm_textures/flat_floor0_3_local.tga
+}
+
+textures/drm_textures/metal2 
+
+{
+    qer_editorimage	textures/drm_textures/metal2_ed.tga
+    diffusemap	        textures/drm_textures/metal2_d.tga
+    specularmap         textures/drm_textures/metal2_s.tga
+    bumpmap             textures/drm_textures/metal2_local.tga
+}
+
+textures/drm_textures/doorred 
+
+{
+	{
+		blend add
+		map textures/drm_textures/doorred_add.tga
+	}
+    qer_editorimage	textures/drm_textures/doorred_ed.tga
+    diffusemap	        textures/drm_textures/doorred_d.tga
+    specularmap         textures/drm_textures/doorred_s.tga
+    bumpmap             textures/drm_textures/doorred_local.tga
+}
+
+textures/drm_textures/sw1comm 
+
+{
+    qer_editorimage	textures/drm_textures/sw1comm_ed.tga
+    diffusemap	        textures/drm_textures/sw1comm_d.tga
+    specularmap         textures/drm_textures/sw1comm_s.tga
+    bumpmap             textures/drm_textures/sw1comm_local.tga
+}
+
+textures/drm_textures/sw1exit 
+
+{
+    qer_editorimage	textures/drm_textures/sw1exit_ed.tga
+    diffusemap	        textures/drm_textures/sw1exit_d.tga
+    specularmap         textures/drm_textures/sw1exit_s.tga
+    bumpmap             textures/drm_textures/sw1exit_local.tga
+}
+
+textures/drm_textures/flat2 
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/flat2_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/flat2_ed.tga
+    diffusemap	        textures/drm_textures/flat2_d.tga
+    specularmap         textures/drm_textures/flat2_s.tga
+    bumpmap             textures/drm_textures/flat2_local.tga
+}
+
+textures/drm_textures/brnsmalr 
+
+{
+    qer_editorimage	textures/drm_textures/brnsmalr_ed.tga
+    diffusemap	        textures/drm_textures/brnsmalr_d.tga
+    specularmap         textures/drm_textures/brnsmalr_s.tga
+    bumpmap             textures/drm_textures/brnsmalr_local.tga
+}
+
+textures/drm_textures/brnsmall
+
+{
+    qer_editorimage	textures/drm_textures/brnsmall_ed.tga
+    diffusemap	        textures/drm_textures/brnsmall_d.tga
+    specularmap         textures/drm_textures/brnsmall_s.tga
+    bumpmap             textures/drm_textures/brnsmall_local.tga
+}
+
+textures/drm_textures/metal1
+
+{
+    qer_editorimage	textures/drm_textures/metal1_ed.tga
+    diffusemap	        textures/drm_textures/metal1_d.tga
+    specularmap         textures/drm_textures/metal1_s.tga
+    bumpmap             textures/drm_textures/metal1_local.tga
+}
+
+textures/drm_textures/drnpois2 
+
+{
+    qer_editorimage	textures/drm_textures/drnpois2_ed.tga
+    diffusemap	        textures/drm_textures/drnpois2_d.tga
+    specularmap         textures/drm_textures/drnpois2_s.tga
+    bumpmap             textures/drm_textures/drnpois2_local.tga
+}
+
+textures/drm_textures/stone 
+
+{
+    qer_editorimage	textures/drm_textures/stone_ed.tga
+    diffusemap	        textures/drm_textures/stone_d.tga
+    specularmap         textures/drm_textures/stone_s.tga
+    bumpmap             textures/drm_textures/stone_local.tga
+}
+
+textures/drm_textures/stonpois 
+
+{
+    qer_editorimage	textures/drm_textures/stonpois_ed.tga
+    diffusemap	        textures/drm_textures/stonpois_d.tga
+    specularmap         textures/drm_textures/stonpois_s.tga
+    bumpmap             textures/drm_textures/stonpois_local.tga
+}
+
+textures/drm_textures/startan2 
+
+{
+    qer_editorimage	textures/drm_textures/startan2_ed.tga
+    diffusemap	        textures/drm_textures/startan2_d.tga
+    specularmap         textures/drm_textures/startan2_s.tga
+    bumpmap             textures/drm_textures/startan2_local.tga
+}
+
+textures/drm_textures/sw1brick 
+
+{
+    qer_editorimage	textures/drm_textures/sw1brick_ed.tga
+    diffusemap	        textures/drm_textures/sw1brick_d.tga
+    specularmap         textures/drm_textures/sw1brick_s.tga
+    bumpmap             textures/drm_textures/sw1brick_local.tga
+}
+
+textures/drm_textures/sw1brngrn
+
+{
+    qer_editorimage	textures/drm_textures/sw1brngrn_ed.tga
+    diffusemap	        textures/drm_textures/sw1brngrn_d.tga
+    specularmap         textures/drm_textures/sw1brngrn_s.tga
+    bumpmap             textures/drm_textures/sw1brngrn_local.tga
+}
+
+textures/drm_textures/dooryel 
+
+{
+	{
+		blend add
+		map textures/drm_textures/dooryel_add.tga
+	}
+    qer_editorimage	textures/drm_textures/dooryel_ed.tga
+    diffusemap	        textures/drm_textures/dooryel_d.tga
+    specularmap         textures/drm_textures/dooryel_s.tga
+    bumpmap             textures/drm_textures/dooryel_local.tga
+}
+
+textures/drm_textures/stone2
+
+{
+    qer_editorimage	textures/drm_textures/stone2_ed.tga
+    diffusemap	        textures/drm_textures/stone2_d.tga
+    specularmap         textures/drm_textures/stone2_s.tga
+    bumpmap             textures/drm_textures/stone2_local.tga
+}
+
+textures/drm_textures/flat5
+
+{
+    qer_editorimage	textures/drm_textures/flat5_ed.tga
+    diffusemap	        textures/drm_textures/flat5_d.tga
+    specularmap         textures/drm_textures/flat5_s.tga
+    bumpmap             textures/drm_textures/flat5_local.tga
+}
+
+textures/drm_textures/sw2brown 
+
+{
+    qer_editorimage	textures/drm_textures/sw2brown_ed.tga
+    diffusemap	        textures/drm_textures/sw2brown_d.tga
+    specularmap         textures/drm_textures/sw2brown_s.tga
+    bumpmap             textures/drm_textures/sw2brown_local.tga
+}
+
+textures/drm_textures/sw1metal
+
+{
+    qer_editorimage	textures/drm_textures/sw1metal_ed.tga
+    diffusemap	        textures/drm_textures/sw1metal_d.tga
+    specularmap         textures/drm_textures/sw1metal_s.tga
+    bumpmap             textures/drm_textures/sw1metal_local.tga
+}
+
+textures/drm_textures/brnpois
+
+{
+    qer_editorimage	textures/drm_textures/brnpois_ed.tga
+    diffusemap	        textures/drm_textures/brnpois_d.tga
+    specularmap         textures/drm_textures/brnpois_s.tga
+    bumpmap             textures/drm_textures/brnpois_local.tga
+}
+
+textures/drm_textures/nukeedge1 
+
+{
+    qer_editorimage	textures/drm_textures/nukeedge1_ed.tga
+    diffusemap	        textures/drm_textures/nukeedge1_d.tga
+    specularmap         textures/drm_textures/nukeedge1_s.tga
+    bumpmap             textures/drm_textures/nukeedge1_local.tga
+}
+
+textures/drm_textures/big_brown96
+
+{
+    qer_editorimage	textures/drm_textures/big_brown96_ed.tga
+    diffusemap	        textures/drm_textures/big_brown96_d.tga
+    specularmap         textures/drm_textures/big_brown96_s.tga
+    bumpmap             textures/drm_textures/big_brown96_local.tga
+}
+
+textures/drm_textures/floor0_1 
+
+{
+    qer_editorimage	textures/drm_textures/floor0_1_ed.tga
+    diffusemap	        textures/drm_textures/floor0_1_d.tga
+    specularmap         textures/drm_textures/floor0_1_s.tga
+    bumpmap             textures/drm_textures/floor0_1_local.tga
+}
+
+textures/drm_textures/floor1_1
+
+{
+    qer_editorimage	textures/drm_textures/floor1_1_ed.tga
+    diffusemap	        textures/drm_textures/floor1_1_d.tga
+    specularmap         textures/drm_textures/floor1_1_s.tga
+    bumpmap             textures/drm_textures/floor1_1_local.tga
+}
+
+textures/drm_textures/floor1_7
+
+{
+
+	{
+		blend add
+		map textures/drm_textures/floor1_7_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/floor1_7_ed.tga
+    diffusemap	        textures/drm_textures/floor1_7_d.tga
+    specularmap         textures/drm_textures/floor1_7_s.tga
+    bumpmap             textures/drm_textures/floor1_7_local.tga
+}
+
+textures/drm_textures/swdirt
+
+{
+    qer_editorimage	textures/drm_textures/swdirt_ed.tga
+    diffusemap	        textures/drm_textures/swdirt_d.tga
+    specularmap         textures/drm_textures/swdirt_s.tga
+    bumpmap             textures/drm_textures/swdirt_local.tga
+}
+
+textures/drm_textures/brownhug
+
+{
+    qer_editorimage	textures/drm_textures/brownhug_ed.tga
+    diffusemap	        textures/drm_textures/brownhug_d.tga
+    specularmap         textures/drm_textures/brownhug_s.tga
+    bumpmap             textures/drm_textures/brownhug_local.tga
+}
+
+textures/drm_textures/stone3
+
+{
+    qer_editorimage	textures/drm_textures/stone3_ed.tga
+    diffusemap	        textures/drm_textures/stone3_d.tga
+    specularmap         textures/drm_textures/stone3_s.tga
+    bumpmap             textures/drm_textures/stone3_local.tga
+}
+
+textures/drm_textures/compute3
+
+{
+    qer_editorimage	textures/drm_textures/compute3_ed.tga
+    diffusemap	        textures/drm_textures/compute3_d.tga
+    specularmap         textures/drm_textures/compute3_s.tga
+    bumpmap             textures/drm_textures/compute3_local.tga
+}
+
+textures/drm_textures/gray4
+
+{
+    qer_editorimage	textures/drm_textures/gray4_ed.tga
+    diffusemap	        textures/drm_textures/gray4_d.tga
+    specularmap         textures/drm_textures/gray4_s.tga
+    bumpmap             textures/drm_textures/gray4_local.tga
+}
+
+textures/drm_textures/sw1brcom 
+
+{
+    qer_editorimage	textures/drm_textures/sw1brcom_ed.tga
+    diffusemap	        textures/drm_textures/sw1brcom_d.tga
+    specularmap         textures/drm_textures/sw1brcom_s.tga
+    bumpmap             textures/drm_textures/sw1brcom_local.tga
+}
+
+textures/drm_textures/floor3_3
+
+{
+    qer_editorimage	textures/drm_textures/floor3_3_ed.tga
+    diffusemap	        textures/drm_textures/floor3_3_d.tga
+    specularmap         textures/drm_textures/floor3_3_s.tga
+    bumpmap             textures/drm_textures/floor3_3_local.tga
+}
+
+textures/drm_textures/lite4
+
+{
+	{
+		blend add
+		map textures/drm_textures/lite4_add.tga
+	}
+    qer_editorimage	textures/drm_textures/lite4_ed.tga
+    diffusemap	        textures/drm_textures/lite4_d.tga
+    specularmap         textures/drm_textures/lite4_s.tga
+    bumpmap             textures/drm_textures/lite4_local.tga
+}
+
+textures/drm_textures/startan3_3d
+
+{
+    qer_editorimage	textures/drm_textures/startan3_3d_ed.tga
+    diffusemap	        textures/drm_textures/startan3_3d_d.tga
+    specularmap         textures/drm_textures/startan3_3d_s.tga
+    bumpmap             textures/drm_textures/startan3_3d_local.tga
+}
+
+textures/drm_textures/mfrl8_1
+
+{
+    qer_editorimage	textures/drm_textures/mfrl8_1_ed.tga
+    diffusemap	        textures/drm_textures/mfrl8_1_d.tga
+    specularmap         textures/drm_textures/mfrl8_1_s.tga
+    bumpmap             textures/drm_textures/mfrl8_1_local.tga
+}
+
+textures/drm_textures/floor4_1
+
+{
+    qer_editorimage	textures/drm_textures/floor4_1_ed.tga
+    diffusemap	        textures/drm_textures/floor4_1_d.tga
+    specularmap         textures/drm_textures/floor4_1_s.tga
+    bumpmap             textures/drm_textures/floor4_1_local.tga
+}
+
+textures/drm_textures/floor4_5
+
+{
+    qer_editorimage	textures/drm_textures/floor4_5_ed.tga
+    diffusemap	        textures/drm_textures/floor4_5_d.tga
+    specularmap         textures/drm_textures/floor4_5_s.tga
+    bumpmap             textures/drm_textures/floor4_5_local.tga
+}
+
+textures/drm_textures/lite2_alternate
+
+{
+	{
+		blend add
+		map textures/drm_textures/lite2_alternate_add.tga
+	}
+    qer_editorimage	textures/drm_textures/lite2_alternate_ed.tga
+    diffusemap	        textures/drm_textures/lite2_alternate_d.tga
+    specularmap         textures/drm_textures/lite2_alternate_s.tga
+    bumpmap             textures/drm_textures/lite2_alternate_local.tga
+}
+
+textures/drm_textures/floor6_1 
+
+{
+    qer_editorimage	textures/drm_textures/floor6_1_ed.tga
+    diffusemap	        textures/drm_textures/floor6_1_d.tga
+    specularmap         textures/drm_textures/floor6_1_s.tga
+    bumpmap             textures/drm_textures/floor6_1_local.tga
+}
+
+textures/drm_textures/step5
+
+{
+    qer_editorimage	textures/drm_textures/step5_ed.tga
+    diffusemap	        textures/drm_textures/step5_d.tga
+    specularmap         textures/drm_textures/step5_s.tga
+    bumpmap             textures/drm_textures/step5_local.tga
+}
+
+textures/drm_textures/redwall1
+
+{
+    qer_editorimage	textures/drm_textures/redwall1_ed.tga
+    diffusemap	        textures/drm_textures/redwall1_d.tga
+    specularmap         textures/drm_textures/redwall1_s.tga
+    bumpmap             textures/drm_textures/redwall1_local.tga
+}
+
+textures/drm_textures/floor5_4 
+
+{
+    qer_editorimage	textures/drm_textures/floor5_4_ed.tga
+    diffusemap	        textures/drm_textures/floor5_4_d.tga
+    specularmap         textures/drm_textures/floor5_4_s.tga
+    bumpmap             textures/drm_textures/floor5_4_local.tga
+}
+
+textures/drm_textures/s1slad
+
+{
+    qer_editorimage	textures/drm_textures/s1slad_ed.tga
+    diffusemap	        textures/drm_textures/s1slad_d.tga
+    specularmap         textures/drm_textures/s1slad_s.tga
+    bumpmap             textures/drm_textures/s1slad_local.tga
+}
+
+textures/drm_textures/support2_bump
+
+{
+    qer_editorimage	textures/drm_textures/support2_ed.tga
+    diffusemap	        textures/drm_textures/support2_d.tga
+    specularmap         textures/drm_textures/support2_s.tga
+    bumpmap             textures/drm_textures/support2_local.tga
+}
+
+textures/drm_textures/cement_wall_1
+
+{
+    qer_editorimage	textures/drm_textures/cement_wall_1_ed.tga
+    diffusemap	        textures/drm_textures/cement_wall_1_d.tga
+    specularmap         textures/drm_textures/cement_wall_1_s.tga
+    bumpmap             textures/drm_textures/cement_wall_1_local.tga
+}
+
+textures/drm_textures/pipes_wall_1
+
+{
+    qer_editorimage	textures/drm_textures/pipes_wall_1_ed.tga
+    diffusemap	        textures/drm_textures/pipes_wall_1_d.tga
+    specularmap         textures/drm_textures/pipes_wall_1_s.tga
+    bumpmap             textures/drm_textures/pipes_wall_1_local.tga
+}
+
+textures/drm_textures/grnlightwall1
+
+{
+	{
+		blend add
+		map textures/drm_textures/grnlightwall1_add.tga
+	}
+    qer_editorimage	textures/drm_textures/grnlightwall1_ed.tga
+    diffusemap	        textures/drm_textures/grnlightwall1_d.tga
+    specularmap         textures/drm_textures/grnlightwall1_s.tga
+    bumpmap             textures/drm_textures/grnlightwall1_local.tga
+}
+
+textures/drm_textures/grnlightroof1
+
+{
+	{
+		blend add
+		map textures/drm_textures/grnlightroof1_add.tga
+	}
+    qer_editorimage	textures/drm_textures/grnlightroof1_ed.tga
+    diffusemap	        textures/drm_textures/grnlightroof1_d.tga
+    specularmap         textures/drm_textures/grnlightroof1_s.tga
+    bumpmap             textures/drm_textures/grnlightroof1_local.tga
+}
+
+textures/drm_textures/grnwall1
+
+{
+    qer_editorimage	textures/drm_textures/grnwall1_ed.tga
+    diffusemap	        textures/drm_textures/grnwall1_d.tga
+    specularmap         textures/drm_textures/grnwall1_s.tga
+    bumpmap             textures/drm_textures/grnwall1_local.tga
+}
+
+textures/drm_textures/ashwall1
+
+{
+    qer_editorimage	textures/drm_textures/ashwall1_ed.tga
+    diffusemap	        textures/drm_textures/ashwall1_d.tga
+    specularmap         textures/drm_textures/ashwall1_s.tga
+    bumpmap             textures/drm_textures/ashwall1_local.tga
+}
+
+textures/drm_textures/vinewall1
+
+{
+    qer_editorimage	textures/drm_textures/vinewall1_ed.tga
+    diffusemap	        textures/drm_textures/vinewall1_d.tga
+    specularmap         textures/drm_textures/vinewall1_s.tga
+    bumpmap             textures/drm_textures/vinewall1_local.tga
+}
+
+textures/drm_textures/tekgreenpipes1
+
+{
+    qer_editorimage	textures/drm_textures/tekgreenpipes1_ed.tga
+    diffusemap	        textures/drm_textures/tekgreenpipes1_d.tga
+    specularmap         textures/drm_textures/tekgreenpipes1_s.tga
+    bumpmap             textures/drm_textures/tekgreenpipes1_local.tga
+}
+
+textures/drm_textures/liftblackwall
+
+{
+    qer_editorimage	textures/drm_textures/liftblackwall_ed.tga
+    diffusemap	        textures/drm_textures/liftblackwall_d.tga
+    specularmap         textures/drm_textures/liftblackwall_s.tga
+    bumpmap             textures/drm_textures/liftblackwall_local.tga
+}
+
+textures/drm_textures/spacetilewall1
+
+{
+    qer_editorimage	textures/drm_textures/spacetilewall1_ed.tga
+    diffusemap	        textures/drm_textures/spacetilewall1_d.tga
+    specularmap         textures/drm_textures/spacetilewall1_s.tga
+    bumpmap             textures/drm_textures/spacetilewall1_local.tga
+}
+
+textures/drm_textures/tekgreenblulight
+
+{
+	{
+		blend add
+		map textures/drm_textures/tekgreenblulight_add.tga
+	}
+    qer_editorimage	textures/drm_textures/tekgreenblulight_ed.tga
+    diffusemap	        textures/drm_textures/tekgreenblulight_d.tga
+    specularmap         textures/drm_textures/tekgreenblulight_s.tga
+    bumpmap             textures/drm_textures/tekgreenblulight_local.tga
+}
+
+
+textures/drm_textures/lift_floor
+
+{
+    qer_editorimage	textures/drm_textures/lift_floor_ed.tga
+    diffusemap	        textures/drm_textures/lift_floor_d.tga
+    specularmap         textures/drm_textures/lift_floor_s.tga
+    bumpmap             textures/drm_textures/lift_floor_local.tga
+}
+
+textures/drm_textures/demon_face
+
+{
+    qer_editorimage	textures/drm_textures/demon_face_ed.tga
+    diffusemap	        textures/drm_textures/demon_face_d.tga
+    specularmap         textures/drm_textures/demon_face_s.tga
+    bumpmap             textures/drm_textures/demon_face_local.tga
+}
+
+textures/drm_textures/flat_cel2
+
+{
+    qer_editorimage	textures/drm_textures/flat_cel2_ed.tga
+    diffusemap	        textures/drm_textures/flat_cel2_d.tga
+    specularmap         textures/drm_textures/flat_cel2_s.tga
+    bumpmap             textures/drm_textures/flat_cel2_local.tga
+}
+
+/*
+==================================================================
+************Textures with bump mapping removed********************
+==================================================================
+*/
+
+textures/drm_textures/exitdoor 
+
+{
+
+	{
+		blend 	add
+		map	textures/drm_textures/exitdoor_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/exitdoor_ed.tga
+    diffusemap	        textures/drm_textures/exitdoor_d.tga
+    specularmap         textures/drm_textures/exitdoor_s.tga
+//    bumpmap             textures/drm_textures/exitdoor_local.tga
+}
+
+textures/drm_textures/exitsign 
+
+{
+	{
+		blend add
+		map textures/drm_textures/exitsign_add.tga
+	}
+
+    qer_editorimage	textures/drm_textures/exitsign_ed.tga
+    diffusemap	        textures/drm_textures/exitsign_d.tga
+    specularmap         textures/drm_textures/exitsign_s.tga
+    bumpmap             textures/drm_textures/exitsign_local.tga	// Put back in
+
+}
+
+textures/drm_textures/bigdoor2 
+
+{
+    qer_editorimage	textures/drm_textures/bigdoor2_ed.tga
+    diffusemap	        textures/drm_textures/bigdoor2_d.tga
+    specularmap         textures/drm_textures/bigdoor2_s.tga
+    bumpmap             textures/drm_textures/bigdoor2_local.tga	// Put back in	
+
+}
+
+textures/drm_textures/support2
+
+{
+    qer_editorimage	textures/drm_textures/support2_ed.tga
+    diffusemap	        textures/drm_textures/support2_d.tga
+    specularmap         textures/drm_textures/support2_s.tga
+    bumpmap             textures/drm_textures/support2_local.tga	// Put back in
+}
+
+textures/drm_textures/bigdoor4
+
+{
+    qer_editorimage	textures/drm_textures/bigdoor4_ed.tga
+    diffusemap	        textures/drm_textures/bigdoor4_d.tga
+    specularmap         textures/drm_textures/bigdoor4_s.tga
+    bumpmap             textures/drm_textures/bigdoor4_local.tga	// Put back in
+}
+
+
+textures/drm_textures/plat1
+
+{
+    qer_editorimage	textures/drm_textures/plat1_ed.tga
+    diffusemap	        textures/drm_textures/plat1_d.tga
+    specularmap         textures/drm_textures/plat1_s.tga	
+    bumpmap             textures/drm_textures/plat1_local.tga		
+}
+
+textures/drm_textures/bigdoor1_uac
+
+{
+    qer_editorimage	textures/drm_textures/bigdoor1_uac_ed.tga
+    diffusemap	        textures/drm_textures/bigdoor1_uac_d.tga
+    specularmap         textures/drm_textures/bigdoor1_uac_s.tga
+    bumpmap             textures/drm_textures/bigdoor1_uac_local.tga	// Put back in	
+}
+
+/*
+==================================================================
+***************E1M3 Textures for gamehacker***********************
+==================================================================
+*/
+
+textures/drm_textures/other_textures/ASHWALL2
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/ASHWALL2.tga
+    	diffusemap	        textures/drm_textures/other_textures/ASHWALL2_d.tga
+    	specularmap         	textures/drm_textures/other_textures/ASHWALL2_s.tga
+	bumpmap			textures/drm_textures/other_textures/ASHWALL2_local.tga
+
+}
+
+
+textures/drm_textures/other_textures/BRNSMALC_CK
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/BRNSMALC_CK.tga
+    	diffusemap	        textures/drm_textures/other_textures/BRNSMALC_CK_d.tga
+    	specularmap         	textures/drm_textures/other_textures/BRNSMALC_CK_s.tga
+	bumpmap			textures/drm_textures/other_textures/BRNSMALC_CK_local.tga
+
+}
+
+
+textures/drm_textures/other_textures/BRNSMALL_CK
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/BRNSMALL_CK.tga
+    	diffusemap	        textures/drm_textures/other_textures/BRNSMALL_CK_d.tga
+    	specularmap         	textures/drm_textures/other_textures/BRNSMALL_CK_s.tga
+	bumpmap			textures/drm_textures/other_textures/BRNSMALL_CK_local.tga
+
+}
+
+textures/drm_textures/other_textures/BRNSMALR_CK
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/BRNSMALR_CK.tga
+    	diffusemap	        textures/drm_textures/other_textures/BRNSMALR_CK_d.tga
+    	specularmap         	textures/drm_textures/other_textures/BRNSMALR_CK_s.tga
+	bumpmap			textures/drm_textures/other_textures/BRNSMALR_CK_local.tga
+
+}
+
+
+textures/drm_textures/other_textures/MODWALL1
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/MODWALL1.tga
+    	diffusemap	        textures/drm_textures/other_textures/MODWALL1_d.tga
+    	specularmap         	textures/drm_textures/other_textures/MODWALL1_s.tga
+	bumpmap			textures/drm_textures/other_textures/MODWALL1_local.tga
+
+}
+
+textures/drm_textures/other_textures/MODWALL2
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/MODWALL2.tga
+    	diffusemap	        textures/drm_textures/other_textures/MODWALL2_d.tga
+    	specularmap         	textures/drm_textures/other_textures/MODWALL2_s.tga
+	bumpmap			textures/drm_textures/other_textures/MODWALL2_local.tga
+
+}
+
+textures/drm_textures/other_textures/MODWALL3
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/MODWALL3.tga
+    	diffusemap	        textures/drm_textures/other_textures/MODWALL3_d.tga
+    	specularmap         	textures/drm_textures/other_textures/MODWALL3_s.tga
+	bumpmap			textures/drm_textures/other_textures/MODWALL3_local.tga
+
+}
+
+textures/drm_textures/other_textures/MODWALL4
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/MODWALL4.tga
+    	diffusemap	        textures/drm_textures/other_textures/MODWALL4_d.tga
+    	specularmap         	textures/drm_textures/other_textures/MODWALL4_s.tga
+	bumpmap			textures/drm_textures/other_textures/MODWALL4_local.tga
+
+}
+
+textures/drm_textures/other_textures/PIPE1
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/PIPE1.tga
+    	diffusemap	        textures/drm_textures/other_textures/PIPE1_d.tga
+    	specularmap         	textures/drm_textures/other_textures/PIPE1_s.tga
+	bumpmap			textures/drm_textures/other_textures/PIPE1_local.tga
+
+}
+
+textures/drm_textures/other_textures/PIPE2
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/PIPE2.tga
+    	diffusemap	        textures/drm_textures/other_textures/PIPE2_d.tga
+    	specularmap         	textures/drm_textures/other_textures/PIPE2_s.tga
+	bumpmap			textures/drm_textures/other_textures/PIPE2_local.tga
+
+}
+
+textures/drm_textures/other_textures/PIPE4
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/PIPE4.tga
+    	diffusemap	        textures/drm_textures/other_textures/PIPE4_d.tga
+    	specularmap         	textures/drm_textures/other_textures/PIPE4_s.tga
+	bumpmap			textures/drm_textures/other_textures/PIPE4_local.tga
+
+}
+
+textures/drm_textures/other_textures/PIPE5
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/PIPE5.tga
+    	diffusemap	        textures/drm_textures/other_textures/PIPE5_d.tga
+    	specularmap         	textures/drm_textures/other_textures/PIPE5_s.tga
+	bumpmap			textures/drm_textures/other_textures/PIPE5_local.tga
+
+}
+
+textures/drm_textures/other_textures/PIPE6
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/PIPE6.tga
+    	diffusemap	        textures/drm_textures/other_textures/PIPE6_d.tga
+    	specularmap         	textures/drm_textures/other_textures/PIPE6_s.tga
+	bumpmap			textures/drm_textures/other_textures/PIPE6_local.tga
+
+}
+
+textures/drm_textures/other_textures/PIPES
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/PIPES.tga
+    	diffusemap	        textures/drm_textures/other_textures/PIPES_d.tga
+    	specularmap         	textures/drm_textures/other_textures/PIPES_s.tga
+	bumpmap			textures/drm_textures/other_textures/PIPES_local.tga
+
+}
+
+textures/drm_textures/other_textures/Flat_STEP1
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/Flat_STEP1.tga
+    	diffusemap	        textures/drm_textures/other_textures/Flat_STEP1_d.tga
+    	specularmap         	textures/drm_textures/other_textures/Flat_STEP1_s.tga
+	bumpmap			textures/drm_textures/other_textures/Flat_STEP1_local.tga
+
+}
+
+textures/drm_textures/other_textures/Flat_STEP2
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/Flat_STEP2.tga
+    	diffusemap	        textures/drm_textures/other_textures/Flat_STEP2_d.tga
+    	specularmap         	textures/drm_textures/other_textures/Flat_STEP2_s.tga
+	bumpmap			textures/drm_textures/other_textures/Flat_STEP2_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMPTALL
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMPTALL.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMPTALL_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMPTALL_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMPTALL_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMPWERD
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMPWERD.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMPWERD_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMPWERD_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMPWERD_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMSTA1
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMSTA1.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMSTA1_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMSTA1_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMSTA1_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMSTA2
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMSTA2.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMSTA2_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMSTA2_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMSTA2_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMSPAN
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMSPAN.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMSPAN_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMSPAN_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMSPAN_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMPTILE
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMPTILE.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMPTILE_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMPTILE_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMPTILE_local.tga
+
+}
+
+textures/drm_textures/other_textures/COMPBLUE
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/COMPBLUE.tga
+    	diffusemap	        textures/drm_textures/other_textures/COMPBLUE_d.tga
+    	specularmap         	textures/drm_textures/other_textures/COMPBLUE_s.tga
+	bumpmap			textures/drm_textures/other_textures/COMPBLUE_local.tga
+
+}
+
+
+textures/drm_textures/other_textures/New_wall
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/New_wall.tga
+    	diffusemap	        textures/drm_textures/other_textures/New_wall_d.tga
+    	specularmap         	textures/drm_textures/other_textures/New_wall_ed.tga
+	bumpmap			textures/drm_textures/other_textures/New_wall_local.tga
+
+}
+
+textures/drm_textures/other_textures/TEKWALL4
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/TEKWALL4.tga
+    	diffusemap	        textures/drm_textures/other_textures/TEKWALL4_d.tga
+    	specularmap         	textures/drm_textures/other_textures/TEKWALL4_S.tga
+	bumpmap			textures/drm_textures/other_textures/TEKWALL4_local.tga
+
+}
+
+textures/drm_textures/other_textures/WALL24_1
+
+{
+	qer_editorimage		textures/drm_textures/other_textures/WALL24_1.tga
+    	diffusemap	        textures/drm_textures/other_textures/WALL24_1_d.tga
+    	specularmap         	textures/drm_textures/other_textures/WALL24_1_S.tga
+	bumpmap			textures/drm_textures/other_textures/WALL24_1_local.tga
+
+}
+
+/*
+==================================================================
+***********************Transparent Textures***********************
+==================================================================
+*/
+
+textures/drm_textures/brnsmal1
+
+{
+
+	noShadows 
+ 	nonsolid
+   	noimpact 
+   	monsterclip
+  	playerclip
+   	qer_editorimage textures/drm_textures/brnsmal1_ed.tga
+	metal
+
+ { 
+       blend diffusemap 
+       map  textures/drm_textures/brnsmal1_d.tga
+       alphatest .6 
+ } 
+	
+}
+
+textures/drm_textures/fencing1
+
+{
+	noShadows 
+ 	nonsolid
+   	noimpact 
+   	monsterclip
+  	playerclip
+   	qer_editorimage textures/drm_textures/fencing1_ed.tga
+	metal
+ { 
+       blend diffusemap 
+       map  textures/drm_textures/fencing1_d.tga
+       alphatest .6 
+ } 
+	
+}
+
+/*
+==================================================================
+*****************Repeated Textures (But Modifyed)*****************
+==================================================================
+*/
+
+textures/drm_textures/startan3_3d_big
+
+{
+    qer_editorimage	textures/drm_textures/startan3_3d_big_ed.tga
+    diffusemap	        textures/drm_textures/startan3_3d_big_d.tga
+    specularmap         textures/drm_textures/startan3_3d_big_s.tga
+    bumpmap             textures/drm_textures/startan3_3d_big_local.tga
+}
+
+/*
+==================================================================
+**************************Textures To Fix*************************
+==================================================================
+*/
+
+textures/drm_textures/startan12
+
+{
+    qer_editorimage	textures/drm_textures/startan12_ed.tga
+    diffusemap	        textures/drm_textures/startan12_d.tga
+    specularmap         textures/drm_textures/startan12_s.tga
+    bumpmap             textures/drm_textures/startan12_local.tga
+}
+
+/*
+==================================================================
+****************************Old Textures**************************
+==================================================================
+*/
+
+textures/drm_textures/old_textures/e1m2_wall
+
+{
+    qer_editorimage	textures/drm_textures/old_textures/e1m2_wall_ed.tga
+    diffusemap	        textures/drm_textures/old_textures/e1m2_wall_d.tga
+    specularmap         textures/drm_textures/old_textures/e1m2_wall_s.tga
+    bumpmap             textures/drm_textures/old_textures/e1m2_wall_local.tga
+}

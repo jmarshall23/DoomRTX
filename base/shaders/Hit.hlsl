@@ -126,7 +126,7 @@ bool IsLightShadowed(float3 worldOrigin, float3 lightDir, float distance, float3
      	// Acceleration structure
      	SceneBVH,
      	// Flags can be used to specify the behavior upon hitting a surface
-     	RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
      	// Instance inclusion mask, which can be used to mask out some geometry to
      	// this ray by and-ing the mask with a geometry mask. The 0xFF flag then
      	// indicates no geometry will be masked
@@ -166,7 +166,7 @@ bool IsLightShadowed(float3 worldOrigin, float3 lightDir, float distance, float3
 	return world_dist < distance - 2;
 }
 
-float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
+float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal, bool checkSecondaryShadow)
 {	
 	 // Fire a shadow ray. The direction is hard-coded here, but can be fetched
      // from a constant-buffer
@@ -241,9 +241,15 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal)
 		{
 			float3 lightPos = (lightInfo[i].origin_radius.xyz);
 			float3 centerLightDir = lightPos - bounceWorldOrigin;
+			float lightDistance = length(centerLightDir);
 			r = AttenuationPointLight(bounceWorldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
+			if(checkSecondaryShadow && length(lightInfo[i].light_color2.xyz) > 400 && r > 0) {
+				if(IsLightShadowed(bounceWorldOrigin, normalize(centerLightDir), lightDistance, bounceNormal)) {
+					continue;
+				}
+			}
   		
-			//r = r * angle;
+			r = r * dot (normalize(centerLightDir), bounceNormal);
 		}
 		else // area lights
 		{
@@ -536,12 +542,12 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 			uint2 pixIdx = DispatchRaysIndex().xy;
 			uint r = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
 			
-			for(int i = 0; i < 5; i++)
+			for(int i = 0; i < 10; i++)
 			{
 				float3 worldDir = getCosHemisphereSample(r , orig_normal);
-				bounce += FireSecondRay(worldOrigin, 250, worldDir);
+				bounce += FireSecondRay(worldOrigin, 1000, worldDir, false);
 			}
-			bounce = (bounce / 5) * aoPixel;
+			bounce = (bounce / 10) * aoPixel;
 		}
 	}
 

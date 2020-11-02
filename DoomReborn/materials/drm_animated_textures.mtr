@@ -1,0 +1,51 @@
+/*
+==================================================================
+**************Doom Reborn Mod Amnimated Textures******************
+==================================================================
+*/
+
+// Nukage
+
+textures/drm_textures/animated/nukage/nukage1_d.tga
+{ 
+   qer_editorimage textures/drm_textures/animated/nukage/nukage1_ed.tga
+  
+   { 
+      if ( ( time * 5 ) % 3 == 0 ) 
+      blend    diffusemap 
+      map   textures/drm_textures/animated/nukage/nukage1_d.tga
+   } 
+   { 
+      if ( ( time * 5 ) % 3 == 1 ) 
+      blend    diffusemap 
+      map   textures/drm_textures/animated/nukage/nukage2_d.tga
+   } 
+   { 
+      if ( ( time * 5 ) % 3 == 2 ) 
+      blend    diffusemap 
+      map   textures/drm_textures/animated/nukage/nukage3_d.tga
+   } 
+}
+
+// Water
+
+textures/drm_textures/animated/water/water_1_d
+{ 
+   qer_editorimage textures/drm_textures/animated/nukage/water_1_ed
+  
+   { 
+      if ( ( time * 5 ) % 3 == 0 ) 
+      blend    diffusemap 
+      map   textures/drm_textures/animated/water/water_1_d.tga
+   } 
+   { 
+      if ( ( time * 5 ) % 3 == 1 ) 
+      blend    diffusemap 
+      map   textures/drm_textures/animated/water/water_2_d.tga
+   } 
+   { 
+      if ( ( time * 5 ) % 3 == 2 ) 
+      blend    diffusemap 
+      map   textures/drm_textures/animated/water/water_3_d.tga
+   } 
+}

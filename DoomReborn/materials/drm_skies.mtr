@@ -1,0 +1,43 @@
+/*
+==================================================================
+*******************Doom Reborn Mod Skies**************************
+==================================================================
+*/
+
+
+/* Sky Test Texture = Added by >>GameHacKeR<< */ 
+
+textures/drm_skies/doom1sky
+{
+		qer_editorimage	textures/drm_skies/doom1sky.tga
+
+	//	emissive 4800 1 1 1
+
+	noFragment
+	noshadows
+	nooverlays
+	forceOpaque				// so transparent windows can draw on top of it
+	{
+		blend		add		// so transparent windows can draw on top of it
+	      	cameraCubeMap	env/doom1sky
+		texgen		skybox
+		texgen			wobblesky .00 .00 .00
+	}
+}
+
+textures/drm_skies/doom2sky1
+{
+		qer_editorimage	textures/drm_skies/doom2sky1.tga
+	noFragment
+	noshadows
+	nooverlays
+	forceOpaque				// so transparent windows can draw on top of it
+	{
+		blend		add		// so transparent windows can draw on top of it
+	      	cameraCubeMap	env/doom2sky1
+		texgen		skybox
+		texgen			wobblesky .00 .00 .00
+	}
+}
+
+/* Sky Test Texture End */ 

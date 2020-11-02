@@ -1,0 +1,13 @@
+/*
+==================================================================
+****************Doom Reborn Mod Common Textures*******************
+==================================================================
+*/
+
+textures/drm_textures/common/null
+
+{
+      qer_editorimage	    textures/drm_textures/common/null_ed.tga
+      diffusemap	    textures/drm_textures/common/null_d.tga
+}
+

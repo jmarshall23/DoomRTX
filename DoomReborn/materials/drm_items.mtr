@@ -1,0 +1,276 @@
+/*
+==================================================================
+**************Doom Reborn Mod Item Model Textures*****************
+==================================================================
+*/
+
+//==================
+// The Vial model
+//==================
+
+models/drm_items/vial/vialglass
+
+{
+	noShadows
+	noselfShadow
+	translucent
+	twosided
+	glass
+	//forceoverlays
+
+   diffusemap	        models/drm_items/vial/glass_d.tga
+   specularmap          models/drm_items/vial/glass_s.tga
+   bumpmap		models/drm_items/vial/glass_local.tga
+}
+
+models/drm_items/vial/vialstopper
+
+{
+	noShadows
+	noselfShadow
+
+   diffusemap	        models/drm_items/vial/stopper.tga
+}
+
+models/drm_items/vial/vialpotion
+
+{
+	noShadows
+	noselfShadow
+	translucent
+
+	{       
+      	 blend	add
+	 map	models/drm_items/vial/potion_d.tga
+		rgb		fadeTable[time] + 5 * 0.01
+	}
+
+    diffusemap	        models/drm_items/vial/potion_d.tga
+}
+
+models/drm_items/vial/orb
+{
+ qer_editorimage models/drm_items/vial/vialorb_fx.tga
+ noSelfShadow
+ noShadows
+ twosided
+ deform sprite
+
+ 	{
+ 	blend add
+ 	map models/drm_items/vial/vialorb_fx.tga
+	rgb		fadeTable[time] + 3 * 0.01
+  	}
+}
+
+//==================
+// The clip model
+//==================
+
+models/drm_items/clip/clip
+
+{
+    qer_editorimage	models/drm_items/clip/clip_ed.tga
+    diffusemap	        models/drm_items/clip/clip_d.tga
+    specularmap         models/drm_items/clip/clip_s.tga
+    bumpmap             models/drm_items/clip/clip_local.tga
+}
+
+entityDef ammo_bullets_small {
+	"editor_color"			".3 .3 1"
+	"editor_mins"			"-16 -16 0"
+	"editor_maxs"			"16 16 32"
+	"editor_rotatable"		"1"
+
+	"editor_usage"			"Small bullets"
+
+	"spawnclass"			"idItem"
+	"model"					"models/drm_items/clip/clip.ase"
+	"snd_acquire"			"sound/items/clip_pickup_small.wav"
+	"size"					"32 32 32"
+	"inv_ammo_bullets"		"12"
+	"inv_item"				"4"
+	"inv_name"				"Bullets"
+	"editor_copy100"		"inv_item"
+	"snd_respawn"			"sound_item_respawn"
+	
+}
+
+//=====================
+// Large Medkit Model
+//=====================
+
+models/drm_items/medkit_large/medkit_large
+
+{
+    qer_editorimage	models/drm_items/medkit_large/medkit_large_ed.tga
+    diffusemap	        models/drm_items/medkit_large/medkit_large_d.tga
+    specularmap         models/drm_items/medkit_large/medkit_large_s.tga
+    bumpmap             models/drm_items/medkit_large/medkit_large_local.tga
+}
+
+
+//=====================
+// Small Medkit Model
+//=====================
+
+models/drm_items/medkit_small/medkit_small
+
+{
+    qer_editorimage	models/drm_items/medkit_small/medkit_small_ed.tga
+    diffusemap	        models/drm_items/medkit_small/medkit_small_d.tga
+    specularmap         models/drm_items/medkit_small/medkit_small_s.tga
+    bumpmap             models/drm_items/medkit_small/medkit_small_local.tga
+}
+
+//=====================
+// Armor Bonus Model
+//=====================
+
+models/drm_items/armor_bonus/helmet
+
+{
+	noShadows
+	noselfShadow
+
+    diffusemap	        models/drm_items/armor_bonus/armor_d.tga
+    specularmap         models/drm_items/armor_bonus/armor_s.tga
+    bumpmap             models/drm_items/armor_bonus/armor_local.tga
+
+}
+
+models/drm_items/armor_bonus/glow
+
+{
+	noShadows
+	noselfShadow
+	translucent
+
+	{       
+      	 blend	add
+	 map	models/drm_items/armor_bonus/glow.tga
+		rgb		fadeTable[time] + 5 * 0.01
+	}
+}
+
+models/drm_items/armor_bonus/orb
+{
+ qer_editorimage models/drm_items/armor_bonus/armororb_fx.tga
+ noSelfShadow
+ noShadows
+ twosided
+ deform sprite
+
+ 	{
+ 	blend add
+ 	map models/drm_items/armor_bonus/armororb_fx.tga
+	rgb		fadeTable[time] + 3 * 0.01
+  	}
+}
+
+//=====================
+// Shotgun Shell Box
+//=====================
+
+models/drm_items/shell_box/shellbox
+
+{
+
+    qer_editorimage	models/drm_items/shell_box/shellbox_ed.tga
+    diffusemap	        models/drm_items/shell_box/shellbox_d.tga
+    specularmap 	models/drm_items/shell_box/shellbox_s.tga
+
+    bumpmap             models/drm_items/shell_box/shellbox_local.tga
+
+}
+
+//=====================
+// Small Shells 
+//=====================
+
+models/drm_items/shells/sshells
+
+{
+
+    qer_editorimage	models/drm_items/shells/sshells_ed.tga
+    diffusemap	        models/drm_items/shells/sshells_d.tga
+    specularmap         models/drm_items/shells/sshells_s.tga
+
+    bumpmap             models/drm_items/shells/sshells_local.tga
+
+}
+
+
+//=====================
+// Keys / Key Cards
+//=====================
+
+
+// Blue Key
+
+models/drm_items/keys/key_blue
+
+{
+	{
+		blend add
+		map models/drm_items/keys/key_add.tga
+	}
+    qer_editorimage	models/drm_items/keys/key_blue_ed.tga
+    diffusemap	        models/drm_items/keys/key_blue_d.tga
+ 
+    specularmap         models/drm_items/keys/key_s.tga
+
+    bumpmap             models/drm_items/keys/key_local.tga
+
+}
+
+// Red Key
+
+models/drm_items/keys/key_red
+{
+	{
+		blend add
+		map models/drm_items/keys/key_add.tga
+	}
+    qer_editorimage	models/drm_items/keys/key_red_ed.tga
+    diffusemap	        models/drm_items/keys/key_red_d.tga
+ 
+    specularmap         models/drm_items/keys/key_s.tga
+
+    bumpmap             models/drm_items/keys/key_local.tga
+
+}
+
+//Yellow Key
+
+models/drm_items/keys/key_yellow
+{
+	{
+		blend add
+		map models/drm_items/keys/key_add.tga
+	}
+    qer_editorimage	models/drm_items/keys/key_yellow_ed.tga
+    diffusemap	        models/drm_items/keys/key_yellow_d.tga
+ 
+    specularmap         models/drm_items/keys/key_s.tga
+
+    bumpmap             models/drm_items/keys/key_local.tga
+
+}
+
+//=====================
+// Bullets Box Large
+//=====================
+
+models/drm_items/bullets_box_large/bullets_box_large
+
+{
+
+    qer_editorimage	models/drm_items/bullets_box_large/bullets_box_large_ed.tga
+    diffusemap	        models/drm_items/bullets_box_large/bullets_box_large_d.tga
+
+    specularmap 	models/drm_items/bullets_box_large/bullets_box_large_s.tga
+
+    bumpmap             models/drm_items/bullets_box_large/bullets_box_large_local.tga
+
+}
