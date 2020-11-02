@@ -435,7 +435,7 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 
 	// a projected light will have one shadowFrustum, a point light will have
 	// six unless the light center is outside the box
-	R_MakeShadowFrustums( light );
+	//R_MakeShadowFrustums( light );
 }
 
 /*

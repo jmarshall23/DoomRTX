@@ -761,12 +761,9 @@
     <ClCompile Include="renderer\tr_polytope.cpp" />
     <ClCompile Include="renderer\tr_render.cpp" />
     <ClCompile Include="renderer\tr_rendertools.cpp" />
-    <ClCompile Include="renderer\tr_shadowbounds.cpp" />
-    <ClCompile Include="renderer\tr_stencilshadow.cpp" />
     <ClCompile Include="renderer\tr_subview.cpp" />
     <ClCompile Include="renderer\tr_trace.cpp" />
     <ClCompile Include="renderer\tr_trisurf.cpp" />
-    <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
     <ClCompile Include="renderer\jpeg-6\jcapimin.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -1441,7 +1438,6 @@
     <ClCompile Include="tools\compilers\dmap\optimize.cpp" />
     <ClCompile Include="tools\compilers\dmap\output.cpp" />
     <ClCompile Include="tools\compilers\dmap\portals.cpp" />
-    <ClCompile Include="tools\compilers\dmap\shadowopt3.cpp" />
     <ClCompile Include="tools\compilers\dmap\tritjunction.cpp" />
     <ClCompile Include="tools\compilers\dmap\tritools.cpp" />
     <ClCompile Include="tools\compilers\dmap\ubrush.cpp" />

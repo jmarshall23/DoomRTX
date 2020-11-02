@@ -692,11 +692,6 @@ idScreenRect idInteraction::CalcInteractionScissorRectangle( const idFrustum &vi
 		return lightDef->viewLight->scissorRect;
 	}
 
-	if ( r_useInteractionScissors.GetInteger() < 0 ) {
-		// this is the code from Cass at nvidia, it is more precise, but slower
-		return R_CalcIntersectionScissor( lightDef, entityDef, tr.viewDef );
-	}
-
 	// the following is Mr.E's code
 
 	// frustum must be initialized and valid
@@ -836,16 +831,6 @@ void idInteraction::CreateInteraction( const idRenderModel *model ) {
 		return;
 	}
 
-	// use the turbo shadow path
-	shadowGen_t shadowGen = SG_DYNAMIC;
-
-	// really large models, like outside terrain meshes, should use
-	// the more exactly culled static shadow path instead of the turbo shadow path.
-	// FIXME: this is a HACK, we should probably have a material flag.
-	if ( bounds[1][0] - bounds[0][0] > 3000 ) {
-		shadowGen = SG_STATIC;
-	}
-
 	//
 	// create slots for each of the model's surfaces
 	//
@@ -905,25 +890,25 @@ void idInteraction::CreateInteraction( const idRenderModel *model ) {
 		}
 
 		// if the interaction has shadows and this surface casts a shadow
-		if ( HasShadows() && shader->SurfaceCastsShadow() && tri->silEdges != NULL ) {
-
-			// if the light has an optimized shadow volume, don't create shadows for any models that are part of the base areas
-			if ( lightDef->parms.prelightModel == NULL || !model->IsStaticWorldModel() || !r_useOptimizedShadows.GetBool() ) {
-
-				// this is the only place during gameplay (outside the utilities) that R_CreateShadowVolume() is called
-				sint->shadowTris = R_CreateShadowVolume( entityDef, tri, lightDef, shadowGen, sint->cullInfo );
-				if ( sint->shadowTris ) {
-					if ( shader->Coverage() != MC_OPAQUE || ( !r_skipSuppress.GetBool() && entityDef->parms.suppressSurfaceInViewID ) ) {
-						// if any surface is a shadow-casting perforated or translucent surface, or the
-						// base surface is suppressed in the view (world weapon shadows) we can't use
-						// the external shadow optimizations because we can see through some of the faces
-						sint->shadowTris->numShadowIndexesNoCaps = sint->shadowTris->numIndexes;
-						sint->shadowTris->numShadowIndexesNoFrontCaps = sint->shadowTris->numIndexes;
-					}
-				}
-				interactionGenerated = true;
-			}
-		}
+		//if ( HasShadows() && shader->SurfaceCastsShadow() && tri->silEdges != NULL ) {
+		//
+		//	// if the light has an optimized shadow volume, don't create shadows for any models that are part of the base areas
+		//	if ( lightDef->parms.prelightModel == NULL || !model->IsStaticWorldModel() || !r_useOptimizedShadows.GetBool() ) {
+		//
+		//		// this is the only place during gameplay (outside the utilities) that R_CreateShadowVolume() is called
+		//		sint->shadowTris = R_CreateShadowVolume( entityDef, tri, lightDef, shadowGen, sint->cullInfo );
+		//		if ( sint->shadowTris ) {
+		//			if ( shader->Coverage() != MC_OPAQUE || ( !r_skipSuppress.GetBool() && entityDef->parms.suppressSurfaceInViewID ) ) {
+		//				// if any surface is a shadow-casting perforated or translucent surface, or the
+		//				// base surface is suppressed in the view (world weapon shadows) we can't use
+		//				// the external shadow optimizations because we can see through some of the faces
+		//				sint->shadowTris->numShadowIndexesNoCaps = sint->shadowTris->numIndexes;
+		//				sint->shadowTris->numShadowIndexesNoFrontCaps = sint->shadowTris->numIndexes;
+		//			}
+		//		}
+		//		interactionGenerated = true;
+		//	}
+		//}
 
 		// free the cull information when it's no longer needed
 		if ( sint->lightTris != LIGHT_TRIS_DEFERRED ) {
@@ -1024,43 +1009,12 @@ instantiate the dynamic model to find out
 void idInteraction::AddActiveInteraction( void ) {
 	viewLight_t *	vLight;
 	viewEntity_t *	vEntity;
-	idScreenRect	shadowScissor;
 	idScreenRect	lightScissor;
 	idVec3			localLightOrigin;
 	idVec3			localViewOrigin;
 
 	vLight = lightDef->viewLight;
 	vEntity = entityDef->viewEntity;
-
-	// do not waste time culling the interaction frustum if there will be no shadows
-	if ( !HasShadows() ) {
-
-		// use the entity scissor rectangle
-		shadowScissor = vEntity->scissorRect;
-
-	// culling does not seem to be worth it for static world models
-	} else if ( entityDef->parms.hModel->IsStaticWorldModel() ) {
-
-		// use the light scissor rectangle
-		shadowScissor = vLight->scissorRect;
-
-	} else {
-
-		// try to cull the interaction
-		// this will also cull the case where the light origin is inside the
-		// view frustum and the entity bounds are outside the view frustum
-		if ( CullInteractionByViewFrustum( tr.viewDef->viewFrustum ) ) {
-			return;
-		}
-
-		// calculate the shadow scissor rectangle
-		shadowScissor = CalcInteractionScissorRectangle( tr.viewDef->viewFrustum );
-	}
-
-	// get out before making the dynamic model if the shadow scissor rectangle is empty
-	if ( shadowScissor.IsEmpty() ) {
-		return;
-	}
 
 	// We will need the dynamic surface created to make interactions, even if the
 	// model itself wasn't visible.  This just returns a cached value after it
@@ -1234,10 +1188,10 @@ void idInteraction::AddActiveInteraction( void ) {
 
 			if ( sint->shader->TestMaterialFlag( MF_NOSELFSHADOW ) ) {
 				R_LinkLightSurf( &vLight->localShadows,
-					shadowTris, vEntity, lightDef, NULL, shadowScissor, inside );
+					shadowTris, vEntity, lightDef, NULL, vEntity->scissorRect, inside );
 			} else {
 				R_LinkLightSurf( &vLight->globalShadows,
-					shadowTris, vEntity, lightDef, NULL, shadowScissor, inside );
+					shadowTris, vEntity, lightDef, NULL, vEntity->scissorRect, inside );
 			}
 		}
 	}

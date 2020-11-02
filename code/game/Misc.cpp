@@ -1025,6 +1025,8 @@ void idAnimated::Spawn( void ) {
 	if ( wait >= 0 ) {
 		PostEventSec( &EV_Activate, wait, this );
 	}
+
+	GetRenderEntity()->dxrModel = renderModelManager->CreateDXRMeshInstance(GetRenderEntity()->hModel);
 }
 
 /*
