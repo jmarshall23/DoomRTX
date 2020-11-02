@@ -416,13 +416,12 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   }
   
   float3 normal = BTriVertex[vertId + 0].normal;
-  float3 orig_normal = BTriVertex[vertId + 0].normal;
-  bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
-  //if (isBackFacing)
-	//normal = -normal;
-	
   float3 tangent = BTriVertex[vertId + 0].tangent;
-  float3 binormal = cross(tangent, orig_normal);
+  float3 binormal = cross(tangent, normal);
+  
+  bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
+  if (isBackFacing)
+	normal = -normal;
   
   // 2 is emissive
   float spec_contrib = 0.0;
@@ -441,7 +440,8 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   		float3 normalLightDir;
   		normalLightDir.x = dot(tangent, centerLightDir);
   		normalLightDir.y = dot(binormal, centerLightDir);
-  		normalLightDir.z = dot(orig_normal, centerLightDir);
+  		normalLightDir.z = dot(normal, centerLightDir);
+		
   		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
   		
   		falloff = clamp(falloff, 0.0, 1.0) * dot( normalize(normalLightDir), hitNormalMap );
@@ -485,7 +485,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   		float3 areaLightDir;
   		areaLightDir.x = dot(tangent, centerLightDir);
   		areaLightDir.y = dot(binormal, centerLightDir);
-  		areaLightDir.z = dot(orig_normal, centerLightDir);
+  		areaLightDir.z = dot(normal, centerLightDir);
   		
   		float lightDistance = length(centerLightDir);
 		 		
@@ -525,7 +525,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 		uint randSeed = initRand( pixIdx.x + pixIdx.y * 1920, 0 );
 		int r = length(float3(worldOrigin.x + worldOrigin.y, worldOrigin.x + worldOrigin.y, worldOrigin.x + worldOrigin.y)) * i;
 		float3 worldDir = getCosHemisphereSample(r, normal);
-		if(IsLightShadowed(worldOrigin + (normal * 10), worldDir, 5 * ( i * 0.1), normal)) {
+		if(IsLightShadowed(worldOrigin, worldDir, 5 * ( i * 0.1), normal)) {
 			ndotl *= 0.1;
 			aoPixel *= 0.5;
 		}
@@ -544,10 +544,10 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 			
 			for(int i = 0; i < 10; i++)
 			{
-				float3 worldDir = getCosHemisphereSample(r , orig_normal);
+				float3 worldDir = getCosHemisphereSample(r , normal);
 				bounce += FireSecondRay(worldOrigin, 1000, worldDir, false);
 			}
-			bounce = (bounce / 10) * aoPixel;
+			bounce = (bounce / 10) * aoPixel * 0.5;
 		}
 	}
 
@@ -558,7 +558,8 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   //ndotl = max(ndotl, 0.1);
   //ndotl *= float3(227.0 / 255.0, 107.0 / 255.0, 0.0);  
 
-  payload.colorAndDistance = float4((hitColor * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl)), 1.0);
+  // * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl))
+  payload.colorAndDistance = float4(hitColor, 1.0);
   payload.lightColor = float4(bounce + ndotl, BTriVertex[vertId + 0].st.z);
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = spec_final;

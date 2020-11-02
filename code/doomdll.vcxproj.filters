@@ -228,12 +228,6 @@
     <ClInclude Include="renderer\ModelOverlay.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\qgl.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\qgl_linked.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\RenderSystem.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -820,9 +814,6 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\tr_main.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\tr_orderIndexes.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\tr_polytope.cpp">

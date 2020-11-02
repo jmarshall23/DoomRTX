@@ -69,3 +69,24 @@
 [1028/235058.735:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
 [1028/235058.766:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
 [1028/235058.995:INFO:CONSOLE(0)] "Access to XMLHttpRequest at 'https://software.intel.com/sites/products/vtune/news.json?id=1603954258891' from origin 'https://127.0.0.1:61003' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.", source: https://127.0.0.1:61003/extension-ui/Session-1-1603954256727?passphrase=23da89d9-4402-4ad0-8f64-3510d246c0db (0)
+[1102/142923.726:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.027:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.028:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.033:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.038:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.041:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.045:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.049:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.055:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.059:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.063:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.066:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.072:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.080:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.085:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.089:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.582:INFO:CONSOLE(0)] "Uncaught (in promise) #<Object>", source: https://127.0.0.1:58684/login/passphrase?passphrase=8016b80f-9333-418f-beac-cc85f9939735 (0)
+[1102/142924.596:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.628:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/142924.771:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202
+[1102/144219.229:ERROR:ssl_client_socket_impl.cc(935)] handshake failed; returned -1, SSL error code 1, net_error -202

@@ -490,8 +490,6 @@
     <ClInclude Include="renderer\ModelDecal.h" />
     <ClInclude Include="renderer\ModelManager.h" />
     <ClInclude Include="renderer\ModelOverlay.h" />
-    <ClInclude Include="renderer\qgl.h" />
-    <ClInclude Include="renderer\qgl_linked.h" />
     <ClInclude Include="renderer\RenderSystem.h" />
     <ClInclude Include="renderer\RenderWorld.h" />
     <ClInclude Include="renderer\RenderWorld_local.h" />
@@ -753,7 +751,6 @@
     <ClCompile Include="renderer\tr_light.cpp" />
     <ClCompile Include="renderer\tr_lightrun.cpp" />
     <ClCompile Include="renderer\tr_main.cpp" />
-    <ClCompile Include="renderer\tr_orderIndexes.cpp" />
     <ClCompile Include="renderer\tr_polytope.cpp" />
     <ClCompile Include="renderer\tr_render.cpp" />
     <ClCompile Include="renderer\tr_rendertools.cpp" />

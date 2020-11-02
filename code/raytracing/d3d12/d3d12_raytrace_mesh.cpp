@@ -221,6 +221,8 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 			common->Printf("Failed to find mega info for %s\n", fa->shader->GetName());
 			continue;
 		}
+
+		R_DeriveTangents(tri);
 		
 		surf.startVertex = mesh->meshVertexes.size();
 		surf.numVertexes = 0;
