@@ -719,7 +719,6 @@
     </ClCompile>
     <ClCompile Include="raytracing\math\matrix.cpp" />
     <ClCompile Include="renderer\Cinematic.cpp" />
-    <ClCompile Include="renderer\draw_common.cpp" />
     <ClCompile Include="renderer\GuiModel.cpp" />
     <ClCompile Include="renderer\Image_files.cpp" />
     <ClCompile Include="renderer\Image_init.cpp" />

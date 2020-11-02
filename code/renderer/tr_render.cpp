@@ -685,10 +685,12 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf, void (*DrawInterac
 
 		memcpy( inter.lightProjection, lightProject, sizeof( inter.lightProjection ) );
 		// now multiply the texgen by the light texture matrix
-		if ( lightStage->texture.hasMatrix ) {
-			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
-			RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), backEnd.lightTextureMatrix );
-		}
+// jmarshall - this is now done in shaders.
+		//if ( lightStage->texture.hasMatrix ) {
+		//	RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
+		//	RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), backEnd.lightTextureMatrix );
+		//}
+// jmarshall end
 
 		inter.bumpImage = NULL;
 		inter.specularImage = NULL;
@@ -772,6 +774,60 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf, void (*DrawInterac
 		RB_LeaveDepthHack();
 	}
 }
+
+
+/*
+=============
+RB_STD_DrawView
+=============
+*/
+void RB_STD_DrawView(void) {
+	viewLight_t* vLight;
+
+	if (tr.viewDef == NULL)
+		return;
+
+	for (vLight = backEnd.viewDef->viewLights; vLight; vLight = vLight->next) {
+		backEnd.vLight = vLight;
+		GL_RegisterWorldLight(vLight->lightDef, vLight->lightDef->parms.origin.x, vLight->lightDef->parms.origin.y, vLight->lightDef->parms.origin.z, vLight->lightDef->parms.lightRadius, 0, vLight->lightDef->parms.shaderParms[SHADERPARM_RED] * 0.5, vLight->lightDef->parms.shaderParms[SHADERPARM_GREEN] * 0.5, vLight->lightDef->parms.shaderParms[SHADERPARM_BLUE] * 0.5);
+	}
+
+	viewEntity_t* vEntity;
+	int index = 0;
+	for (vEntity = tr.viewDef->viewEntitys; vEntity; vEntity = vEntity->next) {
+		const renderEntity_t* currententity = &vEntity->entityDef->parms;
+		if (currententity == NULL) {
+			continue;
+		}
+
+		idRenderModel* qmodel = currententity->hModel;
+
+		if (qmodel->GetNumDXRFrames() <= 0)
+			continue;
+
+		for (int i = 0; i < qmodel->NumSurfaces(); i++)
+		{
+			const modelSurface_t* surface = qmodel->Surface(i);
+			const icdEmissiveStage& emissive = surface->shader->GetEmissiveStage();
+
+			idBounds bounds = surface->geometry->bounds + currententity->origin;
+
+			if (emissive.isEnabled) {
+				idAngles angle = currententity->axis.ToAngles();
+				idVec3 normal;
+				float yaw = angle.yaw;
+				float pitch = angle.pitch;
+				float roll = angle.roll;
+				normal.x = -cos(yaw) * sin(pitch) * sin(roll) - sin(yaw) * cos(roll);
+				normal.y = -sin(yaw) * sin(pitch) * sin(roll) + cos(yaw) * cos(roll);
+				normal.z = cos(pitch) * sin(roll);
+
+				GL_RegisterWorldAreaLight(normal, bounds[0], bounds[1], 0, emissive.radius, emissive.color[0], emissive.color[1], emissive.color[2]);
+			}
+		}
+	}
+}
+
 
 /*
 =============

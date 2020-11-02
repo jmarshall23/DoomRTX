@@ -723,9 +723,6 @@
     <ClCompile Include="renderer\Cinematic.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\draw_common.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\GuiModel.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
