@@ -1611,7 +1611,6 @@ idScreenRect R_CalcIntersectionScissor( const idRenderLightLocal * lightDef,
 
 #include "RenderWorld_local.h"
 #include "GuiModel.h"
-#include "VertexCache.h"
 
 void LoadTGA(const char* name, byte** pic, int* width, int* height, ID_TIME_T* timestamp);
 

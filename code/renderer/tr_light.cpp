@@ -50,18 +50,6 @@ Create it if needed
 ==================
 */
 bool R_CreateAmbientCache( srfTriangles_t *tri, bool needsLighting ) {
-	if ( tri->ambientCache ) {
-		return true;
-	}
-	// we are going to use it for drawing, so make sure we have the tangents and normals
-	if ( needsLighting && !tri->tangentsCalculated ) {
-		R_DeriveTangents( tri );
-	}
-
-	vertexCache.Alloc( tri->verts, tri->numVerts * sizeof( tri->verts[0] ), &tri->ambientCache );
-	if ( !tri->ambientCache ) {
-		return false;
-	}
 	return true;
 }
 
@@ -123,10 +111,10 @@ bool R_CreateLightingCache( const idRenderEntityLocal *ent, const idRenderLightL
 
 #endif
 
-	vertexCache.Alloc( cache, size, &tri->lightingCache );
-	if ( !tri->lightingCache ) {
-		return false;
-	}
+	//vertexCache.Alloc( cache, size, &tri->lightingCache );
+	//if ( !tri->lightingCache ) {
+	//	return false;
+	//}
 	return true;
 }
 
@@ -142,7 +130,7 @@ void R_CreatePrivateShadowCache( srfTriangles_t *tri ) {
 		return;
 	}
 
-	vertexCache.Alloc( tri->shadowVertexes, tri->numVerts * sizeof( *tri->shadowVertexes ), &tri->shadowCache );
+	//vertexCache.Alloc( tri->shadowVertexes, tri->numVerts * sizeof( *tri->shadowVertexes ), &tri->shadowCache );
 }
 
 /*
@@ -182,7 +170,7 @@ void R_CreateVertexProgramShadowCache( srfTriangles_t *tri ) {
 
 #endif
 
-	vertexCache.Alloc( temp, tri->numVerts * 2 * sizeof( shadowCache_t ), &tri->shadowCache );
+	//vertexCache.Alloc( temp, tri->numVerts * 2 * sizeof( shadowCache_t ), &tri->shadowCache );
 }
 
 /*
@@ -207,7 +195,7 @@ void R_SkyboxTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 		texCoords[i][2] = verts[i].xyz[2] - localViewOrigin[2];
 	}
 
-	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
+//	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
 }
 
 /*
@@ -289,7 +277,7 @@ void R_WobbleskyTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 		R_LocalPointToGlobal( transform, v, texCoords[i] );
 	}
 
-	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
+//	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
 }
 
 /*
@@ -359,7 +347,7 @@ static void R_SpecularTexGen( drawSurf_t *surf, const idVec3 &globalLightOrigin,
 
 #endif
 
-	surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
+	//surf->dynamicTexCoords = vertexCache.AllocFrameTemp( texCoords, size );
 }
 
 
@@ -997,16 +985,16 @@ void R_AddLightSurfaces( void ) {
 
 		// fog lights will need to draw the light frustum triangles, so make sure they
 		// are in the vertex cache
-		if ( lightShader->IsFogLight() ) {
-			if ( !light->frustumTris->ambientCache ) {
-				if ( !R_CreateAmbientCache( light->frustumTris, false ) ) {
-					// skip if we are out of vertex memory
-					continue;
-				}
-			}
-			// touch the surface so it won't get purged
-			vertexCache.Touch( light->frustumTris->ambientCache );
-		}
+		//if ( lightShader->IsFogLight() ) {
+		//	if ( !light->frustumTris->ambientCache ) {
+		//		if ( !R_CreateAmbientCache( light->frustumTris, false ) ) {
+		//			// skip if we are out of vertex memory
+		//			continue;
+		//		}
+		//	}
+		//	// touch the surface so it won't get purged
+		//	vertexCache.Touch( light->frustumTris->ambientCache );
+		//}
 
 		// add the prelight shadows for the static world geometry
 		if ( light->parms.prelightModel && r_useOptimizedShadows.GetBool() ) {
@@ -1028,22 +1016,22 @@ void R_AddLightSurfaces( void ) {
 			}
 
 			// if we have been purged, re-upload the shadowVertexes
-			if ( !tri->shadowCache ) {
-				R_CreatePrivateShadowCache( tri );
-				if ( !tri->shadowCache ) {
-					continue;
-				}
-			}
-
-			// touch the shadow surface so it won't get purged
-			vertexCache.Touch( tri->shadowCache );
-
-			if ( !tri->indexCache && r_useIndexBuffers.GetBool() ) {
-				vertexCache.Alloc( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ), &tri->indexCache, true );
-			}
-			if ( tri->indexCache ) {
-				vertexCache.Touch( tri->indexCache );
-			}
+			//if ( !tri->shadowCache ) {
+			//	R_CreatePrivateShadowCache( tri );
+			//	if ( !tri->shadowCache ) {
+			//		continue;
+			//	}
+			//}
+			//
+			//// touch the shadow surface so it won't get purged
+			//vertexCache.Touch( tri->shadowCache );
+			//
+			//if ( !tri->indexCache && r_useIndexBuffers.GetBool() ) {
+			//	vertexCache.Alloc( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ), &tri->indexCache, true );
+			//}
+			//if ( tri->indexCache ) {
+			//	vertexCache.Touch( tri->indexCache );
+			//}
 
 			R_LinkLightSurf( &vLight->globalShadows, tri, NULL, light, NULL, vLight->scissorRect, true /* FIXME? */ );
 		}
@@ -1408,14 +1396,14 @@ static void R_AddAmbientDrawsurfs( viewEntity_t *vEntity ) {
 				return;
 			}
 			// touch it so it won't get purged
-			vertexCache.Touch( tri->ambientCache );
-
-			if ( r_useIndexBuffers.GetBool() && !tri->indexCache ) {
-				vertexCache.Alloc( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ), &tri->indexCache, true );
-			}
-			if ( tri->indexCache ) {
-				vertexCache.Touch( tri->indexCache );
-			}
+			//vertexCache.Touch( tri->ambientCache );
+			//
+			//if ( r_useIndexBuffers.GetBool() && !tri->indexCache ) {
+			//	vertexCache.Alloc( tri->indexes, tri->numIndexes * sizeof( tri->indexes[0] ), &tri->indexCache, true );
+			//}
+			//if ( tri->indexCache ) {
+			//	vertexCache.Touch( tri->indexCache );
+			//}
 
 			// add the surface for drawing
 			R_AddDrawSurf( tri, vEntity, &vEntity->entityDef->parms, shader, vEntity->scissorRect );

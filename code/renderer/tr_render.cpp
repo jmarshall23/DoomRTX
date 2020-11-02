@@ -106,12 +106,12 @@ Sets texcoord and vertex pointers
 ===============
 */
 void RB_RenderTriangleSurface( const srfTriangles_t *tri ) {
-	if ( !tri->ambientCache ) {
-		RB_DrawElementsImmediate( tri );
-		return;
-	}
-
-	RB_DrawElementsWithCounters( tri );
+//	if ( !tri->ambientCache ) {
+//		RB_DrawElementsImmediate( tri );
+//		return;
+//	}
+//
+//	RB_DrawElementsWithCounters( tri );
 }
 
 /*
@@ -626,7 +626,7 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf, void (*DrawInterac
 	const float			*lightRegs = vLight->shaderRegisters;
 	drawInteraction_t	inter;
 
-	if ( r_skipInteractions.GetBool() || !surf->geo || !surf->geo->ambientCache ) {
+	if ( r_skipInteractions.GetBool() || !surf->geo ) {
 		return;
 	}
 

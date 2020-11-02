@@ -252,9 +252,6 @@
     <ClInclude Include="renderer\tr_local.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\VertexCache.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\wglext.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -853,9 +850,6 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\tr_trisurf.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\VertexCache.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\jpeg-6\jcapimin.c">

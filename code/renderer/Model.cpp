@@ -2147,21 +2147,7 @@ We are about to restart the vertex cache, so dump everything
 ==============
 */
 void idRenderModelStatic::FreeVertexCache( void ) {
-	for ( int j = 0 ; j < surfaces.Num() ; j++ ) {
-		srfTriangles_t *tri = surfaces[j].geometry;
-		if ( !tri ) {
-			continue;
-		}
-		if ( tri->ambientCache ) {
-			vertexCache.Free( tri->ambientCache );
-			tri->ambientCache = NULL;
-		}
-		// static shadows may be present
-		if ( tri->shadowCache ) {
-			vertexCache.Free( tri->shadowCache );
-			tri->shadowCache = NULL;
-		}
-	}
+	
 }
 
 /*

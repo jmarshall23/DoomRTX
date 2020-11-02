@@ -613,7 +613,7 @@ void idRenderSystemLocal::SetBackEndRenderer() {
 	// using vertex programs and not, because specular and
 	// shadows will be different data
 	if ( oldVPstate != backEndRendererHasVertexPrograms ) {
-		vertexCache.PurgeAll();
+		//vertexCache.PurgeAll();
 		if ( primaryWorld ) {
 			primaryWorld->FreeInteractions();
 		}
@@ -748,7 +748,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	R_ToggleSmpFrame();
 
 	// we can now release the vertexes used this frame
-	vertexCache.EndFrame();
+	//vertexCache.EndFrame();
 
 	if ( session->writeDemo ) {
 		session->writeDemo->WriteInt( DS_RENDER );

@@ -341,27 +341,27 @@ R_FreeStaticTriSurfVertexCaches
 ==============
 */
 void R_FreeStaticTriSurfVertexCaches( srfTriangles_t *tri ) {
-	if ( tri->ambientSurface == NULL ) {
-		// this is a real model surface
-		vertexCache.Free( tri->ambientCache );
-		tri->ambientCache = NULL;
-	} else {
-		// this is a light interaction surface that references
-		// a different ambient model surface
-		vertexCache.Free( tri->lightingCache );
-		tri->lightingCache = NULL;
-	}
-	if ( tri->indexCache ) {
-		vertexCache.Free( tri->indexCache );
-		tri->indexCache = NULL;
-	}
-	if ( tri->shadowCache && ( tri->shadowVertexes != NULL || tri->verts != NULL ) ) {
-		// if we don't have tri->shadowVertexes, these are a reference to a
-		// shadowCache on the original surface, which a vertex program
-		// will take care of making unique for each light
-		vertexCache.Free( tri->shadowCache );
-		tri->shadowCache = NULL;
-	}
+	//if ( tri->ambientSurface == NULL ) {
+	//	// this is a real model surface
+	//	vertexCache.Free( tri->ambientCache );
+	//	tri->ambientCache = NULL;
+	//} else {
+	//	// this is a light interaction surface that references
+	//	// a different ambient model surface
+	//	vertexCache.Free( tri->lightingCache );
+	//	tri->lightingCache = NULL;
+	//}
+	//if ( tri->indexCache ) {
+	//	vertexCache.Free( tri->indexCache );
+	//	tri->indexCache = NULL;
+	//}
+	//if ( tri->shadowCache && ( tri->shadowVertexes != NULL || tri->verts != NULL ) ) {
+	//	// if we don't have tri->shadowVertexes, these are a reference to a
+	//	// shadowCache on the original surface, which a vertex program
+	//	// will take care of making unique for each light
+	//	vertexCache.Free( tri->shadowCache );
+	//	tri->shadowCache = NULL;
+	//}
 }
 
 /*

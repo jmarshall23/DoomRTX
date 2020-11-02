@@ -392,7 +392,7 @@ void R_InitOpenGL( void ) {
 	//R_ReloadARBPrograms_f( idCmdArgs() );
 
 	// allocate the vertex array range or vertex objects
-	vertexCache.Init();
+//	vertexCache.Init();
 
 	// select which renderSystem we are going to use
 	r_renderer.SetModified();
@@ -1293,11 +1293,11 @@ void GfxInfo_f( const idCmdArgs &args ) {
 		common->Printf( "Using two sided stencil\n" );
 	}
 
-	if ( vertexCache.IsFast() ) {
-		common->Printf( "Vertex cache is fast\n" );
-	} else {
-		common->Printf( "Vertex cache is SLOW\n" );
-	}
+	//if ( vertexCache.IsFast() ) {
+	//	common->Printf( "Vertex cache is fast\n" );
+	//} else {
+	//	common->Printf( "Vertex cache is SLOW\n" );
+	//}
 }
 
 /*
@@ -1340,7 +1340,7 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	R_ToggleSmpFrame();
 
 	// free the vertex caches so they will be regenerated again
-	vertexCache.PurgeAll();
+	//vertexCache.PurgeAll();
 
 	// sound and input are tied to the window we are about to destroy
 
@@ -1633,7 +1633,7 @@ void idRenderSystemLocal::Shutdown( void ) {
 	R_ShutdownFrameData();
 
 	// free the vertex cache, which should have nothing allocated now
-	vertexCache.Shutdown();
+	//vertexCache.Shutdown();
 
 	R_ShutdownTriSurfData();
 
