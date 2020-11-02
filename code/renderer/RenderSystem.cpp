@@ -612,12 +612,12 @@ void idRenderSystemLocal::SetBackEndRenderer() {
 	// clear the vertex cache if we are changing between
 	// using vertex programs and not, because specular and
 	// shadows will be different data
-	if ( oldVPstate != backEndRendererHasVertexPrograms ) {
-		//vertexCache.PurgeAll();
-		if ( primaryWorld ) {
-			primaryWorld->FreeInteractions();
-		}
-	}
+	//if ( oldVPstate != backEndRendererHasVertexPrograms ) {
+	//	//vertexCache.PurgeAll();
+	//	if ( primaryWorld ) {
+	//		primaryWorld->FreeInteractions();
+	//	}
+	//}
 
 	r_renderer.ClearModified();
 }

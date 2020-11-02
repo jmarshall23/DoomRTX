@@ -37,42 +37,7 @@ R_ListRenderLightDefs_f
 ===================
 */
 void R_ListRenderLightDefs_f( const idCmdArgs &args ) {
-	int			i;
-	idRenderLightLocal	*ldef;
 
-	if ( !tr.primaryWorld ) {
-		return;
-	}
-	int active = 0;
-	int	totalRef = 0;
-	int	totalIntr = 0;
-
-	for ( i = 0 ; i < tr.primaryWorld->lightDefs.Num() ; i++ ) {
-		ldef = tr.primaryWorld->lightDefs[i];
-		if ( !ldef ) {
-			common->Printf( "%4i: FREED\n", i );
-			continue;
-		}
-
-		// count up the interactions
-		int	iCount = 0;
-		for ( idInteraction *inter = ldef->firstInteraction; inter != NULL; inter = inter->lightNext ) {
-			iCount++;
-		}
-		totalIntr += iCount;
-
-		// count up the references
-		int	rCount = 0;
-		for ( areaReference_t *ref = ldef->references ; ref ; ref = ref->ownerNext ) {
-			rCount++;
-		}
-		totalRef += rCount;
-
-		common->Printf( "%4i: %3i intr %2i refs %s\n", i, iCount, rCount, ldef->lightShader->GetName());
-		active++;
-	}
-
-	common->Printf( "%i lightDefs, %i interactions, %i areaRefs\n", active, totalIntr, totalRef );
 }
 
 /*
@@ -81,42 +46,7 @@ R_ListRenderEntityDefs_f
 ===================
 */
 void R_ListRenderEntityDefs_f( const idCmdArgs &args ) {
-	int			i;
-	idRenderEntityLocal	*mdef;
-
-	if ( !tr.primaryWorld ) {
-		return;
-	}
-	int active = 0;
-	int	totalRef = 0;
-	int	totalIntr = 0;
-
-	for ( i = 0 ; i < tr.primaryWorld->entityDefs.Num() ; i++ ) {
-		mdef = tr.primaryWorld->entityDefs[i];
-		if ( !mdef ) {
-			common->Printf( "%4i: FREED\n", i );
-			continue;
-		}
-
-		// count up the interactions
-		int	iCount = 0;
-		for ( idInteraction *inter = mdef->firstInteraction; inter != NULL; inter = inter->entityNext ) {
-			iCount++;
-		}
-		totalIntr += iCount;
-
-		// count up the references
-		int	rCount = 0;
-		for ( areaReference_t *ref = mdef->entityRefs ; ref ; ref = ref->ownerNext ) {
-			rCount++;
-		}
-		totalRef += rCount;
-
-		common->Printf( "%4i: %3i intr %2i refs %s\n", i, iCount, rCount, mdef->parms.hModel->Name());
-		active++;
-	}
-
-	common->Printf( "total active: %i\n", active );
+	
 }
 
 /*
@@ -128,8 +58,6 @@ idRenderWorldLocal::idRenderWorldLocal() {
 	mapName.Clear();
 	mapTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
 
-	generateAllInteractionsCalled = false;
-
 	areaNodes = NULL;
 	numAreaNodes = 0;
 
@@ -138,10 +66,6 @@ idRenderWorldLocal::idRenderWorldLocal() {
 
 	doublePortals = NULL;
 	numInterAreaPortals = 0;
-
-	interactionTable = 0;
-	interactionTableWidth = 0;
-	interactionTableHeight = 0;
 }
 
 /*
@@ -161,32 +85,16 @@ idRenderWorldLocal::~idRenderWorldLocal() {
 
 /*
 ===================
-ResizeInteractionTable
-===================
-*/
-void idRenderWorldLocal::ResizeInteractionTable() {
-	// we overflowed the interaction table, so dump it
-	// we may want to resize this in the future if it turns out to be common
-	common->Printf( "idRenderWorldLocal::ResizeInteractionTable: overflowed interactionTableWidth, dumping\n" );
-	R_StaticFree( interactionTable );
-	interactionTable = NULL;
-}
-
-/*
-===================
 AddEntityDef
 ===================
 */
 qhandle_t idRenderWorldLocal::AddEntityDef( const renderEntity_t *re ){
 	// try and reuse a free spot
 	int entityHandle = entityDefs.FindNull();
-	if ( entityHandle == -1 ) {
-		entityHandle = entityDefs.Append( NULL );
-		if ( interactionTable && entityDefs.Num() > interactionTableWidth ) {
-			ResizeInteractionTable();
-		}
+	if (entityHandle == -1) {
+		entityHandle = entityDefs.Append(NULL);
 	}
-
+	
 	UpdateEntityDef( entityHandle, re );
 	
 	return entityHandle;
@@ -358,13 +266,10 @@ AddLightDef
 qhandle_t idRenderWorldLocal::AddLightDef( const renderLight_t *rlight ) {
 	// try and reuse a free spot
 	int lightHandle = lightDefs.FindNull();
-
-	if ( lightHandle == -1 ) {
-		lightHandle = lightDefs.Append( NULL );
-		if ( interactionTable && lightDefs.Num() > interactionTableHeight ) {
-			ResizeInteractionTable();
-		}
+	if (lightHandle == -1) {
+		lightHandle = lightDefs.Append(NULL);
 	}
+
 	UpdateLightDef( lightHandle, rlight );
 
 	return lightHandle;
@@ -1432,100 +1337,6 @@ void idRenderWorldLocal::AddLightRefToArea( idRenderLightLocal *light, portalAre
 	lref->areaNext = area->lightRefs.areaNext;
 	lref->areaPrev = &area->lightRefs;
 	area->lightRefs.areaNext = lref;
-}
-
-/*
-===================
-GenerateAllInteractions
-
-Force the generation of all light / surface interactions at the start of a level
-If this isn't called, they will all be dynamically generated
-
-This really isn't all that helpful anymore, because the calculation of shadows
-and light interactions is deferred from idRenderWorldLocal::CreateLightDefInteractions(), but we
-use it as an oportunity to size the interactionTable
-===================
-*/
-void idRenderWorldLocal::GenerateAllInteractions() {
-	if ( !glConfig.isInitialized ) {
-		return;
-	}
-
-	int start = Sys_Milliseconds();
-
-	generateAllInteractionsCalled = false;
-
-	// watch how much memory we allocate
-	tr.staticAllocCount = 0;
-
-	// let idRenderWorldLocal::CreateLightDefInteractions() know that it shouldn't
-	// try and do any view specific optimizations
-	tr.viewDef = NULL;
-
-	for ( int i = 0 ; i < this->lightDefs.Num() ; i++ ) {
-		idRenderLightLocal	*ldef = this->lightDefs[i];
-		if ( !ldef ) {
-			continue;
-		}
-		this->CreateLightDefInteractions( ldef );
-	}
-
-	int end = Sys_Milliseconds();
-	int	msec = end - start;
-
-	common->Printf( "idRenderWorld::GenerateAllInteractions, msec = %i, staticAllocCount = %i.\n", msec, tr.staticAllocCount );
-
-
-	// build the interaction table
-	if ( r_useInteractionTable.GetBool() ) {
-		interactionTableWidth = entityDefs.Num() + 100;
-		interactionTableHeight = lightDefs.Num() + 100;
-		int	size =  interactionTableWidth * interactionTableHeight * sizeof( *interactionTable );
-		interactionTable = (idInteraction **)R_ClearedStaticAlloc( size );
-
-		int	count = 0;
-		for ( int i = 0 ; i < this->lightDefs.Num() ; i++ ) {
-			idRenderLightLocal	*ldef = this->lightDefs[i];
-			if ( !ldef ) {
-				continue;
-			}
-			idInteraction	*inter;
-			for ( inter = ldef->firstInteraction; inter != NULL; inter = inter->lightNext ) {
-				idRenderEntityLocal	*edef = inter->entityDef;
-				int index = ldef->index * interactionTableWidth + edef->index;
-
-				interactionTable[ index ] = inter;
-				count++;
-			}
-		}
-
-		common->Printf( "interactionTable size: %i bytes\n", size );
-		common->Printf( "%i interaction take %i bytes\n", count, count * sizeof( idInteraction ) );
-	}
-
-	// entities flagged as noDynamicInteractions will no longer make any
-	generateAllInteractionsCalled = true;
-}
-
-/*
-===================
-idRenderWorldLocal::FreeInteractions
-===================
-*/
-void idRenderWorldLocal::FreeInteractions() {
-	int			i;
-	idRenderEntityLocal	*def;
-
-	for ( i = 0 ; i < entityDefs.Num(); i++ ) {
-		def = entityDefs[i];
-		if ( !def ) {
-			continue;
-		}
-		// free all the interactions
-		while ( def->firstInteraction != NULL ) {
-			def->firstInteraction->UnlinkAndFree();
-		}
-	}
 }
 
 /*

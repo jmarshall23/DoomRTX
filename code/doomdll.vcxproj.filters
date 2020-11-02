@@ -198,9 +198,6 @@
     <ClInclude Include="renderer\Image.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Interaction.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\Material.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -739,9 +736,6 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Image_program.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\Interaction.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Material.cpp">

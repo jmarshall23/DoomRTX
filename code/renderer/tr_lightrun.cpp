@@ -602,9 +602,9 @@ void R_FreeLightDefDerivedData( idRenderLightLocal *ldef ) {
 	}
 
 	// free all the interactions
-	while ( ldef->firstInteraction != NULL ) {
-		ldef->firstInteraction->UnlinkAndFree();
-	}
+	//while ( ldef->firstInteraction != NULL ) {
+	//	ldef->firstInteraction->UnlinkAndFree();
+	//}
 
 	// free all the references to the light
 	for ( lref = ldef->references ; lref ; lref = nextRef ) {
@@ -654,9 +654,9 @@ void R_FreeEntityDefDerivedData( idRenderEntityLocal *def, bool keepDecals, bool
 	}
 
 	// free all the interactions
-	while ( def->firstInteraction != NULL ) {
-		def->firstInteraction->UnlinkAndFree();
-	}
+	//while ( def->firstInteraction != NULL ) {
+	//	def->firstInteraction->UnlinkAndFree();
+	//}
 
 	// clear the dynamic model if present
 	if ( def->dynamicModel ) {
@@ -698,9 +698,9 @@ R_FreeEntityDefDerivedData
 */
 void R_ClearEntityDefDynamicModel( idRenderEntityLocal *def ) {
 	// free all the interaction surfaces
-	for( idInteraction *inter = def->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = inter->entityNext ) {
-		inter->FreeSurfaces();
-	}
+	//for( idInteraction *inter = def->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = inter->entityNext ) {
+	//	inter->FreeSurfaces();
+	//}
 
 	// clear the dynamic model if present
 	if ( def->dynamicModel ) {

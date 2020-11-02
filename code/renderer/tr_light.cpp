@@ -497,145 +497,6 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *light ) {
 	return vLight;
 }
 
-/*
-=================
-idRenderWorldLocal::CreateLightDefInteractions
-
-When a lightDef is determined to effect the view (contact the frustum and non-0 light), it will check to
-make sure that it has interactions for all the entityDefs that it might possibly contact.
-
-This does not guarantee that all possible interactions for this light are generated, only that
-the ones that may effect the current view are generated. so it does need to be called every view.
-
-This does not cause entityDefs to create dynamic models, all work is done on the referenceBounds.
-
-All entities that have non-empty interactions with viewLights will
-have viewEntities made for them and be put on the viewEntity list,
-even if their surfaces aren't visible, because they may need to cast shadows.
-
-Interactions are usually removed when a entityDef or lightDef is modified, unless the change
-is known to not effect them, so there is no danger of getting a stale interaction, we just need to
-check that needed ones are created.
-
-An interaction can be at several levels:
-
-Don't interact (but share an area) (numSurfaces = 0)
-Entity reference bounds touches light frustum, but surfaces haven't been generated (numSurfaces = -1)
-Shadow surfaces have been generated, but light surfaces have not.  The shadow surface may still be empty due to bounds being conservative.
-Both shadow and light surfaces have been generated.  Either or both surfaces may still be empty due to conservative bounds.
-
-=================
-*/
-void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) {
-	areaReference_t		*eref;
-	areaReference_t		*lref;
-	idRenderEntityLocal		*edef;
-	portalArea_t	*area;
-	idInteraction	*inter;
-
-	for ( lref = ldef->references ; lref ; lref = lref->ownerNext ) {
-		area = lref->area;
-
-		// check all the models in this area
-		for ( eref = area->entityRefs.areaNext ; eref != &area->entityRefs ; eref = eref->areaNext ) {
-			edef = eref->entity;
-
-			// if the entity doesn't have any light-interacting surfaces, we could skip this,
-			// but we don't want to instantiate dynamic models yet, so we can't check that on
-			// most things
-
-			// if the entity isn't viewed
-			if ( tr.viewDef && edef->viewCount != tr.viewCount ) {
-				// if the light doesn't cast shadows, skip
-				if ( !ldef->lightShader->LightCastsShadows() ) {
-					continue;
-				}
-				// if we are suppressing its shadow in this view, skip
-				if ( !r_skipSuppress.GetBool() ) {
-					if ( edef->parms.suppressShadowInViewID && edef->parms.suppressShadowInViewID == tr.viewDef->renderView.viewID ) {
-						continue;
-					}
-					if ( edef->parms.suppressShadowInLightID && edef->parms.suppressShadowInLightID == ldef->parms.lightId ) {
-						continue;
-					}
-				}
-			}
-
-			// some big outdoor meshes are flagged to not create any dynamic interactions
-			// when the level designer knows that nearby moving lights shouldn't actually hit them
-			if ( edef->parms.noDynamicInteractions && edef->world->generateAllInteractionsCalled ) {
-				continue;
-			}
-
-			// if any of the edef's interaction match this light, we don't
-			// need to consider it. 
-			if ( r_useInteractionTable.GetBool() && this->interactionTable ) {
-				// allocating these tables may take several megs on big maps, but it saves 3% to 5% of
-				// the CPU time.  The table is updated at interaction::AllocAndLink() and interaction::UnlinkAndFree()
-				int index = ldef->index * this->interactionTableWidth + edef->index;
-				inter = this->interactionTable[ index ];
-				if ( inter ) {
-					// if this entity wasn't in view already, the scissor rect will be empty,
-					// so it will only be used for shadow casting
-					if ( !inter->IsEmpty() ) {
-						R_SetEntityDefViewEntity( edef );
-					}
-					continue;
-				}
-			} else {
-				// scan the doubly linked lists, which may have several dozen entries
-
-				// we could check either model refs or light refs for matches, but it is
-				// assumed that there will be less lights in an area than models
-				// so the entity chains should be somewhat shorter (they tend to be fairly close).
-				for ( inter = edef->firstInteraction; inter != NULL; inter = inter->entityNext ) {
-					if ( inter->lightDef == ldef ) {
-						break;
-					}
-				}
-
-				// if we already have an interaction, we don't need to do anything
-				if ( inter != NULL ) {
-					// if this entity wasn't in view already, the scissor rect will be empty,
-					// so it will only be used for shadow casting
-					if ( !inter->IsEmpty() ) {
-						R_SetEntityDefViewEntity( edef );
-					}
-					continue;
-				}
-			}
-
-			//
-			// create a new interaction, but don't do any work other than bbox to frustum culling
-			//
-			idInteraction *inter = idInteraction::AllocAndLink( edef, ldef );
-
-			// do a check of the entity reference bounds against the light frustum,
-			// trying to avoid creating a viewEntity if it hasn't been already
-			float	modelMatrix[16];
-			float	*m;
-
-			if ( edef->viewCount == tr.viewCount ) {
-				m = edef->viewEntity->modelMatrix;
-			} else {
-				R_AxisToModelMatrix( edef->parms.axis, edef->parms.origin, modelMatrix );
-				m = modelMatrix;
-			}
-
-			if ( R_CullLocalBox( edef->referenceBounds, m, 6, ldef->frustum ) ) {
-				inter->MakeEmpty();
-				continue;
-			}
-
-			// we will do a more precise per-surface check when we are checking the entity
-
-			// if this entity wasn't in view already, the scissor rect will be empty,
-			// so it will only be used for shadow casting
-			R_SetEntityDefViewEntity( edef );
-		}
-	}
-}
-
 //===============================================================================================================
 
 /*
@@ -980,7 +841,7 @@ void R_AddLightSurfaces( void ) {
 		// create interactions with all entities the light may touch, and add viewEntities
 		// that may cast shadows, even if they aren't directly visible.  Any real work
 		// will be deferred until we walk through the viewEntities
-		tr.viewDef->renderWorld->CreateLightDefInteractions( light );
+		//tr.viewDef->renderWorld->CreateLightDefInteractions( light );
 		tr.pc.c_viewLights++;
 
 		// fog lights will need to draw the light frustum triangles, so make sure they
@@ -1447,7 +1308,7 @@ two or more lights.
 */
 void R_AddModelSurfaces( void ) {
 	viewEntity_t		*vEntity;
-	idInteraction		*inter, *next;
+	//idInteraction		*inter, *next;
 	idRenderModel		*model;
 
 	// clear the ambient surface list
@@ -1511,35 +1372,6 @@ void R_AddModelSurfaces( void ) {
 			tr.pc.c_visibleViewEntities++;
 		} else {
 			tr.pc.c_shadowViewEntities++;
-		}
-
-		//
-		// for all the entity / light interactions on this entity, add them to the view
-		//
-		if ( tr.viewDef->isXraySubview ) {
-			if ( vEntity->entityDef->parms.xrayIndex == 2 ) {
-				for ( inter = vEntity->entityDef->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = next ) {
-					next = inter->entityNext;
-					if ( inter->lightDef->viewCount != tr.viewCount ) {
-						continue;
-					}
-					inter->AddActiveInteraction();
-				}
-			}
-		} else {
-			// all empty interactions are at the end of the list so once the
-			// first is encountered all the remaining interactions are empty
-			for ( inter = vEntity->entityDef->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = next ) {
-				next = inter->entityNext;
-
-				// skip any lights that aren't currently visible
-				// this is run after any lights that are turned off have already
-				// been removed from the viewLights list, and had their viewCount cleared
-				if ( inter->lightDef->viewCount != tr.viewCount ) {
-					continue;
-				}
-				inter->AddActiveInteraction();
-			}
 		}
 
 		if ( vEntity->entityDef->parms.timeGroup ) {

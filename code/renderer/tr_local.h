@@ -33,6 +33,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "MegaTexture.h"
 
 class idRenderWorldLocal;
+class idRenderEntityLocal;
+class idRenderLightLocal;
 
 // everything that is needed by the backend needs
 // to be double buffered to allow it to run in
@@ -95,8 +97,11 @@ SURFACES
 
 #include "ModelDecal.h"
 #include "ModelOverlay.h"
-#include "Interaction.h"
 
+typedef struct areaNumRef_s {
+	struct areaNumRef_s* next;
+	int						areaNum;
+} areaNumRef_t;
 
 // drawSurf_t structures command the back end to render surfaces
 // a given srfTriangles_t may be used with multiple viewEntity_t,
@@ -227,8 +232,6 @@ public:
 	struct viewLight_s *	viewLight;
 
 	areaReference_t *		references;				// each area the light is present in will have a lightRef
-	idInteraction *			firstInteraction;		// doubly linked list
-	idInteraction *			lastInteraction;
 
 	struct doublePortal_s *	foggedPortals;
 };
@@ -283,8 +286,6 @@ public:
 	idRenderModelOverlay *	overlay;				// blood overlays on animated models
 
 	areaReference_t *		entityRefs;				// chain of all references
-	idInteraction *			firstInteraction;		// doubly linked list
-	idInteraction *			lastInteraction;
 
 	bool					needsPortalSky;
 };

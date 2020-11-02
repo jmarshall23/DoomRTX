@@ -1683,7 +1683,7 @@ void idSessionLocal::ExecuteMapChange( bool noFadeWipe ) {
 	common->Printf( "%6d msec to load %s\n", msec, mapString.c_str() );
 
 	// let the renderSystem generate interactions now that everything is spawned
-	rw->GenerateAllInteractions();
+	//rw->GenerateAllInteractions();
 
 	common->PrintWarnings();
 

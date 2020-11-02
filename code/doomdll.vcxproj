@@ -479,7 +479,6 @@
     <ClInclude Include="renderer\glext.h" />
     <ClInclude Include="renderer\GuiModel.h" />
     <ClInclude Include="renderer\Image.h" />
-    <ClInclude Include="renderer\Interaction.h" />
     <ClInclude Include="renderer\Material.h" />
     <ClInclude Include="renderer\MegaTexture.h" />
     <ClInclude Include="renderer\Model.h" />
@@ -725,7 +724,6 @@
     <ClCompile Include="renderer\Image_load.cpp" />
     <ClCompile Include="renderer\Image_process.cpp" />
     <ClCompile Include="renderer\Image_program.cpp" />
-    <ClCompile Include="renderer\Interaction.cpp" />
     <ClCompile Include="renderer\Material.cpp" />
     <ClCompile Include="renderer\MegaTexture.cpp" />
     <ClCompile Include="renderer\Model.cpp" />

@@ -356,10 +356,6 @@ public:
 	virtual	void			FreeLightDef( qhandle_t lightHandle ) = 0;
 	virtual const renderLight_t *GetRenderLight( qhandle_t lightHandle ) const = 0;
 
-	// Force the generation of all light / surface interactions at the start of a level
-	// If this isn't called, they will all be dynamically generated
-	virtual	void			GenerateAllInteractions() = 0;
-
 	// returns true if this area model needs portal sky to draw
 	virtual bool			CheckAreaForPortalSky( int areaNum ) = 0;
 
