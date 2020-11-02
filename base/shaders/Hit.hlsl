@@ -455,8 +455,8 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   					float3 V = viewPos - worldOrigin;
   					float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
   					ndotl += lightInfo[i].light_color.xyz * falloff * 3; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
-  					spec_contrib += spec * falloff;
-  					spec_lit += spec * falloff;
+  					spec_contrib += spec * falloff * lightInfo[i].light_color.xyz;
+  					spec_lit += spec * falloff * lightInfo[i].light_color.xyz;
   				}
   		}	  			
   	}
