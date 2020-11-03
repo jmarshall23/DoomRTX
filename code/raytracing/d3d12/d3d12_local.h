@@ -72,7 +72,7 @@ struct dxrVertex_t {
 	idVec3 normal;
 	idVec4 vtinfo;
 	idVec4 normalVtInfo;
-	idVec3 tangent;
+	idVec4 tangent;
 	idVec3 imageAveragePixel;
 };
 

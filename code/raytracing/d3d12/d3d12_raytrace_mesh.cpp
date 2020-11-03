@@ -232,14 +232,23 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 			v.xyz[0] = tri->verts[d].xyz[0];
 			v.xyz[1] = tri->verts[d].xyz[1];
 			v.xyz[2] = tri->verts[d].xyz[2];
+
 			v.st[0] = tri->verts[d].st[0];
 			v.st[1] = tri->verts[d].st[1];
+
 			v.normal[0] = tri->verts[d].normal[0];
 			v.normal[1] = tri->verts[d].normal[1];
 			v.normal[2] = tri->verts[d].normal[2];
+
 			v.tangent[0] = tri->verts[d].tangents[0][0];
 			v.tangent[1] = tri->verts[d].tangents[0][1];
 			v.tangent[2] = tri->verts[d].tangents[0][2];
+
+			// RB: consider texture polarity and store bitangent sign like in the BFG edition
+			idVec3 bitangent;
+			bitangent.Cross( tri->verts[d].normal, tri->verts[d].tangents[0] );
+			v.tangent[3] = ( ( bitangent * tri->verts[d].tangents[0]) < 0.0f ) ? -1.0f : 1.0F;
+
 			v.imageAveragePixel = stage->texture.image->averageColor * 8;
 			v.st[2] = materialInfo;
 			v.vtinfo[0] = x;

@@ -423,27 +423,28 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 		vnormal.z += BTriVertex[vertId + i].normal.z * barycentrics[i];
   }
 
-  float3 vtangent = float3(0, 0, 0);
+  float4 vtangent = float4(0, 0, 0, 1);
   for(int i = 0; i < 3; i++)
   {
 		vtangent.x += BTriVertex[vertId + i].tangent.x * barycentrics[i];
 		vtangent.y += BTriVertex[vertId + i].tangent.y * barycentrics[i];
 		vtangent.z += BTriVertex[vertId + i].tangent.z * barycentrics[i];
+		
+		vtangent.w *= BTriVertex[vertId + i].tangent.w * barycentrics[i];
   }
-  float3 vbinormal = cross(vtangent, vnormal);
+  float3 vbitangent = cross(vtangent.xyz, vnormal) * vtangent.w;
   
   float3 tangent;
-  float3  binormal;
-	float3  normal;
+  float3 bitangent;
+  float3 normal;
   
-  tangent.x = dot(BInstanceProperties[InstanceID()].matX, vtangent);
-  tangent.y = dot(BInstanceProperties[InstanceID()].matY, vtangent);
-  tangent.z = dot(BInstanceProperties[InstanceID()].matZ, vtangent);
+  tangent.x = dot(BInstanceProperties[InstanceID()].matX, vtangent.xyz);
+  tangent.y = dot(BInstanceProperties[InstanceID()].matY, vtangent.xyz);
+  tangent.z = dot(BInstanceProperties[InstanceID()].matZ, vtangent.xyz);
   
-  
-  binormal.x = dot(BInstanceProperties[InstanceID()].matX, vbinormal);
-  binormal.y = dot(BInstanceProperties[InstanceID()].matY, vbinormal);
-  binormal.z = dot(BInstanceProperties[InstanceID()].matZ, vbinormal);
+  bitangent.x = dot(BInstanceProperties[InstanceID()].matX, vbitangent);
+  bitangent.y = dot(BInstanceProperties[InstanceID()].matY, vbitangent);
+  bitangent.z = dot(BInstanceProperties[InstanceID()].matZ, vbitangent);
   
   normal.x = dot(BInstanceProperties[InstanceID()].matX, vnormal);
   normal.y = dot(BInstanceProperties[InstanceID()].matY, vnormal);
@@ -471,7 +472,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   		float lightDistance = length(centerLightDir);
   		float3 normalLightDir;
   		normalLightDir.x = dot(tangent, centerLightDir);
-  		normalLightDir.y = dot(binormal, centerLightDir);
+  		normalLightDir.y = dot(bitangent, centerLightDir);
   		normalLightDir.z = dot(normal, centerLightDir);
 		
   		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
@@ -516,7 +517,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   		float3 centerLightDir = clamped_point - worldOrigin;			
   		float3 areaLightDir;
   		areaLightDir.x = dot(tangent, centerLightDir);
-  		areaLightDir.y = dot(binormal, centerLightDir);
+  		areaLightDir.y = dot(bitangent, centerLightDir);
   		areaLightDir.z = dot(normal, centerLightDir);
   		
   		float lightDistance = length(centerLightDir);
@@ -533,7 +534,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
   				float3 v_old = viewPos - worldOrigin;
   				float3 V;
   				V.x = dot(tangent, v_old);
-  				V.y = dot(binormal, v_old);
+  				V.y = dot(bitangent, v_old);
   				V.z = dot(normal, v_old);
   									
   				ndotl += clamp(falloff, 0.0, 1.0) * lightInfo[i].light_color2.xyz;
