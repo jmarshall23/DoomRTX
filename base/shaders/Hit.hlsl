@@ -344,6 +344,10 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
    if (dot(p-pc,pn)>=0.0) return 1; else return 0;
 }
 
+float DecodeFloatRGBA( float4 rgba ) {
+  return dot( rgba, float4(1.0, 1/255.0, 1/65025.0, 1/16581375.0) );
+}
+
 [shader("closesthit")] void ClosestHit(inout HitInfo payload,
                                        Attributes attrib) {
   float3 barycentrics =
@@ -551,6 +555,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 
   //if(BTriVertex[vertId + 0].st.z >= 0)
   float aoPixel = 1.0;
+  /*
   {
 	for(int i = 4; i < 9; i++)
 	{
@@ -564,7 +569,7 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 		}
 	}
   }
-
+*/
   
 		// Fire the secondary bounce
 		float3 bounce = float3(0, 0, 0);
@@ -585,17 +590,18 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 	}
 
   //hitColor = float3(InstanceID(), 0, 0);
-  float3 spec_final = pow(spec_lit, 0.5);
-  ndotl = lerp(ndotl, spec_final * 2, length(spec_final));
+  //float3 spec_final = pow(spec_lit, 0.5);
+  //ndotl = lerp(ndotl, spec_final * 2, length(spec_final));
   //ndotl += 0.025;
   //ndotl = max(ndotl, 0.1);
   //ndotl *= float3(227.0 / 255.0, 107.0 / 255.0, 0.0);  
 
   // * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl))
-  payload.colorAndDistance = float4(hitColor, 1.0);
-  payload.lightColor = float4(bounce + ndotl, BTriVertex[vertId + 0].st.z);
+  
+  payload.colorAndDistance = float4(hitColor + spec_lit, 1.0);
+  payload.lightColor = float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
   payload.worldOrigin.xyz = worldOrigin.xyz;
-  payload.worldOrigin.w = spec_final;
+  payload.worldOrigin.w = spec_lit;
 
   payload.worldNormal.x = normal.x;
   payload.worldNormal.y = normal.y;

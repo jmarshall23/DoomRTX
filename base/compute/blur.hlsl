@@ -1,5 +1,5 @@
 #define KERNEL_SIZE         13
-#define HALF_KERNEL_SIZE    3
+#define HALF_KERNEL_SIZE    6
 
 #define NUM_THREADS_X       1024
 #define NUM_THREADS_Y       1
@@ -52,14 +52,17 @@ void hblur_main(uint3 gid : SV_GroupID, uint gindex : SV_GroupIndex, uint3 dispa
   
   if(coord.x < realOffset + NUM_THREADS_X - HALF_KERNEL_SIZE && coord.x > realOffset + HALF_KERNEL_SIZE)
   {
+    float numSamples = 0;
 	for (int i = -HALF_KERNEL_SIZE; i < HALF_KERNEL_SIZE; ++i) {
 		int index = gindex + i;
-		if (index >= 0 && index < NUM_THREADS_X) {
-		value += g_shared_input[index];
+		float _testNormal = g_shared_input[gindex].w;
+		if (index >= 0 && index < NUM_THREADS_X && (g_shared_input[index].w == _testNormal)) {
+			value += g_shared_input[index];
+			numSamples++;
 		}    
 	}
 	
-	value = value / (HALF_KERNEL_SIZE * 2);
+	value = value / numSamples;
   }
   else
   {
@@ -86,13 +89,17 @@ void vblur_main(uint3 gid : SV_GroupID, uint gindex : SV_GroupIndex, uint3 dispa
   float4 value = 0;
   if(coord.y < yoffset + NUM_THREADS_X - HALF_KERNEL_SIZE && coord.y > yoffset + HALF_KERNEL_SIZE)
   {
+	float numSamples = 0;
 	for (int i = -HALF_KERNEL_SIZE; i < HALF_KERNEL_SIZE; ++i) {
 		int index = gindex + i;
-		if (index >= 0 && index < NUM_THREADS_X) {
-		value += g_shared_input[index];
+		float _testNormal = g_shared_input[gindex].w;
+		if (index >= 0 && index < NUM_THREADS_X && (g_shared_input[index].w == _testNormal)) {
+			value += g_shared_input[index];
+			numSamples++;
 		}    
 	}
-	value = value / (HALF_KERNEL_SIZE * 2);
+	
+	value = value / numSamples;
   }
   else
   {

@@ -267,7 +267,7 @@ void GL_InitRaytracing(int width, int height) {
 
 	common->Printf("Creating Raytrace Output Buffer...\n");
 	tr_create_texture_2d(renderer, width, height, tr_sample_count_1, tr_format_r8g8b8a8_unorm, 1, NULL, false, tr_texture_usage_sampled_image | tr_texture_usage_storage_image, &albedoTexture);
-	tr_create_texture_2d(renderer, width, height, tr_sample_count_1, tr_format_r8g8b8a8_unorm, 1, NULL, false, tr_texture_usage_sampled_image | tr_texture_usage_storage_image, &lightTexture);
+	tr_create_texture_2d(renderer, width, height, tr_sample_count_1, tr_format_r16g16b16a16_float, 1, NULL, false, tr_texture_usage_sampled_image | tr_texture_usage_storage_image, &lightTexture);
 	tr_create_texture_2d(renderer, width, height, tr_sample_count_1, tr_format_r8g8b8a8_unorm, 1, NULL, false, tr_texture_usage_sampled_image | tr_texture_usage_storage_image, &compositeTexture);
 	tr_create_texture_2d(renderer, width, height, tr_sample_count_1, tr_format_r8g8b8a8_unorm, 1, NULL, false, tr_texture_usage_sampled_image | tr_texture_usage_storage_image, &compositeStagingTexture);
 	tr_create_texture_2d(renderer, width, height, tr_sample_count_1, tr_format_r8g8b8a8_unorm, 1, NULL, true, tr_texture_usage_sampled_image | tr_texture_usage_storage_image, &uiTexture);

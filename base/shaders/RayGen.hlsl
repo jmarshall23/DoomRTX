@@ -125,7 +125,7 @@ HitInfo FirePrimaryRay() {
       // between the hit/miss shaders and the raygen
       payload);
   gOutput[launchIndex] = float4(payload.colorAndDistance.rgb, 1.f);
-  gLightOutput[launchIndex] += float4(payload.lightColor.rgb, 1.f);
+  gLightOutput[launchIndex] = payload.lightColor;
   
   return payload;
 }
