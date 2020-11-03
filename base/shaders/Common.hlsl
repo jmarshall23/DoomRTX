@@ -29,7 +29,7 @@ struct STriVertex {
   float3 normal;
   float4 vtinfo;
   float4 normalVtInfo;
-  float3 tangent;
+  float4 tangent;
   float3 imageAveragePixel;
 };
 
