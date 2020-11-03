@@ -219,7 +219,7 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 			//w = -1;
 			//h = -1;
 			common->Printf("Failed to find mega info for %s\n", fa->shader->GetName());
-			continue;
+		//	continue;
 		}
 
 		R_DeriveTangents(tri);

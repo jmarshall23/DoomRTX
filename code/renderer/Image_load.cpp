@@ -1346,13 +1346,13 @@ void	idImage::ActuallyLoadImage( bool checkForPrecompressed, bool fromBackEnd ) 
 	} else {
 		// see if we have a pre-generated image file that is
 		// already image processed and compressed
-		if ( checkForPrecompressed && globalImages->image_usePrecompressedTextures.GetBool() ) {
-			if ( CheckPrecompressedImage( true ) ) {
-				// we got the precompressed image
-				return;
-			}
-			// fall through to load the normal image
-		}
+		//if ( checkForPrecompressed && globalImages->image_usePrecompressedTextures.GetBool() ) {
+		//	if ( CheckPrecompressedImage( true ) ) {
+		//		// we got the precompressed image
+		//		return;
+		//	}
+		//	// fall through to load the normal image
+		//}
 
 		R_LoadImageProgram( imgName, &pic, &width, &height, &timestamp, &depth );
 		if ( pic == NULL ) {

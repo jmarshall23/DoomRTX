@@ -415,13 +415,28 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 	  hitColor = float3(u, v, 0);
   }
   
-  float3 normal = BTriVertex[vertId + 0].normal;
-  float3 tangent = BTriVertex[vertId + 0].tangent;
+  float3 normal = float3(0, 0, 0);
+  for(int i = 0; i < 3; i++)
+  {
+		normal.x += BTriVertex[vertId + i].normal.x * barycentrics[i];
+		normal.y += BTriVertex[vertId + i].normal.y * barycentrics[i];
+		normal.z += BTriVertex[vertId + i].normal.z * barycentrics[i];
+  }
+
+  float3 tangent = float3(0, 0, 0);
+  for(int i = 0; i < 3; i++)
+  {
+		tangent.x += BTriVertex[vertId + i].tangent.x * barycentrics[i];
+		tangent.y += BTriVertex[vertId + i].tangent.y * barycentrics[i];
+		tangent.z += BTriVertex[vertId + i].tangent.z * barycentrics[i];
+  }
   float3 binormal = cross(tangent, normal);
   
-  bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
-  if (isBackFacing)
-	normal = -normal;
+  //bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
+  //if (isBackFacing) {
+	//normal = -normal;
+	//hitNormalMap = -hitNormalMap;
+  //}
   
   // 2 is emissive
   float spec_contrib = 0.0;

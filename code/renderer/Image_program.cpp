@@ -201,52 +201,47 @@ R_AddNormalMaps
 static void R_AddNormalMaps( byte *data1, int width1, int height1, byte *data2, int width2, int height2 ) {
 	int		i, j;
 	byte	*newMap;
-// jmarshall
+
 	// resample pic2 to the same size as pic1
-	//if (width2 != width1 || height2 != height1) {
-	//	newMap = R_Dropsample(data2, width2, height2, width1, height1);
-	//	data2 = newMap;
-	//}
-	//else {
-	//	newMap = NULL;
-	//}
-	//
-	//// add the normal change from the second and renormalize
-	//for ( i = 0 ; i < height1 ; i++ ) {
-	//	for ( j = 0 ; j < width1 ; j++ ) {
-	//		byte	*d1, *d2;
-	//		idVec3	n;
-	//		float   len;
-	//
-	//		d1 = data1 + ( i * width1 + j ) * 4;
-	//		d2 = data2 + ( i * width1 + j ) * 4;
-	//
-	//		n[0] = ( d1[0] - 128 ) / 127.0;
-	//		n[1] = ( d1[1] - 128 ) / 127.0;
-	//		n[2] = ( d1[2] - 128 ) / 127.0;
-	//
-	//		// There are some normal maps that blend to 0,0,0 at the edges
-	//		// this screws up compression, so we try to correct that here by instead fading it to 0,0,1
-	//		len = n.LengthFast();
-	//		if ( len < 1.0f ) {
-	//			n[2] = idMath::Sqrt(1.0 - (n[0]*n[0]) - (n[1]*n[1]));
-	//		}
-	//
-	//		n[0] += ( d2[0] - 128 ) / 127.0;
-	//		n[1] += ( d2[1] - 128 ) / 127.0;
-	//		n.Normalize();
-	//
-	//		d1[0] = (byte)(n[0] * 127 + 128);
-	//		d1[1] = (byte)(n[1] * 127 + 128);
-	//		d1[2] = (byte)(n[2] * 127 + 128);
-	//		d1[3] = 255;
-	//	}
-	//}
-	//
-	//if ( newMap ) {
-	//	R_StaticFree( newMap );
-	//}
-// jmarshall end
+	if (width2 != width1 || height2 != height1) {
+		newMap = R_Dropsample(data2, width2, height2, width1, height1);
+		data2 = newMap;
+	}
+	else {
+		newMap = NULL;
+	}
+	
+	// add the normal change from the second and renormalize
+	for ( i = 0 ; i < height1 ; i++ ) {
+		for ( j = 0 ; j < width1 ; j++ ) {
+			byte	*d1, *d2;
+			idVec3	n;
+			float   len;
+	
+			d1 = data1 + ( i * width1 + j ) * 4;
+			d2 = data2 + ( i * width1 + j ) * 4;
+	
+			n[0] = ( d1[0] - 128 ) / 127.0;
+			n[1] = ( d1[1] - 128 ) / 127.0;
+			n[2] = ( d1[2] - 128 ) / 127.0;
+	
+			// There are some normal maps that blend to 0,0,0 at the edges
+			// this screws up compression, so we try to correct that here by instead fading it to 0,0,1
+			len = n.LengthFast();
+			if ( len < 1.0f ) {
+				n[2] = idMath::Sqrt(1.0 - (n[0]*n[0]) - (n[1]*n[1]));
+			}
+	
+			n[0] += ( d2[0] - 128 ) / 127.0;
+			n[1] += ( d2[1] - 128 ) / 127.0;
+			n.Normalize();
+	
+			d1[0] = (byte)(n[0] * 127 + 128);
+			d1[1] = (byte)(n[1] * 127 + 128);
+			d1[2] = (byte)(n[2] * 127 + 128);
+			d1[3] = 255;
+		}
+	}
 }
 
 /*
