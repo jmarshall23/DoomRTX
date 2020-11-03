@@ -37,6 +37,9 @@ struct STriVertex {
 struct SInstanceProperties
 {
 	int startVertex;
+	float3 matX;
+	float3 matY;
+	float3 matZ;
 };
 
 

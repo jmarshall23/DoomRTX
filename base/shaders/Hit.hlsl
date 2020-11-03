@@ -415,28 +415,45 @@ int sideOfPlane(float3 p, float3 pc, float3 pn){
 	  hitColor = float3(u, v, 0);
   }
   
-  float3 normal = float3(0, 0, 0);
+  float3 vnormal = float3(0, 0, 0);
   for(int i = 0; i < 3; i++)
   {
-		normal.x += BTriVertex[vertId + i].normal.x * barycentrics[i];
-		normal.y += BTriVertex[vertId + i].normal.y * barycentrics[i];
-		normal.z += BTriVertex[vertId + i].normal.z * barycentrics[i];
+		vnormal.x += BTriVertex[vertId + i].normal.x * barycentrics[i];
+		vnormal.y += BTriVertex[vertId + i].normal.y * barycentrics[i];
+		vnormal.z += BTriVertex[vertId + i].normal.z * barycentrics[i];
   }
 
-  float3 tangent = float3(0, 0, 0);
+  float3 vtangent = float3(0, 0, 0);
   for(int i = 0; i < 3; i++)
   {
-		tangent.x += BTriVertex[vertId + i].tangent.x * barycentrics[i];
-		tangent.y += BTriVertex[vertId + i].tangent.y * barycentrics[i];
-		tangent.z += BTriVertex[vertId + i].tangent.z * barycentrics[i];
+		vtangent.x += BTriVertex[vertId + i].tangent.x * barycentrics[i];
+		vtangent.y += BTriVertex[vertId + i].tangent.y * barycentrics[i];
+		vtangent.z += BTriVertex[vertId + i].tangent.z * barycentrics[i];
   }
-  float3 binormal = cross(tangent, normal);
+  float3 vbinormal = cross(vtangent, vnormal);
   
-  //bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
-  //if (isBackFacing) {
-	//normal = -normal;
+  float3 tangent;
+  float3  binormal;
+	float3  normal;
+  
+  tangent.x = dot(BInstanceProperties[InstanceID()].matX, vtangent);
+  tangent.y = dot(BInstanceProperties[InstanceID()].matY, vtangent);
+  tangent.z = dot(BInstanceProperties[InstanceID()].matZ, vtangent);
+  
+  
+  binormal.x = dot(BInstanceProperties[InstanceID()].matX, vbinormal);
+  binormal.y = dot(BInstanceProperties[InstanceID()].matY, vbinormal);
+  binormal.z = dot(BInstanceProperties[InstanceID()].matZ, vbinormal);
+  
+  normal.x = dot(BInstanceProperties[InstanceID()].matX, vnormal);
+  normal.y = dot(BInstanceProperties[InstanceID()].matY, vnormal);
+  normal.z = dot(BInstanceProperties[InstanceID()].matZ, vnormal);
+  
+  bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
+  if (isBackFacing) {
+	normal = -normal;
 	//hitNormalMap = -hitNormalMap;
-  //}
+  }
   
   // 2 is emissive
   float spec_contrib = 0.0;

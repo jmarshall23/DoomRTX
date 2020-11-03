@@ -18,6 +18,9 @@ int r_currentDxrEntities = -1;
 
 struct dxrMeshIntance_t {
 	int startVertex;
+	idVec3 matX;
+	idVec3 matY;
+	idVec3 matZ;
 };
 
 dxrMeshIntance_t meshInstanceData[MAX_VISEDICTS];
@@ -173,6 +176,9 @@ void GL_CreateTopLevelAccelerationStructs(bool forceUpdate) {
 				}
 
 				meshInstanceData[index + numWorldVisMeshes].startVertex = mesh->startSceneVertex + mesh->meshSurfaces[i].startIndex;
+				meshInstanceData[index + numWorldVisMeshes].matX = currententity->axis[0];
+				meshInstanceData[index + numWorldVisMeshes].matY = currententity->axis[1];
+				meshInstanceData[index + numWorldVisMeshes].matZ = currententity->axis[2];
 
 				numVisMeshes++;
 				index++;
