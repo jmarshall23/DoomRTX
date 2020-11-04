@@ -464,10 +464,14 @@ float DecodeFloatRGBA( float4 rgba ) {
   float spec_contrib = 0.0;
   float emissive = 1;
   float3 spec_lit = 0;
+  float bump = 0.0;
+  float numLights = 1.0;
   for(int i = 0; i < 64; i++)
   {	 		
   	if(lightInfo[i].origin_radius.w == 0)
   		continue;
+		
+	numLights++;
   	
   	if(lightInfo[i].origin_radius.w > 0) // point lights
   	{
@@ -481,7 +485,8 @@ float DecodeFloatRGBA( float4 rgba ) {
 		
   		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
   		
-  		falloff = clamp(falloff, 0.0, 1.0) * dot( normalize(normalLightDir), hitNormalMap );
+  		falloff = clamp(falloff, 0.0, 1.0);
+		bump +=	clamp(dot( normalize(normalLightDir), hitNormalMap ), 0.0, 1.0);
   		
   		//bool isShadowed = dot(normal, centerLightDir) < 0;	  
   		//if(!isShadowed)
@@ -550,7 +555,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   		}
   	}
   }
-
+  bump = bump / numLights;
   ndotl = clamp(ndotl, 0.0, 1.0);
 
   //if(BTriVertex[vertId + 0].st.z >= 0)
@@ -598,7 +603,7 @@ float DecodeFloatRGBA( float4 rgba ) {
 
   // * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl))
   
-  payload.colorAndDistance = float4(hitColor + spec_lit, 1.0);
+  payload.colorAndDistance = float4(hitColor * bump + ( bump * spec_lit ), 1.0);
   payload.lightColor = float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = spec_lit;

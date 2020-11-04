@@ -789,7 +789,7 @@ void RB_STD_DrawView(void) {
 
 	for (vLight = backEnd.viewDef->viewLights; vLight; vLight = vLight->next) {
 		backEnd.vLight = vLight;
-		GL_RegisterWorldLight(vLight->lightDef, vLight->lightDef->parms.origin.x, vLight->lightDef->parms.origin.y, vLight->lightDef->parms.origin.z, vLight->lightDef->parms.lightRadius, 0, vLight->lightDef->parms.shaderParms[SHADERPARM_RED] * 0.5, vLight->lightDef->parms.shaderParms[SHADERPARM_GREEN] * 0.5, vLight->lightDef->parms.shaderParms[SHADERPARM_BLUE] * 0.5);
+		GL_RegisterWorldLight(vLight->lightDef, vLight->lightDef->parms.origin.x, vLight->lightDef->parms.origin.y, vLight->lightDef->parms.origin.z, vLight->lightDef->parms.lightRadius, 0, vLight->lightDef->parms.shaderParms[SHADERPARM_RED], vLight->lightDef->parms.shaderParms[SHADERPARM_GREEN], vLight->lightDef->parms.shaderParms[SHADERPARM_BLUE]);
 	}
 
 	viewEntity_t* vEntity;
