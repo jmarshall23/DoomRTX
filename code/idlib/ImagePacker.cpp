@@ -58,16 +58,16 @@ idImagePackerNode* idImagePackerNode::Insert( const idSubImage &image ) {
 		// return null for now
 		if ( ( rect.width < image.width ) || ( rect.height < image.height ) ) { 
 			// Try again with flipped image dimensions
-			if ( image.x >= 0 /* && tryFlipping */ ) {
-				idSubImage flip;
-				flip.x = -1;
-				flip.y = -1;
-				flip.width = image.height;
-				flip.height = image.width;
-				return Insert( flip );
-			} else {
+			//if ( image.x >= 0 /* && tryFlipping */ ) {
+			//	idSubImage flip;
+			//	flip.x = -1;
+			//	flip.y = -1;
+			//	flip.width = image.height;
+			//	flip.height = image.width;
+			//	return Insert( flip );
+			//} else {
 				return NULL;
-			}
+			//}
 		}
 
 		// Exact match
