@@ -471,7 +471,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   	if(lightInfo[i].origin_radius.w == 0)
   		continue;
 		
-	numLights++;
+	
   	
   	if(lightInfo[i].origin_radius.w > 0) // point lights
   	{
@@ -484,22 +484,21 @@ float DecodeFloatRGBA( float4 rgba ) {
   		normalLightDir.z = dot(normal, centerLightDir);
 		
   		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
-  		
-  		falloff = clamp(falloff, 0.0, 1.0);
-		bump +=	clamp(dot( normalize(normalLightDir), hitNormalMap ), 0.0, 1.0);
-  		
+
   		//bool isShadowed = dot(normal, centerLightDir) < 0;	  
   		//if(!isShadowed)
   		if(falloff > 0)
   		{
   				if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
-  				{
+  				{			
   					float3 V = viewPos - worldOrigin;
   					float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
   					ndotl += lightInfo[i].light_color.xyz * falloff; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
   					spec_contrib += spec * falloff * lightInfo[i].light_color.xyz;
   					spec_lit += spec * falloff * lightInfo[i].light_color.xyz;
   				}
+				bump +=	clamp(dot( normalize(normalLightDir), hitNormalMap ), 0.0, 1.0);
+				numLights++;
   		}	  			
   	}
   	else // area lights
@@ -556,7 +555,6 @@ float DecodeFloatRGBA( float4 rgba ) {
   	}
   }
   bump = bump / numLights;
-  ndotl = clamp(ndotl, 0.0, 1.0);
 
   //if(BTriVertex[vertId + 0].st.z >= 0)
   float aoPixel = 1.0;
@@ -578,7 +576,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   
 		// Fire the secondary bounce
 		float3 bounce = float3(0, 0, 0);
-	if(payload.colorAndDistance.a != 1)
+	//if(payload.colorAndDistance.a != 1)
 	{
 	
 		{
@@ -590,7 +588,7 @@ float DecodeFloatRGBA( float4 rgba ) {
 				float3 worldDir = getCosHemisphereSample(r , normal);
 				bounce += FireSecondRay(worldOrigin, 1000, worldDir, false);
 			}
-			bounce = (bounce / 10) * aoPixel * 0.5;
+			bounce = (bounce / 10) * aoPixel;
 		}
 	}
 
@@ -603,7 +601,7 @@ float DecodeFloatRGBA( float4 rgba ) {
 
   // * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl))
   
-  payload.colorAndDistance = float4(hitColor * bump + ( bump * spec_lit ), 1.0);
+  payload.colorAndDistance = float4(hitColor * bump, 1.0);
   payload.lightColor = float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = spec_lit;
