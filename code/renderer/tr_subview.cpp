@@ -547,32 +547,33 @@ would change tr.viewCount.
 ================
 */
 bool R_GenerateSubViews( void ) {
-	drawSurf_t		*drawSurf;
-	int				i;
-	bool			subviews;
-	const idMaterial		*shader;
-
-	// for testing the performance hit
-	if ( r_skipSubviews.GetBool() ) {
-		return false;
-	}
-
-	subviews = false;
-
-	// scan the surfaces until we either find a subview, or determine
-	// there are no more subview surfaces.
-	for ( i = 0 ; i < tr.viewDef->numDrawSurfs ; i++ ) {
-		drawSurf = tr.viewDef->drawSurfs[i];
-		shader = drawSurf->material;
-
-		if ( !shader || !shader->HasSubview() ) {
-			continue;
-		}
-
-		if ( R_GenerateSurfaceSubview( drawSurf ) ) {
-			subviews = true;
-		}
-	}
-
-	return subviews;
+	//drawSurf_t		*drawSurf;
+	//int				i;
+	//bool			subviews;
+	//const idMaterial		*shader;
+	//
+	//// for testing the performance hit
+	//if ( r_skipSubviews.GetBool() ) {
+	//	return false;
+	//}
+	//
+	//subviews = false;
+	//
+	//// scan the surfaces until we either find a subview, or determine
+	//// there are no more subview surfaces.
+	//for ( i = 0 ; i < tr.viewDef->numDrawSurfs ; i++ ) {
+	//	drawSurf = tr.viewDef->drawSurfs[i];
+	//	shader = drawSurf->material;
+	//
+	//	if ( !shader || !shader->HasSubview() ) {
+	//		continue;
+	//	}
+	//
+	//	if ( R_GenerateSurfaceSubview( drawSurf ) ) {
+	//		subviews = true;
+	//	}
+	//}
+	//
+	//return subviews;
+	return false;
 }

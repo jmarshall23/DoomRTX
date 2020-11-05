@@ -625,6 +625,8 @@ public:
 	bool				IsPortalSky() const						{ return portalSky; };
 	void				AddReference();
 
+	bool				IsMirror() const { return isMirror; }
+
 	// Returns the emissive information for this material.
 	const icdEmissiveStage& GetEmissiveStage() const { return emissiveStage; }
 private:
@@ -667,6 +669,8 @@ private:
 	mutable idUserInterface	*gui;			// non-custom guis are shared by all users of a material
 
 	bool				noFog;				// surface does not create fog interactions
+
+	bool				isMirror;			// surface is a mirror
 
 	int					spectrum;			// for invisible writing, used for both lights and surfaces
 

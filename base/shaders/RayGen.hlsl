@@ -162,7 +162,7 @@ float getFogFactor(float d)
 		gLightOutput[launchIndex] = float4(1, 1, 1, 1);
 		gLightOutput[launchIndex] = float4(1, 1, 1, 1);
 	}
-	else if(hit.worldOrigin.w > 0 && hit.worldNormal.x == 0 && hit.worldNormal.y == 0 && hit.worldNormal.z != 0 && false)
+	else if(hit.worldOrigin.w == STAT_MIRROR)
 	{		 
           float2 dims = float2(DispatchRaysDimensions().xy);
 		  float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);
@@ -232,23 +232,8 @@ float getFogFactor(float d)
 			  // between the hit/miss shaders and the raygen
 			  payload);
 			  
-		   //if(payload.colorAndDistance.w == -1)
-		   //{
-			//	//float3 sky = clouds(ray.Direction);
-			//	// gOutput[launchIndex] = lerp(gOutput[launchIndex], float4(sky, 1.f), 0.3);
-			//	//gLightOutput[launchIndex] = lerp(gLightOutput[launchIndex], float4(sky, 1.f), 0.3);
-		   //}			  
-		   //else if(hit.lightColor.w == 3)
-		   //{
-		   //	    gOutput[launchIndex] = lerp(gOutput[launchIndex], float4(payload.colorAndDistance.rgb, 1.f), 1);
-			//	gLightOutput[launchIndex] = lerp(gLightOutput[launchIndex], float4(payload.lightColor.rgb, 1.f), 1);
-		   //}
-		   //else
-		   {
-				//gOutput[launchIndex].xyz = lerp(gOutput[launchIndex], float4(payload.colorAndDistance.rgb, 1.f), 0.3);
-				float spec_contrib = hit.worldOrigin.w;
-				gLightOutput[launchIndex].xyz += lerp(gLightOutput[launchIndex], float4((payload.colorAndDistance.rgb * payload.lightColor.rgb), 1.f), 0.3);
-		   }
+		   gOutput[launchIndex].xyz = lerp(gOutput[launchIndex], float4(payload.colorAndDistance.rgb, 1.f), 0.7);
+  		   gLightOutput[launchIndex].xyz = lerp(gLightOutput[launchIndex], float4((payload.lightColor.rgb), 1.f), 0.7);
 	}
 	
 	// Fog

@@ -604,7 +604,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   payload.colorAndDistance = float4(hitColor * bump, 1.0);
   payload.lightColor = float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
   payload.worldOrigin.xyz = worldOrigin.xyz;
-  payload.worldOrigin.w = spec_lit;
+  payload.worldOrigin.w = BTriVertex[vertId].st.z;
 
   payload.worldNormal.x = normal.x;
   payload.worldNormal.y = normal.y;

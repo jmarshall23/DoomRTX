@@ -111,6 +111,7 @@ void idMaterial::CommonInit() {
 	suppressInSubview = false;
 	refCount = 0;
 	portalSky = false;
+	isMirror = false;
 
 	decalInfo.stayTime = 10000;
 	decalInfo.fadeTime = 4000;
@@ -1967,8 +1968,8 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 		}
 		// mirror
 		else if ( !token.Icmp( "mirror" ) ) {
-			sort = SS_SUBVIEW;
-			coverage = MC_OPAQUE;
+			sort = SS_OPAQUE;
+			isMirror = true;
 			continue;
 		}
 		// noFog

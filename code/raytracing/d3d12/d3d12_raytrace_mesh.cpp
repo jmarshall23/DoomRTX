@@ -167,7 +167,7 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 	for (int i = 0; i < model->NumSurfaces(); i++)
 	{
 		const modelSurface_t* fa = model->Surface(i);
-		srfTriangles_t* tri = fa->geometry;
+		srfTriangles_t* tri = fa->geometry;		
 
 		if (tri == NULL) {
 			continue;
@@ -178,12 +178,15 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 		int materialInfo = 1;
 
 		if (fa->shader == NULL)
-			continue;
+			continue;		
 
 		const shaderStage_t* stage = fa->shader->GetAlbedoStage();		
 		const shaderStage_t* normalStage = fa->shader->GetBumpStage();
 
-		if (fa->shader->GetSort() == SS_DECAL) {
+		if (fa->shader->IsMirror()) {
+			materialInfo = STAT_MIRROR;
+		}
+		else if (fa->shader->GetSort() == SS_DECAL) {
 			surf.isOpaque = false;
 			materialInfo = STAT_FORCE_TRANSPARENT;
 		}
@@ -195,7 +198,7 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 		{
 			surf.isOpaque = true;
 		}
-
+		
 		float x, y, w, h;
 		float nx = -1, ny = -1, nw = -1, nh = -1;
 
