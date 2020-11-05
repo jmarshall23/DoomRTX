@@ -601,12 +601,13 @@ float DecodeFloatRGBA( float4 rgba ) {
 
   // * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl))
   
-  payload.colorAndDistance = float4(hitColor * bump, 1.0);
-  payload.lightColor = float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
+  payload.colorAndDistance += float4(hitColor * bump, 1.0);
+  payload.lightColor += float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = BTriVertex[vertId].st.z;
 
   payload.worldNormal.x = normal.x;
   payload.worldNormal.y = normal.y;
   payload.worldNormal.z = normal.z;
+
 }

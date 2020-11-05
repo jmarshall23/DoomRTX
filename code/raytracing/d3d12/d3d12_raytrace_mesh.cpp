@@ -186,6 +186,11 @@ void GL_LoadBottomLevelAccelStruct(dxrMesh_t* mesh, idRenderModel* model) {
 		if (fa->shader->IsMirror()) {
 			materialInfo = STAT_MIRROR;
 		}
+		else if (fa->shader->IsGlass())
+		{
+			materialInfo = STAT_GLASS;
+			surf.isOpaque = false;
+		}
 		else if (fa->shader->GetSort() == SS_DECAL) {
 			surf.isOpaque = false;
 			materialInfo = STAT_FORCE_TRANSPARENT;

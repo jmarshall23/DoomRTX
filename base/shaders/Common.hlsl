@@ -53,4 +53,4 @@ struct sceneLightInfo_t {
 #define STAT_FORCE_TRANSPARENT 2
 #define STAT_FORCE_BLEND_TEST 3
 #define STAT_MIRROR 4
-
+#define STAT_GLASS 5

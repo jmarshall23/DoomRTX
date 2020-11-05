@@ -167,3 +167,4 @@ extern int numWorldLights;
 static const int STAT_FORCE_TRANSPARENT = 2;
 static const int STAT_FORCE_BLEND_TEST = 3;
 static const int STAT_MIRROR = 4;
+static const int STAT_GLASS = 5;

@@ -112,6 +112,7 @@ void idMaterial::CommonInit() {
 	refCount = 0;
 	portalSky = false;
 	isMirror = false;
+	isGlass = false;
 
 	decalInfo.stayTime = 10000;
 	decalInfo.fadeTime = 4000;
@@ -270,7 +271,7 @@ static infoParm_t	infoParms[] = {
 	{"wood",		0,  SURFTYPE_WOOD,		0 },	// wood
 	{"cardboard",	0,	SURFTYPE_CARDBOARD,	0 },	// cardboard
 	{"liquid",		0,	SURFTYPE_LIQUID,	0 },	// liquid
-	{"glass",		0,	SURFTYPE_GLASS,		0 },	// glass
+	//{"glass",		0,	SURFTYPE_GLASS,		0 },	// glass
 	{"plastic",		0,	SURFTYPE_PLASTIC,	0 },	// plastic
 	{"ricochet",	0,	SURFTYPE_RICOCHET,	0 },	// behaves like metal but causes a ricochet sound
 
@@ -1970,6 +1971,12 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 		else if ( !token.Icmp( "mirror" ) ) {
 			sort = SS_OPAQUE;
 			isMirror = true;
+			continue;
+		}
+		// glass
+		else if (!token.Icmp("glass")) {
+			sort = SS_OPAQUE;
+			isGlass = true;
 			continue;
 		}
 		// noFog

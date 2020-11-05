@@ -626,6 +626,7 @@ public:
 	void				AddReference();
 
 	bool				IsMirror() const { return isMirror; }
+	bool				IsGlass() const { return isGlass; }
 
 	// Returns the emissive information for this material.
 	const icdEmissiveStage& GetEmissiveStage() const { return emissiveStage; }
@@ -671,6 +672,7 @@ private:
 	bool				noFog;				// surface does not create fog interactions
 
 	bool				isMirror;			// surface is a mirror
+	bool				isGlass;			// surface is glass
 
 	int					spectrum;			// for invisible writing, used for both lights and surfaces
 
