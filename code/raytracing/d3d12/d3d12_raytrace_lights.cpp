@@ -67,7 +67,7 @@ void GL_ClearLights(void) {
 	}
 }
 
-void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, idVec3 radius, int lightStyle, float r, float g, float b) {
+void GL_RegisterWorldLight(idRenderLightLocal* ent, float x, float y, float z, idVec3 radius, int lightStyle, float r, float g, float b) {
 	glLight_t light = { };
 	light.origin_radius[0] = x;
 	light.origin_radius[1] = y;
@@ -82,7 +82,7 @@ void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, idVec3
 	light.light_color2[1] = radius.y;
 	light.light_color2[2] = radius.z;
 
-	if (((idRenderEntityLocal*)ent)->parms.noShadow) {
+	if (ent->parms.noShadows) {
 		light.light_color2.w = 0;
 	}
 	else {
