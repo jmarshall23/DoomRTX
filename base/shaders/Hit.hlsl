@@ -489,7 +489,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   		//if(!isShadowed)
   		if(falloff > 0)
   		{
-  				if(!IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
+  				if(BTriVertex[vertId].st.z == STAT_GLASS || !IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
   				{			
   					float3 V = viewPos - worldOrigin;
   					float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
@@ -576,7 +576,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   
 		// Fire the secondary bounce
 		float3 bounce = float3(0, 0, 0);
-	//if(payload.colorAndDistance.a != 1)
+	if(BTriVertex[vertId].st.z != STAT_GLASS)
 	{
 	
 		{
