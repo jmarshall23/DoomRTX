@@ -126,7 +126,7 @@ bool IsLightShadowed(float3 worldOrigin, float3 lightDir, float distance, float3
      	// Acceleration structure
      	SceneBVH,
      	// Flags can be used to specify the behavior upon hitting a surface
-     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_CULL_FRONT_FACING_TRIANGLES ,
      	// Instance inclusion mask, which can be used to mask out some geometry to
      	// this ray by and-ing the mask with a geometry mask. The 0xFF flag then
      	// indicates no geometry will be masked
@@ -489,7 +489,8 @@ float DecodeFloatRGBA( float4 rgba ) {
   		//if(!isShadowed)
   		if(falloff > 0)
   		{
-  				if(BTriVertex[vertId].st.z == STAT_GLASS || !IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
+				bool castShadows = lightInfo[i].light_color2.w;
+  				if(!castShadows || BTriVertex[vertId].st.z == STAT_GLASS || !IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
   				{			
   					float3 V = viewPos - worldOrigin;
   					float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));

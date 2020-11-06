@@ -82,6 +82,13 @@ void GL_RegisterWorldLight(idRenderLight* ent, float x, float y, float z, idVec3
 	light.light_color2[1] = radius.y;
 	light.light_color2[2] = radius.z;
 
+	if (((idRenderEntityLocal*)ent)->parms.noShadow) {
+		light.light_color2.w = 0;
+	}
+	else {
+		light.light_color2.w = 1;
+	}
+
 	light.absmin[0] = x;
 	light.absmin[1] = y;
 	light.absmin[2] = z;
@@ -237,9 +244,10 @@ void GL_BuildLightList(float x, float y, float z) {
 		sceneLights[numVisLights].light_clamp[1] = ent->light_clamp[1];
 		sceneLights[numVisLights].light_clamp[2] = ent->light_clamp[2];
 
-		sceneLights[numVisLights].light_color2[0] = ent->light_color2[0];
-		sceneLights[numVisLights].light_color2[1] = ent->light_color2[1];
-		sceneLights[numVisLights].light_color2[2] = ent->light_color2[2];
+		sceneLights[numVisLights].light_color2.x = ent->light_color2.x;
+		sceneLights[numVisLights].light_color2.y = ent->light_color2.y;
+		sceneLights[numVisLights].light_color2.z = ent->light_color2.z;
+		sceneLights[numVisLights].light_color2.w = ent->light_color2.w;
 
 		numVisLights++;
 	}
