@@ -99,6 +99,140 @@ void RB_DrawShadowElementsWithCounters( const srfTriangles_t *tri, int numIndexe
 
 
 /*
+=============
+R_PlaneForSurface
+
+Returns the plane for the first triangle in the surface
+FIXME: check for degenerate triangle?
+=============
+*/
+static void R_PlaneForSurface(const srfTriangles_t* tri, idPlane& plane) {
+	idDrawVert* v1, * v2, * v3;
+
+	v1 = tri->verts + tri->indexes[0];
+	v2 = tri->verts + tri->indexes[1];
+	v3 = tri->verts + tri->indexes[2];
+	plane.FromPoints(v1->xyz, v2->xyz, v3->xyz);
+}
+
+/*
+=========================
+R_PreciseCullSurface
+
+Check the surface for visibility on a per-triangle basis
+for cases when it is going to be VERY expensive to draw (subviews)
+
+If not culled, also returns the bounding box of the surface in
+Normalized Device Coordinates, so it can be used to crop the scissor rect.
+
+OPTIMIZE: we could also take exact portal passing into consideration
+=========================
+*/
+bool R_PreciseCullSurface(const drawSurf_t* drawSurf, idBounds& ndcBounds) {
+	const srfTriangles_t* tri;
+	int numTriangles;
+	idPlane clip, eye;
+	int i, j;
+	unsigned int pointOr;
+	unsigned int pointAnd;
+	idVec3 localView;
+	idFixedWinding w;
+
+	tri = drawSurf->geo;
+
+	pointOr = 0;
+	pointAnd = (unsigned int)~0;
+
+	// get an exact bounds of the triangles for scissor cropping
+	ndcBounds.Clear();
+
+	for (i = 0; i < tri->numVerts; i++) {
+		int j;
+		unsigned int pointFlags;
+
+		R_TransformModelToClip(tri->verts[i].xyz, drawSurf->space->modelViewMatrix,
+			tr.viewDef->projectionMatrix, eye, clip);
+
+		pointFlags = 0;
+		for (j = 0; j < 3; j++) {
+			if (clip[j] >= clip[3]) {
+				pointFlags |= (1 << (j * 2));
+			}
+			else if (clip[j] <= -clip[3]) {
+				pointFlags |= (1 << (j * 2 + 1));
+			}
+		}
+
+		pointAnd &= pointFlags;
+		pointOr |= pointFlags;
+	}
+
+	// trivially reject
+	if (pointAnd) {
+		return true;
+	}
+
+	// backface and frustum cull
+	numTriangles = tri->numIndexes / 3;
+
+	R_GlobalPointToLocal(drawSurf->space->modelMatrix, tr.viewDef->renderView.vieworg, localView);
+
+	for (i = 0; i < tri->numIndexes; i += 3) {
+		idVec3	dir, normal;
+		float	dot;
+		idVec3	d1, d2;
+
+		const idVec3& v1 = tri->verts[tri->indexes[i]].xyz;
+		const idVec3& v2 = tri->verts[tri->indexes[i + 1]].xyz;
+		const idVec3& v3 = tri->verts[tri->indexes[i + 2]].xyz;
+
+		// this is a hack, because R_GlobalPointToLocal doesn't work with the non-normalized
+		// axis that we get from the gui view transform.  It doesn't hurt anything, because
+		// we know that all gui generated surfaces are front facing
+		if (tr.guiRecursionLevel == 0) {
+			// we don't care that it isn't normalized,
+			// all we want is the sign
+			d1 = v2 - v1;
+			d2 = v3 - v1;
+			normal = d2.Cross(d1);
+
+			dir = v1 - localView;
+
+			dot = normal * dir;
+			if (dot >= 0.0f) {
+				return true;
+			}
+		}
+
+		// now find the exact screen bounds of the clipped triangle
+		w.SetNumPoints(3);
+		R_LocalPointToGlobal(drawSurf->space->modelMatrix, v1, w[0].ToVec3());
+		R_LocalPointToGlobal(drawSurf->space->modelMatrix, v2, w[1].ToVec3());
+		R_LocalPointToGlobal(drawSurf->space->modelMatrix, v3, w[2].ToVec3());
+		w[0].s = w[0].t = w[1].s = w[1].t = w[2].s = w[2].t = 0.0f;
+
+		for (j = 0; j < 4; j++) {
+			if (!w.ClipInPlace(-tr.viewDef->frustum[j], 0.1f)) {
+				break;
+			}
+		}
+		for (j = 0; j < w.GetNumPoints(); j++) {
+			idVec3	screen;
+
+			R_GlobalToNormalizedDeviceCoordinates(w[j].ToVec3(), screen);
+			ndcBounds.AddPoint(screen);
+		}
+	}
+
+	// if we don't enclose any area, return
+	if (ndcBounds.IsCleared()) {
+		return true;
+	}
+
+	return false;
+}
+
+/*
 ===============
 RB_RenderTriangleSurface
 

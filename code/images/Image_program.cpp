@@ -55,7 +55,7 @@ Manager
 
 // tr_imageprogram.c
 
-#include "tr_local.h"
+#include "../renderer/tr_local.h"
 
 /*
 

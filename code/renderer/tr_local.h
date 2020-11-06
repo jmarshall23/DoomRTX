@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __TR_LOCAL_H__
 #define __TR_LOCAL_H__
 
-#include "Image.h"
+#include "../images/Image.h"
 #include "MegaTexture.h"
 
 class idRenderWorldLocal;
@@ -95,8 +95,8 @@ SURFACES
 ==============================================================================
 */
 
-#include "ModelDecal.h"
-#include "ModelOverlay.h"
+#include "../models/ModelDecal.h"
+#include "../models/ModelOverlay.h"
 
 typedef struct areaNumRef_s {
 	struct areaNumRef_s* next;

@@ -1141,15 +1141,6 @@ void R_RenderView( viewDef_t *parms ) {
 	// sort all the ambient surfaces for translucency ordering
 	R_SortDrawSurfs();
 
-	// generate any subviews (mirrors, cameras, etc) before adding this view
-	if ( R_GenerateSubViews() ) {
-		// if we are debugging subviews, allow the skipping of the
-		// main view draw
-		if ( r_subviewOnly.GetBool() ) {
-			return;
-		}
-	}
-
 	// write everything needed to the demo file
 	if ( session->writeDemo ) {
 		static_cast<idRenderWorldLocal *>(parms->renderWorld)->WriteVisibleDefs( tr.viewDef );

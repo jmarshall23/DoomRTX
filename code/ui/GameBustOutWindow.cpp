@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "../framework/Session_local.h"
-#include "../renderer/Image.h"
+#include "../images/Image.h"
 
 #include "DeviceContext.h"
 #include "Window.h"

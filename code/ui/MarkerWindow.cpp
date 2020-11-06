@@ -30,7 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 // included for image uploading for player stat graph
-#include "../renderer/Image.h"
+#include "../images/Image.h"
 
 #include "DeviceContext.h"
 #include "Window.h"

@@ -31,7 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #define JPEG_INTERNALS
 extern "C" {
-#include "jpeg-6/jpeglib.h"
+#include "../images/jpeg-6/jpeglib.h"
 }
 
 #include "tr_local.h"
