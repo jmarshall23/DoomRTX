@@ -248,6 +248,7 @@ float getFogFactor(float d)
 	// Refraction
 	if(hit.worldOrigin.w == STAT_GLASS)
 	{		 
+		float3 viewPos = float3(timeViewOrg.y, timeViewOrg.z, timeViewOrg.w);
           float2 dims = float2(DispatchRaysDimensions().xy);
 		  float2 d = (((launchIndex.xy + 0.5f) / dims.xy) * 2.f - 1.f);
 		  float4 target = mul(projectionI, float4(d.x, d.y, 1, 1));  
@@ -259,9 +260,10 @@ float getFogFactor(float d)
 		  payload.decalColor = float4(0, 0, 0, 0);
 		  payload.lightColor = float4(0, 0, 0, 0);
 		  
-		  ray.Origin = hit.worldOrigin - (hit.worldNormal * 10);
-		  ray.Direction = refract(Direction, hit.worldNormal, 0.5);
-		  ray.TMin = 0;
+		  ray.Origin = hit.worldOrigin -  (hit.worldNormal * 10);
+		  float3 refractdir = -normalize(viewPos - hit.worldOrigin);
+		  ray.Direction = refract(refractdir, hit.worldNormal, 0.8);
+		  ray.TMin = 10;
 		  ray.TMax = 100000;
 
 		  // Trace the ray
