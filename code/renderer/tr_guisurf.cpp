@@ -129,9 +129,9 @@ void R_RenderGuiSurf( idUserInterface *gui, drawSurf_t *drawSurf ) {
 	idVec3	origin, axis[3];
 
 	// for testing the performance hit
-	if ( r_skipGuiShaders.GetInteger() == 1 ) {
+	//if ( r_skipGuiShaders.GetInteger() == 1 ) {
 		return;
-	}
+	//}
 
 	// don't allow an infinite recursion loop
 	if ( tr.guiRecursionLevel == 4 ) {

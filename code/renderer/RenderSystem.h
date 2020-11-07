@@ -150,8 +150,8 @@ const int BIGCHAR_HEIGHT		= 16;
 
 // all drawing is done to a 640 x 480 virtual screen size
 // and will be automatically scaled to the real resolution
-#define SCREEN_WIDTH			(float)renderSystem->GetScreenWidth()
-#define SCREEN_HEIGHT			(float)renderSystem->GetScreenHeight()
+#define SCREEN_WIDTH			640
+#define SCREEN_HEIGHT			480
 
 class idRenderWorld;
 
