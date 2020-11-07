@@ -189,7 +189,7 @@ void idGuiModel::EmitSurface( guiModelSurface_t *surf, float modelMatrix[16], fl
 
 	renderEntity_t renderEntity;
 	memset( &renderEntity, 0, sizeof( renderEntity ) );
-	memcpy( renderEntity.shaderParms, surf->color, sizeof( surf->color ) );
+	memcpy( renderEntity.shaderParms, surf->color.ToFloatPtr(), sizeof( surf->color ) );
 
 	viewEntity_t *guiSpace = (viewEntity_t *)R_ClearedFrameAlloc( sizeof( *guiSpace ) );
 	memcpy( guiSpace->modelMatrix, modelMatrix, sizeof( guiSpace->modelMatrix ) );
@@ -197,7 +197,7 @@ void idGuiModel::EmitSurface( guiModelSurface_t *surf, float modelMatrix[16], fl
 	guiSpace->weaponDepthHack = depthHack;
 
 	if (!guiSpace->entityDef) {
-		GL_RenderUISurface(tri, surf->material);
+		GL_RenderUISurface(tri, surf->material, surf->color);
 	}
 }
 

@@ -1634,7 +1634,7 @@ void R_CopyImage(byte* source, int sourceX, int sourceY, int sourceWidth, byte* 
 
 void GL_UpdateTextureInfo(idRenderModel* model);
 void GL_Upload32(int textureId, unsigned* data, int width, int height, bool mipmap, bool alpha);
-void GL_RenderUISurface(srfTriangles_t* tri, const idMaterial* material);
+void GL_RenderUISurface(srfTriangles_t* tri, const idMaterial* material, idVec4 color);
 void GL_InitUI(void);
 void RE_ShutdownRaytracingMap(void);
 

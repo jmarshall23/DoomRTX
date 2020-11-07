@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 
 typedef struct {
 	const idMaterial	*material;
-	float				color[4];
+	idVec4				color;
 	int					firstVert;
 	int					numVerts;
 	int					firstIndex;

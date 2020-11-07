@@ -37,6 +37,7 @@ tr_buffer* simple_ui_vertex_buffer;
 struct uiVertex_t {
 	idVec4 xyz;
 	idVec2 st;
+	idVec3 color;
 };
 
 uiVertex_t*				uiVertexPool;
@@ -107,7 +108,7 @@ void GL_InitUI(void) {
 		tr_create_descriptor_set(renderer, 3, &descriptors[0], &simple_ui_desc_set[i]);
 
 		tr_vertex_layout vertex_layout = {};
-		vertex_layout.attrib_count = 2;
+		vertex_layout.attrib_count = 3;
 		vertex_layout.attribs[0].semantic = tr_semantic_position;
 		vertex_layout.attribs[0].format = tr_format_r32g32b32a32_float;
 		vertex_layout.attribs[0].binding = 0;
@@ -118,6 +119,11 @@ void GL_InitUI(void) {
 		vertex_layout.attribs[1].binding = 0;
 		vertex_layout.attribs[1].location = 1;
 		vertex_layout.attribs[1].offset = tr_util_format_stride(tr_format_r32g32b32a32_float);
+		vertex_layout.attribs[2].semantic = tr_semantic_color;
+		vertex_layout.attribs[2].format = tr_format_r32g32b32_float;
+		vertex_layout.attribs[2].binding = 0;
+		vertex_layout.attribs[2].location = 1;
+		vertex_layout.attribs[2].offset = vertex_layout.attribs[1].offset + tr_util_format_stride(tr_format_r32g32_float);
 		tr_pipeline_settings pipeline_settings = { tr_primitive_topo_tri_list };				
 		pipeline_settings.alphaBlend = true;
 		tr_create_pipeline(renderer, simple_ui_shader, &vertex_layout, simple_ui_desc_set[i], uiRenderTarget, &pipeline_settings, &simple_ui_pipeline[i]);
@@ -165,7 +171,7 @@ void GL_SetUICanvas(float x, float y, float width, float height) {
 GL_Upload32
 ===============
 */
-void GL_RenderUISurface(srfTriangles_t* tri, const idMaterial* material) {
+void GL_RenderUISurface(srfTriangles_t* tri, const idMaterial* material, idVec4 color) {
 	uiRenderPass_t pass;
 
 	const shaderStage_t* stage = material->GetAlbedoStage();
@@ -190,6 +196,7 @@ void GL_RenderUISurface(srfTriangles_t* tri, const idMaterial* material) {
 		uiVertexPool[currentUIVertex + i].xyz.z = tri->verts[triIndex].xyz.z;
 		uiVertexPool[currentUIVertex + i].xyz.w = 1;
 		uiVertexPool[currentUIVertex + i].st = tri->verts[triIndex].st;
+		uiVertexPool[currentUIVertex + i].color = color.ToVec3();
 	}
 	int texNum = stage->texture.image->texnum;
 	pass.texture = textures[texNum].texture;
