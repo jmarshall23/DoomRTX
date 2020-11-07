@@ -480,14 +480,14 @@ void idGuiModel::DrawStretchPic( float x, float y, float w, float h, float s1, f
 		h += y;
 		y = 0;
 	}
-	if ( x + w > 640 ) {
-		s2 -= ( s2 - s1 ) * ( x + w - 640 ) / w;
-		w = 640 - x;
-	}
-	if ( y + h > 480 ) {
-		t2 -= ( t2 - t1 ) * ( y + h - 480 ) / h;
-		h = 480 - y;
-	}
+	//if ( x + w > 640 ) {
+	//	s2 -= ( s2 - s1 ) * ( x + w - 640 ) / w;
+	//	w = 640 - x;
+	//}
+	//if ( y + h > 480 ) {
+	//	t2 -= ( t2 - t1 ) * ( y + h - 480 ) / h;
+	//	h = 480 - y;
+	//}
 	
 	if ( w <= 0 || h <= 0 ) {
 		return;		// completely clipped away

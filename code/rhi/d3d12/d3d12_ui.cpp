@@ -137,8 +137,8 @@ void GL_InitUI(void) {
 		float projectionMatrix[16] = { };
 		//float modelViewMatrix[16] = { };
 
-		projectionMatrix[0] = 2.0f / 640.0f;
-		projectionMatrix[5] = -2.0f / 480.0f;
+		projectionMatrix[0] = 2.0f / SCREEN_WIDTH;
+		projectionMatrix[5] = -2.0f / SCREEN_HEIGHT;
 		projectionMatrix[10] = -2.0f / 1.0f;
 		projectionMatrix[12] = -1.0f;
 		projectionMatrix[13] = 1.0f;
