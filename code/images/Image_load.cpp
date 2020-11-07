@@ -1177,7 +1177,7 @@ void	idImage::ActuallyLoadImage( bool checkForPrecompressed, bool fromBackEnd ) 
 		// build a hash for checking duplicate image files
 		// NOTE: takes about 10% of image load times (SD)
 		// may not be strictly necessary, but some code uses it, so let's leave it in
-		imageHash = MD4_BlockChecksum( pic, width * height * 4 );
+		//imageHash = MD4_BlockChecksum( pic, width * height * 4 );
 
 		GenerateImage( pic, width, height, filter, allowDownSize, repeat, depth );
 		timestamp = timestamp;
