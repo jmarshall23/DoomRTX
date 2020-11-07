@@ -100,11 +100,11 @@ typedef struct glconfig_s {
 
 
 // font support 
-const int GLYPH_START			= 0;
-const int GLYPH_END				= 255;
-const int GLYPH_CHARSTART		= 32;
-const int GLYPH_CHAREND			= 127;
-const int GLYPHS_PER_FONT		= GLYPH_END - GLYPH_START + 1;
+const int GLYPH_START = 0;
+const int GLYPH_END = 255;
+const int GLYPH_CHARSTART = 32;
+const int GLYPH_CHAREND = 127;
+const int GLYPHS_PER_FONT = GLYPH_END - GLYPH_START + 1;
 
 typedef struct {
 	int					height;			// number of scan lines
@@ -118,12 +118,16 @@ typedef struct {
 	float				t;				// y offset in image where glyph starts
 	float				s2;
 	float				t2;
-	const idMaterial *	glyph;			// shader with the glyph
+	int					glyph;			// shader with the glyph
 	char				shaderName[32];
+
+	const	idMaterial* GetGlyph(void) const {
+		return (const idMaterial *)declManager->DeclByIndex(DECL_MATERIAL, glyph);
+	}
 } glyphInfo_t;
 
 typedef struct {
-	glyphInfo_t			glyphs [GLYPHS_PER_FONT];
+	glyphInfo_t			glyphs[GLYPHS_PER_FONT];
 	float				glyphScale;
 	char				name[64];
 } fontInfo_t;

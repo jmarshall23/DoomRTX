@@ -186,6 +186,10 @@ void GL_RenderUISurface(srfTriangles_t* tri, const idMaterial* material, idVec4 
 		return;
 	}
 
+	if (currentUIVertex + tri->numIndexes >= r_uiVertexBufferSize.GetInteger()) {
+		return;
+	}
+
 	pass.startVertex = currentUIVertex;
 	pass.numVertexes = tri->numIndexes;
 

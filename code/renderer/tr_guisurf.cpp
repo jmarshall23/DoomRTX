@@ -127,11 +127,12 @@ call the GUI generator to create quads for it.
 */
 void R_RenderGuiSurf( idUserInterface *gui, drawSurf_t *drawSurf ) {
 	idVec3	origin, axis[3];
-
+// jmarshall - world guis!
 	// for testing the performance hit
 	//if ( r_skipGuiShaders.GetInteger() == 1 ) {
 		return;
 	//}
+// jmarshall end
 
 	// don't allow an infinite recursion loop
 	if ( tr.guiRecursionLevel == 4 ) {
