@@ -162,6 +162,11 @@ void create_entity_matrix(float matrix[16], renderEntity_t* e);
 void GL_UpdateBottomLevelAccelStruct(idRenderModel* model);
 void GL_UpdateTextureInfo(idRenderModel* model);
 
+void GL_RenderUI(ID3D12GraphicsCommandList4* cmdList, ID3D12CommandAllocator* commandAllocator);
+extern tr_render_target* uiRenderTarget;
+
+void GL_UpdateUI(void);
+
 extern int numWorldLights;
 
 static const int STAT_FORCE_TRANSPARENT = 2;

@@ -193,6 +193,39 @@ static void R_InvertColor( byte *data, int width, int height ) {
 
 
 /*
+==============
+R_Dropsample
+==============
+*/
+unsigned char* R_Dropsample(const unsigned char* in, int inwidth, int inheight, int outwidth, int outheight) {
+	int		i, j, k;
+	const unsigned char* inrow;
+	const unsigned char* pix1;
+	unsigned char* out, * out_p;
+	static unsigned char ViewportPixelBuffer[4096 * 4096 * 4];
+
+	out = &ViewportPixelBuffer[0];
+	out_p = out;
+
+	int bpp = 4;
+	for (i = 0; i < outheight; i++, out_p += outwidth * bpp) {
+		inrow = in + bpp * inwidth * (int)((i + 0.25) * inheight / outheight);
+		for (j = 0; j < outwidth; j++) {
+			k = j * inwidth / outwidth;
+			pix1 = inrow + k * bpp;
+			out_p[j * 4 + 0] = pix1[0];
+			out_p[j * 4 + 1] = pix1[1];
+			out_p[j * 4 + 2] = pix1[2];
+			out_p[j * 4 + 3] = pix1[3];
+			//out_p[j * 3 + 1] = pix1[1];
+			//out_p[j * 3 + 2] = pix1[2];
+		}
+	}
+
+	return out;
+}
+
+/*
 ===================
 R_AddNormalMaps
 

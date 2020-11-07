@@ -642,7 +642,16 @@ tr_api_export void tr_create_pipeline(tr_renderer* p_renderer, tr_shader_program
 tr_api_export void tr_create_compute_pipeline(tr_renderer* p_renderer, tr_shader_program* p_shader_program, tr_descriptor_set* p_descriptor_set, const tr_pipeline_settings* p_pipeline_settings, tr_pipeline** pp_pipeline);
 tr_api_export void tr_destroy_pipeline(tr_renderer* p_renderer, tr_pipeline* p_pipeline);
 
-tr_api_export void tr_create_render_target(tr_renderer*p_renderer, uint32_t width, uint32_t height, tr_sample_count sample_count, tr_format color_format, uint32_t color_attachment_count, tr_format depth_stencil_format, tr_render_target** pp_render_target);
+tr_api_export void tr_create_render_target(tr_renderer* p_renderer,
+	uint32_t                width,
+	uint32_t                height,
+	tr_sample_count         sample_count,
+	tr_format               color_format,
+	uint32_t                color_attachment_count,
+	const tr_clear_value* p_color_clear_values,
+	tr_format               depth_stencil_format,
+	const tr_clear_value* p_depth_stencil_clear_value,
+	tr_render_target** pp_render_target);
 tr_api_export void tr_destroy_render_target(tr_renderer* p_renderer, tr_render_target* p_render_target);
 
 tr_api_export void tr_update_descriptor_set(tr_renderer* p_renderer, tr_descriptor_set* p_descriptor_set);
@@ -695,7 +704,7 @@ tr_api_export void        tr_util_clear_buffer(tr_queue* p_queue, tr_buffer* p_b
 tr_api_export void        tr_util_update_buffer(tr_queue* p_queue, uint64_t size, const void* p_src_data, tr_buffer* p_buffer);
 tr_api_export void        tr_util_update_texture_uint8(tr_queue* p_queue, uint32_t src_width, uint32_t src_height, uint32_t src_row_stride, const uint8_t* p_src_data, uint32_t src_channel_count, tr_texture* p_texture, tr_image_resize_uint8_fn resize_fn, void* p_user_data);
 tr_api_export void        tr_util_update_texture_float(tr_queue* p_queue, uint32_t src_width, uint32_t src_height, uint32_t src_row_stride, const float* p_src_data, uint32_t channels, tr_texture* p_texture, tr_image_resize_float_fn resize_fn, void* p_user_data);
-
+void tr_internal_dx_cmd_image_transition(tr_cmd* p_cmd, tr_texture* p_texture, tr_texture_usage old_usage, tr_texture_usage new_usage);
 // =================================================================================================
 // IMPLEMENTATION
 // =================================================================================================
@@ -1793,7 +1802,7 @@ void tr_create_render_target(
                                  p_render_target->width, 
                                  p_render_target->height, 
                                  p_render_target->sample_count,
-                                 p_render_target->color_format, 
+                                 depth_stencil_format,
                                  1,
                                  p_depth_stencil_clear_value,
                                  false,
@@ -3836,7 +3845,7 @@ void tr_internal_dx_create_pipeline_state(tr_renderer* p_renderer, tr_shader_pro
     rasterizer_desc.DepthBias               = D3D12_DEFAULT_DEPTH_BIAS;
     rasterizer_desc.DepthBiasClamp          = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
     rasterizer_desc.SlopeScaledDepthBias    = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-    rasterizer_desc.DepthClipEnable         = TRUE;
+    rasterizer_desc.DepthClipEnable         = FALSE;
     rasterizer_desc.MultisampleEnable       = FALSE;
     rasterizer_desc.AntialiasedLineEnable   = FALSE;
     rasterizer_desc.ForcedSampleCount       = 0;

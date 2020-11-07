@@ -467,21 +467,21 @@ Draws and captures the current state, then starts a wipe with that image
 ================
 */
 void idSessionLocal::StartWipe( const char *_wipeMaterial, bool hold ) {
-	console->Close();
-
-	// render the current screen into a texture for the wipe model
-	renderSystem->CropRenderSize( 640, 480, true );
-
-	Draw();
-
-	renderSystem->CaptureRenderToImage( "_scratch");
-	renderSystem->UnCrop();
-
-	wipeMaterial = declManager->FindMaterial( _wipeMaterial, false );
-
-	wipeStartTic = com_ticNumber;
-	wipeStopTic = wipeStartTic + 1000.0f / USERCMD_MSEC * com_wipeSeconds.GetFloat();
-	wipeHold = hold;
+	//console->Close();
+	//
+	//// render the current screen into a texture for the wipe model
+	//renderSystem->CropRenderSize( 640, 480, true );
+	//
+	//Draw();
+	//
+	//renderSystem->CaptureRenderToImage( "_scratch");
+	//renderSystem->UnCrop();
+	//
+	//wipeMaterial = declManager->FindMaterial( _wipeMaterial, false );
+	//
+	//wipeStartTic = com_ticNumber;
+	//wipeStopTic = wipeStartTic + 1000.0f / USERCMD_MSEC * com_wipeSeconds.GetFloat();
+	//wipeHold = hold;
 }
 
 /*
@@ -490,18 +490,18 @@ idSessionLocal::CompleteWipe
 ================
 */
 void idSessionLocal::CompleteWipe() {
-	if ( com_ticNumber == 0 ) {
-		// if the async thread hasn't started, we would hang here
-		wipeStopTic = 0;
-		UpdateScreen( true );
-		return;
-	}
-	while ( com_ticNumber < wipeStopTic ) {
-#if ID_CONSOLE_LOCK
-		emptyDrawCount = 0;
-#endif
-		UpdateScreen( true );
-	}
+//	if ( com_ticNumber == 0 ) {
+//		// if the async thread hasn't started, we would hang here
+//		wipeStopTic = 0;
+//		UpdateScreen( true );
+//		return;
+//	}
+//	while ( com_ticNumber < wipeStopTic ) {
+//#if ID_CONSOLE_LOCK
+//		emptyDrawCount = 0;
+//#endif
+//		UpdateScreen( true );
+//	}
 }
 
 /*

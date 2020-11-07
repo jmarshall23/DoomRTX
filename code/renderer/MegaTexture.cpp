@@ -33,6 +33,24 @@ If you have questions concerning this license or the applicable additional terms
 idCVar r_megaTextureSize("r_megaTextureSize", "16384", CVAR_INTEGER | CVAR_ROM, "size of the megatexture");
 
 /*
+==============
+R_CopyImage
+==============
+*/
+void R_CopyImage(byte* source, int sourceX, int sourceY, int sourceWidth, byte* dest, int destX, int destY, int destWidth, int width, int height)
+{	
+	for (int y = 0; y < height; y++)
+	{
+		int _x = 0;
+		int _y = y * 4;
+		int destPos = (destWidth * (_y + (destY * 4))) + (_x + (destX * 4));
+		int sourcePos = (sourceWidth * (_y + (sourceY * 4))) + (_x + (sourceX * 4));
+
+		memcpy(&dest[destPos], &source[sourcePos], width * 4);
+	}
+}
+
+/*
 =====================
 iceMegaTexture::iceMegaTexture
 =====================

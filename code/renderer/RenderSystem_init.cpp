@@ -403,6 +403,9 @@ void R_InitOpenGL( void ) {
 
 	// Reset our gamma
 	R_SetColorMappings();
+
+	// Init the UI.
+	GL_InitUI();
 }
 
 /*
