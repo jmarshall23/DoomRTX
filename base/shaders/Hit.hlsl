@@ -464,7 +464,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   float spec_contrib = 0.0;
   float emissive = 1;
   float3 spec_lit = 0;
-  float bump = 0.0;
+  float bump = 1.0;
   float numLights = 1.0;
   for(int i = 0; i < 64; i++)
   {	 		
@@ -485,9 +485,8 @@ float DecodeFloatRGBA( float4 rgba ) {
 		
   		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
 
-  		//bool isShadowed = dot(normal, centerLightDir) < 0;	  
-  		//if(!isShadowed)
-  		if(falloff > 0)
+  		float b = dot( normalize(normalLightDir), hitNormalMap );
+  		if(falloff > 0 && b > 0)
   		{
 				bool castShadows = lightInfo[i].light_color2.w;
   				if(!castShadows || BTriVertex[vertId].st.z == STAT_GLASS || !IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
@@ -497,8 +496,8 @@ float DecodeFloatRGBA( float4 rgba ) {
   					ndotl += lightInfo[i].light_color.xyz * falloff; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
   					spec_contrib += spec * falloff * lightInfo[i].light_color.xyz;
   					spec_lit += spec * falloff * lightInfo[i].light_color.xyz;
-  				}
-				bump +=	clamp(dot( normalize(normalLightDir), hitNormalMap ), 0.0, 1.0);
+  				}				
+				bump *=	b;
 				numLights++;
   		}	  			
   	}
@@ -555,7 +554,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   		}
   	}
   }
-  bump = bump / numLights;
+ // bump = bump / numLights;
 
   //if(BTriVertex[vertId + 0].st.z >= 0)
   float aoPixel = 1.0;
@@ -589,7 +588,7 @@ float DecodeFloatRGBA( float4 rgba ) {
 				float3 worldDir = getCosHemisphereSample(r , normal);
 				bounce += FireSecondRay(worldOrigin, 1000, worldDir, false);
 			}
-			bounce = (bounce / 10) * aoPixel;
+			bounce = (bounce / 10) * aoPixel * 0.5;
 		}
 	}
 
