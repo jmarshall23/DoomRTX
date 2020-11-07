@@ -118,7 +118,8 @@ void GL_InitUI(void) {
 		vertex_layout.attribs[1].binding = 0;
 		vertex_layout.attribs[1].location = 1;
 		vertex_layout.attribs[1].offset = tr_util_format_stride(tr_format_r32g32b32a32_float);
-		tr_pipeline_settings pipeline_settings = { tr_primitive_topo_tri_list };		
+		tr_pipeline_settings pipeline_settings = { tr_primitive_topo_tri_list };				
+		pipeline_settings.alphaBlend = true;
 		tr_create_pipeline(renderer, simple_ui_shader, &vertex_layout, simple_ui_desc_set[i], uiRenderTarget, &pipeline_settings, &simple_ui_pipeline[i]);
 	}
 
@@ -137,8 +138,8 @@ void GL_InitUI(void) {
 		float projectionMatrix[16] = { };
 		//float modelViewMatrix[16] = { };
 
-		projectionMatrix[0] = 2.0f / SCREEN_WIDTH;
-		projectionMatrix[5] = -2.0f / SCREEN_HEIGHT;
+		projectionMatrix[0] = 2.0f / 640.0f;
+		projectionMatrix[5] = -2.0f / 480.0f;
 		projectionMatrix[10] = -2.0f / 1.0f;
 		projectionMatrix[12] = -1.0f;
 		projectionMatrix[13] = 1.0f;

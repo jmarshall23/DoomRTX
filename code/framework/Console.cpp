@@ -29,6 +29,12 @@ If you have questions concerning this license or the applicable additional terms
 #include "precompiled.h"
 #pragma hdrstop
 
+#undef SCREEN_WIDTH
+#undef SCREEN_HEIGHT
+
+#define SCREEN_WIDTH 640
+#define SCREEN_HEIGHT 480
+
 void SCR_DrawTextLeftAlign( float &y, const char *text, ... ) id_attribute((format(printf,2,3)));
 void SCR_DrawTextRightAlign( float &y, const char *text, ... ) id_attribute((format(printf,2,3)));
 

@@ -21,5 +21,7 @@ SamplerState uSampler0 : register(s2);
 
 float4 PSMain(VSOutput input) : SV_TARGET
 {
-	return uTex0.Sample(uSampler0, input.TexCoord);
+	float4 color = uTex0.Sample(uSampler0, input.TexCoord);
+
+	return color;
 }

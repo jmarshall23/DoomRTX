@@ -201,6 +201,10 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 	PurgeImage();
 
 	averageColor.Zero();
+	if (texnum == TEXTURE_NOT_LOADED) {
+		texnum = globalImages->texnum++;
+	}
+
 	if (tr.diffuseMegaTexture != NULL && tr.normalMegaTexture != NULL)
 	{
 		if (depthParm == TD_DIFFUSE) {
@@ -231,16 +235,12 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 		}
 		else {
 			tr.diffuseMegaTexture->RegisterTexture(imgName.c_str(), width, height, (byte*)pic);
-			texnum = globalImages->texnum;
-			GL_Upload32(globalImages->texnum, (unsigned int*)pic, width, height, false, false);
-			globalImages->texnum++;
+			GL_Upload32(texnum, (unsigned int*)pic, width, height, false, false);
 		}
 	}
 	else
 	{
-		texnum = globalImages->texnum;
-		GL_Upload32(globalImages->texnum, (unsigned int*)pic, width, height, false, false);
-		globalImages->texnum++;
+		GL_Upload32(texnum, (unsigned int*)pic, width, height, false, false);
 	}
 
 	filter = filterParm;

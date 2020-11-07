@@ -549,6 +549,7 @@ typedef struct tr_pipeline_settings {
     tr_primitive_topo                   primitive_topo;
     tr_cull_mode                        cull_mode;
     tr_front_face                       front_face;
+    bool                                alphaBlend;
     bool                                depth;    
     tr_tessellation_domain_origin       tessellation_domain_origin; // Has no effect in DX, here for consistency
 } tr_pipeline_settings;
@@ -3820,16 +3821,33 @@ void tr_internal_dx_create_pipeline_state(tr_renderer* p_renderer, tr_shader_pro
     blend_desc.AlphaToCoverageEnable        = FALSE;
     blend_desc.IndependentBlendEnable       = FALSE;
     for( UINT attrib_index = 0; attrib_index < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++attrib_index ) { 
-        blend_desc.RenderTarget[attrib_index].BlendEnable           = FALSE;
-        blend_desc.RenderTarget[attrib_index].LogicOpEnable         = FALSE;
-        blend_desc.RenderTarget[attrib_index].SrcBlend              = D3D12_BLEND_ONE;
-        blend_desc.RenderTarget[attrib_index].DestBlend             = D3D12_BLEND_ZERO;
-        blend_desc.RenderTarget[attrib_index].BlendOp               = D3D12_BLEND_OP_ADD;
-        blend_desc.RenderTarget[attrib_index].SrcBlendAlpha         = D3D12_BLEND_ONE;
-        blend_desc.RenderTarget[attrib_index].DestBlendAlpha        = D3D12_BLEND_ZERO;
-        blend_desc.RenderTarget[attrib_index].BlendOpAlpha          = D3D12_BLEND_OP_ADD;
-        blend_desc.RenderTarget[attrib_index].LogicOp               = D3D12_LOGIC_OP_NOOP;
-        blend_desc.RenderTarget[attrib_index].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+        if (p_pipeline_settings->alphaBlend == false)
+        {
+            blend_desc.RenderTarget[attrib_index].BlendEnable = FALSE;
+            blend_desc.RenderTarget[attrib_index].LogicOpEnable = FALSE;
+            blend_desc.RenderTarget[attrib_index].SrcBlend = D3D12_BLEND_ONE;
+            blend_desc.RenderTarget[attrib_index].DestBlend = D3D12_BLEND_ZERO;
+            blend_desc.RenderTarget[attrib_index].BlendOp = D3D12_BLEND_OP_ADD;
+            blend_desc.RenderTarget[attrib_index].SrcBlendAlpha = D3D12_BLEND_ONE;
+            blend_desc.RenderTarget[attrib_index].DestBlendAlpha = D3D12_BLEND_ZERO;
+            blend_desc.RenderTarget[attrib_index].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+            blend_desc.RenderTarget[attrib_index].LogicOp = D3D12_LOGIC_OP_NOOP;
+            blend_desc.RenderTarget[attrib_index].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        }
+        else
+        {
+			blend_desc.RenderTarget[attrib_index].BlendEnable = TRUE;
+			blend_desc.RenderTarget[attrib_index].LogicOpEnable = FALSE;
+			blend_desc.RenderTarget[attrib_index].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+			blend_desc.RenderTarget[attrib_index].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+			blend_desc.RenderTarget[attrib_index].BlendOp = D3D12_BLEND_OP_ADD;
+			blend_desc.RenderTarget[attrib_index].SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
+			blend_desc.RenderTarget[attrib_index].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+			blend_desc.RenderTarget[attrib_index].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+			blend_desc.RenderTarget[attrib_index].LogicOp = D3D12_LOGIC_OP_NOOP;
+			blend_desc.RenderTarget[attrib_index].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        }
     }
 
     D3D12_CULL_MODE cull_mode = D3D12_CULL_MODE_NONE;
