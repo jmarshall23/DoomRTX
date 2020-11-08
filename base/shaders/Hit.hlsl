@@ -126,7 +126,7 @@ bool IsLightShadowed(float3 worldOrigin, float3 lightDir, float distance, float3
      	// Acceleration structure
      	SceneBVH,
      	// Flags can be used to specify the behavior upon hitting a surface
-     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_CULL_FRONT_FACING_TRIANGLES ,
+     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_CULL_BACK_FACING_TRIANGLES ,
      	// Instance inclusion mask, which can be used to mask out some geometry to
      	// this ray by and-ing the mask with a geometry mask. The 0xFF flag then
      	// indicates no geometry will be masked
@@ -186,7 +186,7 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal, bool che
      	// Acceleration structure
      	SceneBVH,
      	// Flags can be used to specify the behavior upon hitting a surface
-     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+     	RAY_FLAG_CULL_NON_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
      	// Instance inclusion mask, which can be used to mask out some geometry to
      	// this ray by and-ing the mask with a geometry mask. The 0xFF flag then
      	// indicates no geometry will be masked
@@ -243,6 +243,7 @@ float3 FireSecondRay(float3 worldOrigin, float distance, float3 normal, bool che
 			float3 centerLightDir = lightPos - bounceWorldOrigin;
 			float lightDistance = length(centerLightDir);
 			r = AttenuationPointLight(bounceWorldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
+			
 			if(checkSecondaryShadow && length(lightInfo[i].light_color2.xyz) > 400 && r > 0) {
 				if(IsLightShadowed(bounceWorldOrigin, normalize(centerLightDir), lightDistance, bounceNormal)) {
 					continue;
@@ -399,7 +400,7 @@ float DecodeFloatRGBA( float4 rgba ) {
 	  hitColor = megaColor.rgb;
 	  
 	  if(BTriVertex[vertId].normalVtInfo.x == -1) {
-		hitNormalMap = float3(0.5, 0.5, 1.0) * 2.0 - 1.0; //MegaTextureNormal.Load(int3(u * 16384, v * 16384, 0)).rgb * 2.0 - 1.0;
+		hitNormalMap = float3(0.5, 0.5, 1.0); //MegaTextureNormal.Load(int3(u * 16384, v * 16384, 0)).rgb * 2.0 - 1.0;
 	  }
 	  else {
 		hitNormalMap = MegaTextureNormal.Load(int3(nu * 16384, nv * 16384, 0)).rgb * 2.0 - 1.0;
@@ -455,6 +456,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   normal.z = dot(BInstanceProperties[InstanceID()].matZ, vnormal);
   
   bool isBackFacing = dot(normal, WorldRayDirection()) > 0.f;
+  float3 shadowNormal = normal;
   if (isBackFacing) {
 	normal = -normal;
 	//hitNormalMap = -hitNormalMap;
@@ -464,7 +466,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   float spec_contrib = 0.0;
   float emissive = 1;
   float3 spec_lit = 0;
-  float bump = 1.0;
+  float bump = 0.0;
   float numLights = 1.0;
   for(int i = 0; i < 64; i++)
   {	 		
@@ -483,22 +485,21 @@ float DecodeFloatRGBA( float4 rgba ) {
   		normalLightDir.y = dot(bitangent, centerLightDir);
   		normalLightDir.z = dot(normal, centerLightDir);
 		
-  		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2);  //attenuation(lightInfo[i].origin_radius.w, 1.0, lightDistance, hitNormalMap, normalize(normalLightDir)) - 0.1;  
+  		float falloff = AttenuationPointLight(worldOrigin, float4(lightInfo[i].origin_radius.xyz, 1.0), lightInfo[i].light_color2); 
 
   		float b = dot( normalize(normalLightDir), hitNormalMap );
-  		if(falloff > 0 && b > 0)
+  		if(falloff > 0)
   		{
 				bool castShadows = lightInfo[i].light_color2.w;
-  				if(!castShadows || BTriVertex[vertId].st.z == STAT_GLASS || !IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, normal))
+  				if(!castShadows || BTriVertex[vertId].st.z == STAT_GLASS || !IsLightShadowed(worldOrigin, normalize(centerLightDir), lightDistance, shadowNormal))
   				{			
   					float3 V = viewPos - worldOrigin;
   					float spec = CalcPBR(V, hitNormalMap, normalize(normalLightDir), 0.5, float3(1, 1, 1), float3(0.5, 0.5, 0.5));
   					ndotl += lightInfo[i].light_color.xyz * falloff; // normalize(centerLightDir); //max(0.f, dot(normal, normalize(centerLightDir))); 
   					spec_contrib += spec * falloff * lightInfo[i].light_color.xyz;
-  					spec_lit += spec * falloff * lightInfo[i].light_color.xyz;
-  				}				
-				bump *=	b;
-				numLights++;
+  					spec_lit += spec * falloff * lightInfo[i].light_color.xyz;					
+					bump +=	b * falloff;
+  				}												
   		}	  			
   	}
   	else // area lights
@@ -554,7 +555,8 @@ float DecodeFloatRGBA( float4 rgba ) {
   		}
   	}
   }
- // bump = bump / numLights;
+
+   bump = clamp(bump, 0.0, 1.0);
 
   //if(BTriVertex[vertId + 0].st.z >= 0)
   float aoPixel = 1.0;
@@ -576,6 +578,7 @@ float DecodeFloatRGBA( float4 rgba ) {
   
 		// Fire the secondary bounce
 		float3 bounce = float3(0, 0, 0);
+	/*	
 	if(BTriVertex[vertId].st.z != STAT_GLASS)
 	{
 	
@@ -588,10 +591,10 @@ float DecodeFloatRGBA( float4 rgba ) {
 				float3 worldDir = getCosHemisphereSample(r , normal);
 				bounce += FireSecondRay(worldOrigin, 1000, worldDir, false);
 			}
-			bounce = (bounce / 10) * aoPixel * 0.5;
+			bounce = (bounce / 10) * aoPixel;
 		}
 	}
-
+*/
   //hitColor = float3(InstanceID(), 0, 0);
   //float3 spec_final = pow(spec_lit, 0.5);
   //ndotl = lerp(ndotl, spec_final * 2, length(spec_final));
@@ -601,8 +604,8 @@ float DecodeFloatRGBA( float4 rgba ) {
 
   // * (1.0 - length(payload.decalColor.xyz)) + (payload.decalColor.xyz * ndotl))
   
-  payload.colorAndDistance += float4(hitColor * bump, 1.0);
-  payload.lightColor += float4(bounce + ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
+  payload.colorAndDistance += float4(hitColor, 1.0);
+  payload.lightColor += float4(ndotl, DecodeFloatRGBA(float4(normal, 1.0)));
   payload.worldOrigin.xyz = worldOrigin.xyz;
   payload.worldOrigin.w = BTriVertex[vertId].st.z;
 
