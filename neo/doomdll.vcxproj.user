@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArgumentsHistory>+set r_fullscreen 0 +set r_mode 6|</LocalDebuggerCommandArgumentsHistory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with inlines|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerCommand>D:\projects\Doom3\Doom3.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+</Project>
