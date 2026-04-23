@@ -169,9 +169,14 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w);
 static void QD3D12_ExecuteMainCommandListAndWait(QD3D12Window& w);
 static void QD3D12_RunRayAIDenoiseIfEnabled(ID3D12GraphicsCommandList* cl, QD3D12Window& w, ID3D12Resource* lightingResource);
 static void QD3D12_TransitionResource(ID3D12GraphicsCommandList* cl, ID3D12Resource* res, D3D12_RESOURCE_STATES& trackedState, D3D12_RESOURCE_STATES newState);
+static UINT QD3D12_GBufferSampleCount();
+static bool QD3D12_GBufferMsaaEnabled();
 static UINT QD3D12_ActiveRasterWidth(const QD3D12Window& w);
 static UINT QD3D12_ActiveRasterHeight(const QD3D12Window& w);
 static void QD3D12_BindTargetsForCurrentPhase(QD3D12Window& w);
+static void QD3D12_ResolveGBufferForCurrentFrame(QD3D12Window& w);
+void APIENTRY QD3D12_ResolveGBufferNow(void);
+void APIENTRY glResolveGBufferQD3D12(void);
 static void QD3D12_ResolveSceneToOutputAndEnterNativePhase(QD3D12Window& w);
 static void QD3D12_RegisterWindowDC(QD3D12Window* w);
 static void QD3D12_UnregisterWindowDC(HDC dc);
@@ -246,6 +251,18 @@ static const UINT QD3D12_MaxTextureUnits = 8;
 static const UINT QD3D12_FrameCount = 2;
 static const UINT QD3D12_MaxTextures = 4096;
 static const UINT QD3D12_UploadBufferSize = 128 * 1024 * 1024;
+static const UINT QD3D12_RequestedGBufferSampleCount = 4;
+
+enum QD3D12RTVSlotGroup
+{
+	QD3D12_RTV_SCENE_RENDER = 0,
+	QD3D12_RTV_NORMAL_RENDER = 1,
+	QD3D12_RTV_POSITION_RENDER = 2,
+	QD3D12_RTV_VELOCITY_RENDER = 3,
+	QD3D12_RTV_SCENE_RESOLVED = 4,
+	QD3D12_RTV_BACKBUFFER = 5,
+	QD3D12_RTV_GROUP_COUNT = 6
+};
 
 static const DXGI_FORMAT QD3D12_SceneColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 static const DXGI_FORMAT QD3D12_VelocityFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -670,11 +687,11 @@ struct QD3D12Window
 	ComPtr<ID3D12DescriptorHeap> rtvHeap;
 	UINT rtvStride = 0;
 
-	// 0 .. FrameCount-1            : scene color (render resolution)
-	// FrameCount .. 2*FrameCount-1 : normals/roughness
-	// 2*FrameCount .. 3*FrameCount-1 : world position
-	// 3*FrameCount .. 4*FrameCount-1 : velocity
-	// 4*FrameCount .. 5*FrameCount-1 : swap-chain backbuffer
+	// RTV descriptor groups:
+	//   SCENE_RENDER/normal/position/velocity : active low-res render targets
+	//     (MSAA textures when enabled, resolved single-sample textures otherwise)
+	//   SCENE_RESOLVED : single-sample scene color for lighting resolve/copy
+	//   BACKBUFFER     : swap-chain/output render target
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> sceneColorBuffers;
 	D3D12_RESOURCE_STATES sceneColorState[QD3D12_FrameCount] = {};
 
@@ -687,12 +704,26 @@ struct QD3D12Window
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> velocityBuffers;
 	D3D12_RESOURCE_STATES velocityBufferState[QD3D12_FrameCount] = {};
 
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> sceneColorMsaaBuffers;
+	D3D12_RESOURCE_STATES sceneColorMsaaState[QD3D12_FrameCount] = {};
+
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> normalMsaaBuffers;
+	D3D12_RESOURCE_STATES normalMsaaState[QD3D12_FrameCount] = {};
+
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> positionMsaaBuffers;
+	D3D12_RESOURCE_STATES positionMsaaState[QD3D12_FrameCount] = {};
+
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> velocityMsaaBuffers;
+	D3D12_RESOURCE_STATES velocityMsaaState[QD3D12_FrameCount] = {};
+
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> backBuffers;
 	D3D12_RESOURCE_STATES backBufferState[QD3D12_FrameCount] = {};
 
 	ComPtr<ID3D12DescriptorHeap> dsvHeap;
 	ComPtr<ID3D12Resource> depthBuffer;
 	D3D12_RESOURCE_STATES depthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+	ComPtr<ID3D12Resource> depthMsaaBuffer;
+	D3D12_RESOURCE_STATES depthMsaaState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 	ComPtr<ID3D12Resource> nativeDepthBuffer;
 	D3D12_RESOURCE_STATES nativeDepthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
@@ -715,6 +746,10 @@ struct QD3D12Window
 	UINT depthSrvIndex = UINT_MAX;
 	D3D12_CPU_DESCRIPTOR_HANDLE depthSrvCpu{};
 	D3D12_GPU_DESCRIPTOR_HANDLE depthSrvGpu{};
+
+	UINT depthMsaaSrvIndex = UINT_MAX;
+	D3D12_CPU_DESCRIPTOR_HANDLE depthMsaaSrvCpu{};
+	D3D12_GPU_DESCRIPTOR_HANDLE depthMsaaSrvGpu{};
 
 	D3D12_VIEWPORT viewport{};
 	D3D12_RECT scissor{};
@@ -840,8 +875,9 @@ struct GLState
 	QD3D12Window* frameOwner = nullptr;
 	QD3D12FramePhase framePhase = QD3D12_FRAME_LOW_RES;
 	bool sceneResolvedThisFrame = false;
+	bool gbufferResolvedThisFrame = false;
 	bool raytracedLightingReadyThisFrame = false;
-	float upscalerSharpness = 1.0f;
+	float upscalerSharpness = 0.5f;
 
 	GLenum depthFunc = GL_LEQUAL;
 	UINT64 nextFenceValue = 1;
@@ -855,7 +891,7 @@ struct GLState
 	bool motionHistoryReset = true;
 
 	QD3D12UpscalerBackend upscalerBackend = QD3D12_UPSCALER_DLSS;
-	QD3D12UpscalerQuality upscalerQuality = QD3D12_QUALITY_QUALITY;
+	QD3D12UpscalerQuality upscalerQuality = QD3D12_QUALITY_BALANCED;
 	bool enableRayAIDenoise = false;
 	bool enableDLSSRayReconstruction = true;
 	bool enableFSRRayRegeneration = false;
@@ -1010,6 +1046,7 @@ struct GLState
 	ComPtr<ID3D12PipelineState> postCopyPSO;
 	ComPtr<ID3D12PipelineState> postAdditivePSO;
 	ComPtr<ID3D12PipelineState> postDepthCopyPSO;
+	ComPtr<ID3D12PipelineState> postDepthResolveMsaaPSO;
 
 	ComPtr<ID3DBlob> vsMainBlob;
 	ComPtr<ID3DBlob> psMainBlob;
@@ -1022,6 +1059,7 @@ struct GLState
 	ComPtr<ID3DBlob> postPsCopyBlob;
 	ComPtr<ID3DBlob> postPsAddBlob;
 	ComPtr<ID3DBlob> postPsDepthCopyBlob;
+	ComPtr<ID3DBlob> postPsDepthResolveMsaaBlob;
 
 	TextureResource whiteTexture;
 
@@ -1061,6 +1099,25 @@ struct GLState
 static GLState g_gl;
 static std::unordered_map<HWND, QD3D12Window> g_windows;
 QD3D12Window* g_currentWindow = nullptr;
+
+static UINT g_qd3d12GBufferSampleCount = 1;
+
+static UINT QD3D12_GBufferSampleCount()
+{
+	return std::max<UINT>(1u, g_qd3d12GBufferSampleCount);
+}
+
+static bool QD3D12_GBufferMsaaEnabled()
+{
+	return QD3D12_GBufferSampleCount() > 1;
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE QD3D12_RtvAt(QD3D12Window& w, UINT group, UINT frameIndex)
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	h.ptr += SIZE_T(group * QD3D12_FrameCount + frameIndex) * SIZE_T(w.rtvStride);
+	return h;
+}
 
 void QD3D12_SetCurrentWindow(struct QD3D12Window* window) {
 	if (window != g_currentWindow &&
@@ -1139,25 +1196,25 @@ static inline GLVertex* QD3D12_AllocFrameVertices(size_t count, size_t* outFirst
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentPositionRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
-	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	h.ptr += SIZE_T((QD3D12_FrameCount * 2) + w.frameIndex) * SIZE_T(w.rtvStride);
-	return h;
+	return QD3D12_RtvAt(w, QD3D12_RTV_POSITION_RENDER, w.frameIndex);
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentVelocityRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
-	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	h.ptr += SIZE_T((QD3D12_FrameCount * 3) + w.frameIndex) * SIZE_T(w.rtvStride);
-	return h;
+	return QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RENDER, w.frameIndex);
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedSceneColorRTV()
+{
+	QD3D12Window& w = *g_currentWindow;
+	return QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RESOLVED, w.frameIndex);
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
-	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	h.ptr += SIZE_T((QD3D12_FrameCount * 4) + w.frameIndex) * SIZE_T(w.rtvStride);
-	return h;
+	return QD3D12_RtvAt(w, QD3D12_RTV_BACKBUFFER, w.frameIndex);
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentSceneDepthDSV()
@@ -1171,6 +1228,19 @@ static D3D12_CPU_DESCRIPTOR_HANDLE CurrentNativeDepthDSV()
 	const UINT dsvStride = g_gl.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	h.ptr += SIZE_T(dsvStride);
 	return h;
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentSceneMsaaDepthDSV()
+{
+	D3D12_CPU_DESCRIPTOR_HANDLE h = g_currentWindow->dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	const UINT dsvStride = g_gl.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	h.ptr += SIZE_T(dsvStride) * 2;
+	return h;
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentActiveSceneDepthDSV()
+{
+	return QD3D12_GBufferMsaaEnabled() ? CurrentSceneMsaaDepthDSV() : CurrentSceneDepthDSV();
 }
 
 static UINT QD3D12_ActiveRasterWidth(const QD3D12Window& w)
@@ -1855,6 +1925,7 @@ float4 PSMainUntexturedColorOnly(VSOut i) : SV_Target0
 
 static const char* kQD3D12PostHLSL = R"HLSL(
 Texture2D gTex0 : register(t0);
+Texture2DMS<float> gDepthMS : register(t1);
 SamplerState gSamp0 : register(s0);
 
 struct VSOut
@@ -1897,6 +1968,24 @@ float PSDepthCopy(VSOut i) : SV_Depth
         uint2(max(srcW, 1u) - 1u, max(srcH, 1u) - 1u));
 
     return gTex0.Load(int3(int2(srcPixel), 0)).r;
+}
+
+float PSDepthResolveMS(VSOut i) : SV_Depth
+{
+    uint srcW, srcH, sampleCount;
+    gDepthMS.GetDimensions(srcW, srcH, sampleCount);
+
+    float2 uv = saturate(i.uv);
+    uint2 srcPixel = min(
+        (uint2)(uv * float2(srcW, srcH)),
+        uint2(max(srcW, 1u) - 1u, max(srcH, 1u) - 1u));
+
+    float depth = 1.0;
+    [loop]
+    for (uint sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex)
+        depth = min(depth, gDepthMS.Load(srcPixel, sampleIndex));
+
+    return depth;
 }
 )HLSL";
 
@@ -3617,6 +3706,82 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 	QD3D12_PostFullscreenPass(cl, g_gl.postCopyPSO.Get(), upscaleInputSrv, CurrentBackBufferRTV(), outputViewport, outputScissor);
 }
 
+static bool QD3D12_FormatSupportsSampleCount(DXGI_FORMAT format, UINT sampleCount)
+{
+	if (!g_gl.device || sampleCount <= 1)
+		return true;
+
+	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS levels{};
+	levels.Format = format;
+	levels.SampleCount = sampleCount;
+	levels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+	levels.NumQualityLevels = 0;
+
+	if (FAILED(g_gl.device->CheckFeatureSupport(
+		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+		&levels,
+		sizeof(levels))))
+	{
+		return false;
+	}
+
+	return levels.NumQualityLevels > 0;
+}
+
+static bool QD3D12_FormatSupportsMsaaResolve(DXGI_FORMAT format)
+{
+	if (!g_gl.device)
+		return false;
+
+	D3D12_FEATURE_DATA_FORMAT_SUPPORT support{};
+	support.Format = format;
+	if (FAILED(g_gl.device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support))))
+		return false;
+
+	return (support.Support1 & D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RESOLVE) != 0;
+}
+
+static bool QD3D12_CanUseGBufferSampleCount(UINT sampleCount)
+{
+	if (sampleCount <= 1)
+		return true;
+
+	return
+		QD3D12_FormatSupportsSampleCount(QD3D12_SceneColorFormat, sampleCount) &&
+		QD3D12_FormatSupportsMsaaResolve(QD3D12_SceneColorFormat) &&
+		QD3D12_FormatSupportsSampleCount(DXGI_FORMAT_R16G16B16A16_FLOAT, sampleCount) &&
+		QD3D12_FormatSupportsMsaaResolve(DXGI_FORMAT_R16G16B16A16_FLOAT) &&
+		QD3D12_FormatSupportsSampleCount(QD3D12_VelocityFormat, sampleCount) &&
+		QD3D12_FormatSupportsMsaaResolve(QD3D12_VelocityFormat) &&
+		QD3D12_FormatSupportsSampleCount(QD3D12_DepthDsvFormat, sampleCount);
+}
+
+static void QD3D12_SelectGBufferSampleCount()
+{
+	g_qd3d12GBufferSampleCount = 1;
+
+	const UINT candidates[] =
+	{
+		QD3D12_RequestedGBufferSampleCount,
+		2u,
+		1u
+	};
+
+	for (UINT sampleCount : candidates)
+	{
+		if (QD3D12_CanUseGBufferSampleCount(sampleCount))
+		{
+			g_qd3d12GBufferSampleCount = sampleCount;
+			break;
+		}
+	}
+
+	if (g_qd3d12GBufferSampleCount > 1)
+		QD3D12_Log("QD3D12 G-buffer MSAA enabled: %ux", g_qd3d12GBufferSampleCount);
+	else
+		QD3D12_Log("QD3D12 G-buffer MSAA disabled/fallback: 1x");
+}
+
 static void QD3D12_CreateDevice()
 {
 	QD3D12_InitStreamlineEarly();
@@ -3630,6 +3795,7 @@ static void QD3D12_CreateDevice()
 
 	QD3D12_CHECK(CreateDXGIFactory1(IID_PPV_ARGS(&g_gl.factory)));
 	QD3D12_CHECK(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&g_gl.device)));
+	QD3D12_SelectGBufferSampleCount();
 
 	D3D12_COMMAND_QUEUE_DESC qd{};
 	qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -3666,20 +3832,24 @@ static void QD3D12_CreateSwapChainForWindow(QD3D12Window& w)
 static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC hd{};
-	hd.NumDescriptors = QD3D12_FrameCount * 5; // scene color + normal + position + velocity + swap-chain backbuffer
+	hd.NumDescriptors = QD3D12_FrameCount * QD3D12_RTV_GROUP_COUNT;
 	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	QD3D12_CHECK(g_gl.device->CreateDescriptorHeap(&hd, IID_PPV_ARGS(&w.rtvHeap)));
 
 	w.rtvStride = g_gl.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
 
-	auto CreateRenderTexture = [&](ComPtr<ID3D12Resource>& outRes,
+	auto CreateTexture2D = [&](ComPtr<ID3D12Resource>& outRes,
 		D3D12_RESOURCE_STATES& outState,
 		DXGI_FORMAT format,
 		const float clearColor[4],
 		bool useOptimizedClear,
 		UINT texWidth,
-		UINT texHeight)
+		UINT texHeight,
+		UINT sampleCount,
+		D3D12_RESOURCE_FLAGS flags,
+		D3D12_RESOURCE_STATES initialState,
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle,
+		bool createRtv)
 		{
 			D3D12_RESOURCE_DESC rd{};
 			rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -3688,16 +3858,17 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 			rd.DepthOrArraySize = 1;
 			rd.MipLevels = 1;
 			rd.Format = format;
-			rd.SampleDesc.Count = 1;
+			rd.SampleDesc.Count = std::max<UINT>(1u, sampleCount);
+			rd.SampleDesc.Quality = 0;
 			rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			rd.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+			rd.Flags = flags;
 
 			D3D12_HEAP_PROPERTIES hp{};
 			hp.Type = D3D12_HEAP_TYPE_DEFAULT;
 
 			D3D12_CLEAR_VALUE clear{};
 			const D3D12_CLEAR_VALUE* clearPtr = nullptr;
-			if (useOptimizedClear)
+			if (useOptimizedClear && (flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
 			{
 				clear.Format = format;
 				clear.Color[0] = clearColor[0];
@@ -3711,13 +3882,14 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 				&hp,
 				D3D12_HEAP_FLAG_NONE,
 				&rd,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				initialState,
 				clearPtr,
 				IID_PPV_ARGS(&outRes)));
 
-			g_gl.device->CreateRenderTargetView(outRes.Get(), nullptr, h);
-			outState = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			h.ptr += w.rtvStride;
+			outState = initialState;
+
+			if (createRtv)
+				g_gl.device->CreateRenderTargetView(outRes.Get(), nullptr, rtvHandle);
 		};
 
 	const float colorClear[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -3725,39 +3897,146 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 	const float positionClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	const float velocityClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
-	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
-		CreateRenderTexture(w.sceneColorBuffers[i], w.sceneColorState[i], QD3D12_SceneColorFormat, colorClear, false, w.renderWidth, w.renderHeight);
-
-	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
-		CreateRenderTexture(w.normalBuffers[i], w.normalBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, normalClear, true, w.renderWidth, w.renderHeight);
-
-	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
-		CreateRenderTexture(w.positionBuffers[i], w.positionBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, positionClear, true, w.renderWidth, w.renderHeight);
-
-	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
-		CreateRenderTexture(w.velocityBuffers[i], w.velocityBufferState[i], QD3D12_VelocityFormat, velocityClear, true, w.renderWidth, w.renderHeight);
+	const bool useMsaa = QD3D12_GBufferMsaaEnabled();
+	const UINT msaaSamples = QD3D12_GBufferSampleCount();
 
 	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 	{
+		if (useMsaa)
+		{
+			CreateTexture2D(
+				w.sceneColorMsaaBuffers[i],
+				w.sceneColorMsaaState[i],
+				QD3D12_SceneColorFormat,
+				colorClear,
+				false,
+				w.renderWidth,
+				w.renderHeight,
+				msaaSamples,
+				D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RENDER, i),
+				true);
+
+			CreateTexture2D(
+				w.sceneColorBuffers[i],
+				w.sceneColorState[i],
+				QD3D12_SceneColorFormat,
+				colorClear,
+				false,
+				w.renderWidth,
+				w.renderHeight,
+				1,
+				D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RESOLVED, i),
+				true);
+		}
+		else
+		{
+			CreateTexture2D(
+				w.sceneColorBuffers[i],
+				w.sceneColorState[i],
+				QD3D12_SceneColorFormat,
+				colorClear,
+				false,
+				w.renderWidth,
+				w.renderHeight,
+				1,
+				D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RENDER, i),
+				true);
+
+			g_gl.device->CreateRenderTargetView(
+				w.sceneColorBuffers[i].Get(),
+				nullptr,
+				QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RESOLVED, i));
+		}
+	}
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+	{
+		if (useMsaa)
+		{
+			CreateTexture2D(w.normalMsaaBuffers[i], w.normalMsaaState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, normalClear, true,
+				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_NORMAL_RENDER, i), true);
+			CreateTexture2D(w.normalBuffers[i], w.normalBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, normalClear, false,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				D3D12_CPU_DESCRIPTOR_HANDLE{}, false);
+		}
+		else
+		{
+			CreateTexture2D(w.normalBuffers[i], w.normalBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, normalClear, true,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_NORMAL_RENDER, i), true);
+		}
+	}
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+	{
+		if (useMsaa)
+		{
+			CreateTexture2D(w.positionMsaaBuffers[i], w.positionMsaaState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, positionClear, true,
+				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_POSITION_RENDER, i), true);
+			CreateTexture2D(w.positionBuffers[i], w.positionBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, positionClear, false,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				D3D12_CPU_DESCRIPTOR_HANDLE{}, false);
+		}
+		else
+		{
+			CreateTexture2D(w.positionBuffers[i], w.positionBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, positionClear, true,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_POSITION_RENDER, i), true);
+		}
+	}
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+	{
+		if (useMsaa)
+		{
+			CreateTexture2D(w.velocityMsaaBuffers[i], w.velocityMsaaState[i], QD3D12_VelocityFormat, velocityClear, true,
+				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RENDER, i), true);
+			CreateTexture2D(w.velocityBuffers[i], w.velocityBufferState[i], QD3D12_VelocityFormat, velocityClear, false,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				D3D12_CPU_DESCRIPTOR_HANDLE{}, false);
+		}
+		else
+		{
+			CreateTexture2D(w.velocityBuffers[i], w.velocityBufferState[i], QD3D12_VelocityFormat, velocityClear, true,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RENDER, i), true);
+		}
+	}
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE backBufferRtv = QD3D12_RtvAt(w, QD3D12_RTV_BACKBUFFER, i);
 		if (w.swapChain)
 		{
 			QD3D12_CHECK(w.swapChain->GetBuffer(i, IID_PPV_ARGS(&w.backBuffers[i])));
-			g_gl.device->CreateRenderTargetView(w.backBuffers[i].Get(), nullptr, h);
+			g_gl.device->CreateRenderTargetView(w.backBuffers[i].Get(), nullptr, backBufferRtv);
 			w.backBufferState[i] = D3D12_RESOURCE_STATE_PRESENT;
-			h.ptr += w.rtvStride;
 		}
 		else
 		{
 			// Offscreen pbuffer backbuffers are ordinary render-target textures.
-			// CreateRenderTexture leaves the tracked state as RENDER_TARGET; EndFrame
-			// will transition them to PRESENT/COMMON after the resolve/blit.
-			CreateRenderTexture(w.backBuffers[i], w.backBufferState[i], QD3D12_SceneColorFormat, colorClear, false, w.width, w.height);
+			// EndFrame will transition them to PRESENT/COMMON after the resolve/blit.
+			CreateTexture2D(w.backBuffers[i], w.backBufferState[i], QD3D12_SceneColorFormat, colorClear, false,
+				w.width, w.height, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				backBufferRtv, true);
 		}
 	}
 
 	auto CreateTextureSrv = [&](ID3D12Resource* res, DXGI_FORMAT format, UINT& srvIndex,
 		D3D12_CPU_DESCRIPTOR_HANDLE& cpu, D3D12_GPU_DESCRIPTOR_HANDLE& gpu)
 		{
+			if (!res)
+				return;
+
 			if (srvIndex == UINT_MAX)
 			{
 				srvIndex = g_gl.nextSrvIndex++;
@@ -3789,7 +4068,7 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 void QD3D12_CreateDSVForWindow(QD3D12Window& w)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC hd{};
-	hd.NumDescriptors = 2;
+	hd.NumDescriptors = 3; // resolved scene depth, native/output depth, optional MSAA scene depth
 	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	QD3D12_CHECK(g_gl.device->CreateDescriptorHeap(&hd, IID_PPV_ARGS(&w.dsvHeap)));
 
@@ -3797,8 +4076,10 @@ void QD3D12_CreateDSVForWindow(QD3D12Window& w)
 	D3D12_CPU_DESCRIPTOR_HANDLE lowResDsv = w.dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE nativeDsv = lowResDsv;
 	nativeDsv.ptr += SIZE_T(dsvStride);
+	D3D12_CPU_DESCRIPTOR_HANDLE msaaDsv = lowResDsv;
+	msaaDsv.ptr += SIZE_T(dsvStride) * 2;
 
-	auto CreateDepthTexture = [&](UINT texWidth, UINT texHeight, ComPtr<ID3D12Resource>& outRes)
+	auto CreateDepthTexture = [&](UINT texWidth, UINT texHeight, UINT sampleCount, ComPtr<ID3D12Resource>& outRes)
 		{
 			D3D12_RESOURCE_DESC rd{};
 			rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -3807,7 +4088,8 @@ void QD3D12_CreateDSVForWindow(QD3D12Window& w)
 			rd.DepthOrArraySize = 1;
 			rd.MipLevels = 1;
 			rd.Format = QD3D12_DepthResourceFormat;
-			rd.SampleDesc.Count = 1;
+			rd.SampleDesc.Count = std::max<UINT>(1u, sampleCount);
+			rd.SampleDesc.Quality = 0;
 			rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			rd.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
@@ -3828,8 +4110,8 @@ void QD3D12_CreateDSVForWindow(QD3D12Window& w)
 				IID_PPV_ARGS(&outRes)));
 		};
 
-	CreateDepthTexture(w.renderWidth, w.renderHeight, w.depthBuffer);
-	CreateDepthTexture(w.width, w.height, w.nativeDepthBuffer);
+	CreateDepthTexture(w.renderWidth, w.renderHeight, 1, w.depthBuffer);
+	CreateDepthTexture(w.width, w.height, 1, w.nativeDepthBuffer);
 
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
 	dsvDesc.Format = QD3D12_DepthDsvFormat;
@@ -3838,6 +4120,22 @@ void QD3D12_CreateDSVForWindow(QD3D12Window& w)
 	g_gl.device->CreateDepthStencilView(w.nativeDepthBuffer.Get(), &dsvDesc, nativeDsv);
 	w.depthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 	w.nativeDepthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+	if (QD3D12_GBufferMsaaEnabled())
+	{
+		CreateDepthTexture(w.renderWidth, w.renderHeight, QD3D12_GBufferSampleCount(), w.depthMsaaBuffer);
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC msaaDsvDesc{};
+		msaaDsvDesc.Format = QD3D12_DepthDsvFormat;
+		msaaDsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
+		g_gl.device->CreateDepthStencilView(w.depthMsaaBuffer.Get(), &msaaDsvDesc, msaaDsv);
+		w.depthMsaaState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+	}
+	else
+	{
+		w.depthMsaaBuffer.Reset();
+		w.depthMsaaState = D3D12_RESOURCE_STATE_COMMON;
+	}
 
 	if (w.depthSrvIndex == UINT_MAX)
 	{
@@ -3852,6 +4150,22 @@ void QD3D12_CreateDSVForWindow(QD3D12Window& w)
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Texture2D.MipLevels = 1;
 	g_gl.device->CreateShaderResourceView(w.depthBuffer.Get(), &srvDesc, w.depthSrvCpu);
+
+	if (QD3D12_GBufferMsaaEnabled() && w.depthMsaaBuffer)
+	{
+		if (w.depthMsaaSrvIndex == UINT_MAX)
+		{
+			w.depthMsaaSrvIndex = g_gl.nextSrvIndex++;
+			w.depthMsaaSrvCpu = QD3D12_SrvCpu(w.depthMsaaSrvIndex);
+			w.depthMsaaSrvGpu = QD3D12_SrvGpu(w.depthMsaaSrvIndex);
+		}
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC msaaSrvDesc{};
+		msaaSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+		msaaSrvDesc.Format = QD3D12_DepthSrvFormat;
+		msaaSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		g_gl.device->CreateShaderResourceView(w.depthMsaaBuffer.Get(), &msaaSrvDesc, w.depthMsaaSrvCpu);
+	}
 }
 
 static void QD3D12_CreateSrvHeap()
@@ -4069,18 +4383,24 @@ static ComPtr<ID3DBlob> CompileShaderVariant(const char* entry, const char* targ
 
 static void QD3D12_CreatePostRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE range{};
-	range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	range.NumDescriptors = 1;
-	range.BaseShaderRegister = 0;
-	range.RegisterSpace = 0;
-	range.OffsetInDescriptorsFromTableStart = 0;
+	D3D12_DESCRIPTOR_RANGE ranges[2]{};
+	for (UINT i = 0; i < _countof(ranges); ++i)
+	{
+		ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		ranges[i].NumDescriptors = 1;
+		ranges[i].BaseShaderRegister = i;
+		ranges[i].RegisterSpace = 0;
+		ranges[i].OffsetInDescriptorsFromTableStart = 0;
+	}
 
-	D3D12_ROOT_PARAMETER param{};
-	param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	param.DescriptorTable.NumDescriptorRanges = 1;
-	param.DescriptorTable.pDescriptorRanges = &range;
-	param.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	D3D12_ROOT_PARAMETER params[2]{};
+	for (UINT i = 0; i < _countof(params); ++i)
+	{
+		params[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		params[i].DescriptorTable.NumDescriptorRanges = 1;
+		params[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+		params[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	}
 
 	D3D12_STATIC_SAMPLER_DESC samp{};
 	samp.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -4093,8 +4413,8 @@ static void QD3D12_CreatePostRootSignature()
 	samp.MaxLOD = D3D12_FLOAT32_MAX;
 
 	D3D12_ROOT_SIGNATURE_DESC rsd{};
-	rsd.NumParameters = 1;
-	rsd.pParameters = &param;
+	rsd.NumParameters = _countof(params);
+	rsd.pParameters = params;
 	rsd.NumStaticSamplers = 1;
 	rsd.pStaticSamplers = &samp;
 	rsd.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -4170,6 +4490,7 @@ static void QD3D12_CompileShaders()
 	g_gl.postPsCopyBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSCopy", "ps_6_0");
 	g_gl.postPsAddBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSAdd", "ps_6_0");
 	g_gl.postPsDepthCopyBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSDepthCopy", "ps_6_0");
+	g_gl.postPsDepthResolveMsaaBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSDepthResolveMS", "ps_6_0");
 }
 
 static const D3D12_INPUT_ELEMENT_DESC kGLVertexInputLayout[] =
@@ -4207,9 +4528,7 @@ static UINT8 BuildColorWriteMask()
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentNormalRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
-	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	h.ptr += SIZE_T(QD3D12_FrameCount + w.frameIndex) * SIZE_T(w.rtvStride);
-	return h;
+	return QD3D12_RtvAt(w, QD3D12_RTV_NORMAL_RENDER, w.frameIndex);
 }
 
 static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildPSODesc(
@@ -4240,11 +4559,13 @@ static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildPSODesc(
 	}
 
 	d.DSVFormat = QD3D12_DepthDsvFormat;
-	d.SampleDesc.Count = 1;
+	d.SampleDesc.Count = nativeColorOnly ? 1u : QD3D12_GBufferSampleCount();
+	d.SampleDesc.Quality = 0;
 	d.SampleMask = UINT_MAX;
 
 	d.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	d.RasterizerState.DepthClipEnable = TRUE;
+	d.RasterizerState.MultisampleEnable = (d.SampleDesc.Count > 1) ? TRUE : FALSE;
 
 	d.BlendState.RenderTarget[0].RenderTargetWriteMask = key.colorWriteMask;
 	if (!nativeColorOnly)
@@ -4354,6 +4675,9 @@ static void QD3D12_CreatePSOs()
 	depthDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 	depthDesc.DepthStencilState.StencilEnable = FALSE;
 	QD3D12_CHECK(g_gl.device->CreateGraphicsPipelineState(&depthDesc, IID_PPV_ARGS(&g_gl.postDepthCopyPSO)));
+
+	depthDesc.PS = { g_gl.postPsDepthResolveMsaaBlob->GetBufferPointer(), g_gl.postPsDepthResolveMsaaBlob->GetBufferSize() };
+	QD3D12_CHECK(g_gl.device->CreateGraphicsPipelineState(&depthDesc, IID_PPV_ARGS(&g_gl.postDepthResolveMsaaPSO)));
 }
 
 static uint64_t MakePSOKey(
@@ -4376,6 +4700,7 @@ static uint64_t MakePSOKey(
 	mix(uint32_t(key.depthFunc));
 	mix(uint32_t(topoType));
 	mix(nativeColorOnly ? 1ull : 0ull);
+	mix(nativeColorOnly ? 1ull : uint64_t(QD3D12_GBufferSampleCount()));
 	mix(uint32_t(key.colorWriteMask));
 	mix(key.cullFaceEnabled ? 1ull : 0ull);
 	mix(uint32_t(key.cullMode));
@@ -4466,11 +4791,13 @@ static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildARBPSODesc(
 	}
 
 	d.DSVFormat = QD3D12_DepthDsvFormat;
-	d.SampleDesc.Count = 1;
+	d.SampleDesc.Count = nativeColorOnly ? 1u : QD3D12_GBufferSampleCount();
+	d.SampleDesc.Quality = 0;
 	d.SampleMask = UINT_MAX;
 
 	d.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	d.RasterizerState.DepthClipEnable = TRUE;
+	d.RasterizerState.MultisampleEnable = (d.SampleDesc.Count > 1) ? TRUE : FALSE;
 
 	d.BlendState.AlphaToCoverageEnable = FALSE;
 	d.BlendState.IndependentBlendEnable = nativeColorOnly ? FALSE : TRUE;
@@ -4527,6 +4854,7 @@ static uint64_t MakeARBPSOKey(
 	mix(uint32_t(key.depthFunc));
 	mix(uint32_t(topoType));
 	mix(nativeColorOnly ? 1ull : 0ull);
+	mix(nativeColorOnly ? 1ull : uint64_t(QD3D12_GBufferSampleCount()));
 	mix(uint32_t(key.colorWriteMask));
 	mix(key.cullFaceEnabled ? 1ull : 0ull);
 	mix(uint32_t(key.cullMode));
@@ -4771,7 +5099,7 @@ bool QD3D12_InitForQuakeWindow(struct QD3D12Window* window, HWND hwnd, int width
 	}
 
 	g_gl.motionHistoryReset = true;
-	QD3D12_Log("QD3D12 initialized: output=%ux%u render=%ux%u", window->width, window->height, window->renderWidth, window->renderHeight);
+	QD3D12_Log("QD3D12 initialized: output=%ux%u render=%ux%u gbufferMSAA=%ux", window->width, window->height, window->renderWidth, window->renderHeight, QD3D12_GBufferSampleCount());
 	return true;
 }
 
@@ -4810,9 +5138,7 @@ void QD3D12_ShutdownForQuake()
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
-	D3D12_CPU_DESCRIPTOR_HANDLE h = w.rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	h.ptr += SIZE_T(w.frameIndex) * SIZE_T(w.rtvStride);
-	return h;
+	return QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RENDER, w.frameIndex);
 }
 
 void QD3D12_BeginFrame()
@@ -4833,6 +5159,7 @@ void QD3D12_BeginFrame()
 
 	g_gl.framePhase = QD3D12_FRAME_LOW_RES;
 	g_gl.sceneResolvedThisFrame = false;
+	g_gl.gbufferResolvedThisFrame = false;
 	g_gl.raytracedLightingReadyThisFrame = false;
 	QD3D12_UpdateViewportState();
 
@@ -4874,6 +5201,8 @@ void QD3D12_EndFrame()
 
 	if (!g_gl.sceneResolvedThisFrame)
 	{
+		QD3D12_ResolveGBufferForCurrentFrame(w);
+
 		QD3D12_TransitionResource(g_gl.cmdList.Get(), w.sceneColorBuffers[w.frameIndex].Get(), w.sceneColorState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		QD3D12_TransitionResource(g_gl.cmdList.Get(), w.normalBuffers[w.frameIndex].Get(), w.normalBufferState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		QD3D12_TransitionResource(g_gl.cmdList.Get(), w.positionBuffers[w.frameIndex].Get(), w.positionBufferState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -4897,6 +5226,7 @@ void QD3D12_EndFrame()
 
 	g_gl.framePhase = QD3D12_FRAME_LOW_RES;
 	g_gl.sceneResolvedThisFrame = false;
+	g_gl.gbufferResolvedThisFrame = false;
 	g_gl.raytracedLightingReadyThisFrame = false;
 	QD3D12_UpdateViewportState();
 }
@@ -5760,6 +6090,9 @@ static bool QD3D12_ReadFramebufferRegionRGBA8(GLint x, GLint y, GLsizei width, G
 		(g_gl.framePhase == QD3D12_FRAME_NATIVE_POST_UPSCALE) ||
 		g_gl.sceneResolvedThisFrame;
 
+	if (!wantNativeBuffer)
+		QD3D12_ResolveGBufferForCurrentFrame(w);
+
 	if (wantNativeBuffer)
 	{
 		srcResource = w.backBuffers[w.frameIndex].Get();
@@ -6325,6 +6658,8 @@ static void QD3D12_FlushQueuedBatches()
 	QD3D12_BindTargetsForCurrentPhase(*g_currentWindow);
 
 	const bool nativeColorOnly = (g_gl.framePhase == QD3D12_FRAME_NATIVE_POST_UPSCALE);
+	if (!nativeColorOnly)
+		g_gl.gbufferResolvedThisFrame = false;
 
 	ID3D12PipelineState* lastPSO = nullptr;
 	D3D12_GPU_DESCRIPTOR_HANDLE lastTex0{};
@@ -6621,6 +6956,8 @@ void APIENTRY glClear(GLbitfield mask)
 	g_gl.cmdList->RSSetScissorRects(1, &clearRect);
 
 	const bool nativePhase = (g_gl.framePhase == QD3D12_FRAME_NATIVE_POST_UPSCALE);
+	if (!nativePhase)
+		g_gl.gbufferResolvedThisFrame = false;
 
 	if (mask & GL_COLOR_BUFFER_BIT)
 	{
@@ -6652,7 +6989,7 @@ void APIENTRY glClear(GLbitfield mask)
 		}
 	}
 
-	D3D12_CPU_DESCRIPTOR_HANDLE dsv = nativePhase ? CurrentNativeDepthDSV() : CurrentSceneDepthDSV();
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv = nativePhase ? CurrentNativeDepthDSV() : CurrentActiveSceneDepthDSV();
 
 	if (mask & GL_DEPTH_BUFFER_BIT)
 	{
@@ -8122,16 +8459,26 @@ void QD3D12_ReleaseWindowSizeResources(QD3D12Window& w)
 		w.normalBuffers[i].Reset();
 		w.positionBuffers[i].Reset();
 		w.velocityBuffers[i].Reset();
+		w.sceneColorMsaaBuffers[i].Reset();
+		w.normalMsaaBuffers[i].Reset();
+		w.positionMsaaBuffers[i].Reset();
+		w.velocityMsaaBuffers[i].Reset();
 
 		w.sceneColorState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.backBufferState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.normalBufferState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.positionBufferState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.velocityBufferState[i] = D3D12_RESOURCE_STATE_COMMON;
+		w.sceneColorMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
+		w.normalMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
+		w.positionMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
+		w.velocityMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
 	}
 
 	w.depthBuffer.Reset();
 	w.depthState = D3D12_RESOURCE_STATE_COMMON;
+	w.depthMsaaBuffer.Reset();
+	w.depthMsaaState = D3D12_RESOURCE_STATE_COMMON;
 	w.nativeDepthBuffer.Reset();
 	w.nativeDepthState = D3D12_RESOURCE_STATE_COMMON;
 
@@ -8192,6 +8539,7 @@ void QD3D12_Resize()
 	g_arbPsoCache.clear();
 	g_gl.framePhase = QD3D12_FRAME_LOW_RES;
 	g_gl.sceneResolvedThisFrame = false;
+	g_gl.gbufferResolvedThisFrame = false;
 	g_gl.raytracedLightingReadyThisFrame = false;
 	QD3D12_UpdateViewportState();
 }
@@ -8241,6 +8589,7 @@ static void QD3D12_ReconfigureCurrentWindowForUpscalerChange()
 	g_arbPsoCache.clear();
 	g_gl.framePhase = QD3D12_FRAME_LOW_RES;
 	g_gl.sceneResolvedThisFrame = false;
+	g_gl.gbufferResolvedThisFrame = false;
 	g_gl.raytracedLightingReadyThisFrame = false;
 	QD3D12_UpdateViewportState();
 }
@@ -9630,6 +9979,8 @@ PROC WINAPI qd3d12_wglGetProcAddress(LPCSTR name) {
 		{ "glNormalMapTexture",          (PROC)glNormalMapTexture },
 		{ "glNormalMapStrengthf",        (PROC)glNormalMapStrengthf },
 		{ "glNormalMapYSignf",           (PROC)glNormalMapYSignf },
+		{ "glResolveGBufferQD3D12",      (PROC)glResolveGBufferQD3D12 },
+		{ "QD3D12_ResolveGBufferNow",    (PROC)QD3D12_ResolveGBufferNow },
 		{ "glGenProgramsARB",           (PROC)glGenProgramsARB },
 		{ "glDeleteProgramsARB",        (PROC)glDeleteProgramsARB },
 		{ "glBindProgramARB",           (PROC)glBindProgramARB },
@@ -9826,17 +10177,145 @@ static void QD3D12_TransitionResource(
 	trackedState = newState;
 }
 
+static void QD3D12_ResolveMsaaDepthToSceneDepth(QD3D12Window& w)
+{
+	if (!QD3D12_GBufferMsaaEnabled())
+		return;
+
+	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
+	if (!cl || !w.depthMsaaBuffer || !w.depthBuffer || !g_gl.postDepthResolveMsaaPSO)
+		return;
+
+	QD3D12_TransitionResource(cl, w.depthMsaaBuffer.Get(), w.depthMsaaState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	QD3D12_TransitionResource(cl, w.depthBuffer.Get(), w.depthState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv = CurrentSceneDepthDSV();
+
+	D3D12_VIEWPORT viewport{};
+	viewport.TopLeftX = 0.0f;
+	viewport.TopLeftY = 0.0f;
+	viewport.Width = (float)w.renderWidth;
+	viewport.Height = (float)w.renderHeight;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+
+	D3D12_RECT scissor{};
+	scissor.left = 0;
+	scissor.top = 0;
+	scissor.right = (LONG)w.renderWidth;
+	scissor.bottom = (LONG)w.renderHeight;
+
+	cl->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	ID3D12DescriptorHeap* heaps[] = { g_gl.srvHeap.Get() };
+	cl->SetDescriptorHeaps(_countof(heaps), heaps);
+	cl->SetGraphicsRootSignature(g_gl.postRootSig.Get());
+	cl->SetPipelineState(g_gl.postDepthResolveMsaaPSO.Get());
+	cl->OMSetRenderTargets(0, nullptr, FALSE, &dsv);
+	cl->RSSetViewports(1, &viewport);
+	cl->RSSetScissorRects(1, &scissor);
+	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	cl->SetGraphicsRootDescriptorTable(1, w.depthMsaaSrvGpu);
+	cl->DrawInstanced(3, 1, 0, 0);
+}
+
+static void QD3D12_ResolveGBufferForCurrentFrame(QD3D12Window& w)
+{
+	if (g_gl.gbufferResolvedThisFrame)
+		return;
+
+	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
+	if (!cl)
+		return;
+
+	if (!QD3D12_GBufferMsaaEnabled())
+	{
+		g_gl.gbufferResolvedThisFrame = true;
+		return;
+	}
+
+	const UINT frame = w.frameIndex;
+
+	auto ResolveTarget = [&](ID3D12Resource* src, D3D12_RESOURCE_STATES& srcState,
+		ID3D12Resource* dst, D3D12_RESOURCE_STATES& dstState, DXGI_FORMAT format)
+		{
+			if (!src || !dst)
+				return;
+
+			QD3D12_TransitionResource(cl, src, srcState, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+			QD3D12_TransitionResource(cl, dst, dstState, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+			cl->ResolveSubresource(dst, 0, src, 0, format);
+		};
+
+	ResolveTarget(
+		w.sceneColorMsaaBuffers[frame].Get(),
+		w.sceneColorMsaaState[frame],
+		w.sceneColorBuffers[frame].Get(),
+		w.sceneColorState[frame],
+		QD3D12_SceneColorFormat);
+
+	ResolveTarget(
+		w.normalMsaaBuffers[frame].Get(),
+		w.normalMsaaState[frame],
+		w.normalBuffers[frame].Get(),
+		w.normalBufferState[frame],
+		DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+	ResolveTarget(
+		w.positionMsaaBuffers[frame].Get(),
+		w.positionMsaaState[frame],
+		w.positionBuffers[frame].Get(),
+		w.positionBufferState[frame],
+		DXGI_FORMAT_R16G16B16A16_FLOAT);
+
+	ResolveTarget(
+		w.velocityMsaaBuffers[frame].Get(),
+		w.velocityMsaaState[frame],
+		w.velocityBuffers[frame].Get(),
+		w.velocityBufferState[frame],
+		QD3D12_VelocityFormat);
+
+	QD3D12_ResolveMsaaDepthToSceneDepth(w);
+	g_gl.gbufferResolvedThisFrame = true;
+}
+
+void APIENTRY QD3D12_ResolveGBufferNow(void)
+{
+	if (!g_currentWindow || !g_gl.device || !g_gl.cmdList)
+		return;
+
+	QD3D12_EnsureFrameOpen();
+	QD3D12_FlushQueuedBatches();
+	QD3D12_ResolveGBufferForCurrentFrame(*g_currentWindow);
+}
+
+void APIENTRY glResolveGBufferQD3D12(void)
+{
+	QD3D12_ResolveGBufferNow();
+}
+
 static void QD3D12_BindLowResSceneTargets(QD3D12Window& w)
 {
 	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
 	if (!cl)
 		return;
 
-	QD3D12_TransitionResource(cl, w.sceneColorBuffers[w.frameIndex].Get(), w.sceneColorState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-	QD3D12_TransitionResource(cl, w.normalBuffers[w.frameIndex].Get(), w.normalBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-	QD3D12_TransitionResource(cl, w.positionBuffers[w.frameIndex].Get(), w.positionBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-	QD3D12_TransitionResource(cl, w.velocityBuffers[w.frameIndex].Get(), w.velocityBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-	QD3D12_TransitionResource(cl, w.depthBuffer.Get(), w.depthState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	if (QD3D12_GBufferMsaaEnabled())
+	{
+		QD3D12_TransitionResource(cl, w.sceneColorMsaaBuffers[w.frameIndex].Get(), w.sceneColorMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.normalMsaaBuffers[w.frameIndex].Get(), w.normalMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.positionMsaaBuffers[w.frameIndex].Get(), w.positionMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.velocityMsaaBuffers[w.frameIndex].Get(), w.velocityMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.depthMsaaBuffer.Get(), w.depthMsaaState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	}
+	else
+	{
+		QD3D12_TransitionResource(cl, w.sceneColorBuffers[w.frameIndex].Get(), w.sceneColorState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.normalBuffers[w.frameIndex].Get(), w.normalBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.positionBuffers[w.frameIndex].Get(), w.positionBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.velocityBuffers[w.frameIndex].Get(), w.velocityBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.depthBuffer.Get(), w.depthState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	}
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[4] =
 	{
@@ -9845,7 +10324,7 @@ static void QD3D12_BindLowResSceneTargets(QD3D12Window& w)
 		CurrentPositionRTV(),
 		CurrentVelocityRTV()
 	};
-	D3D12_CPU_DESCRIPTOR_HANDLE dsv = CurrentSceneDepthDSV();
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv = CurrentActiveSceneDepthDSV();
 	cl->OMSetRenderTargets(4, rtvs, FALSE, &dsv);
 	cl->RSSetViewports(1, &w.viewport);
 	cl->RSSetScissorRects(1, &w.scissor);
@@ -9933,6 +10412,8 @@ static void QD3D12_ResolveSceneToOutputAndEnterNativePhase(QD3D12Window& w)
 	if (!cl)
 		return;
 
+	QD3D12_ResolveGBufferForCurrentFrame(w);
+
 	const bool useLightingUpscaleInput = QD3D12_UseLightingTextureAsUpscaleInput(w);
 
 	QD3D12_TransitionResource(cl, w.sceneColorBuffers[w.frameIndex].Get(), w.sceneColorState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -9980,6 +10461,7 @@ void glLightScene(void)
 	glRaytracingBuildScene();
 
 	QD3D12_FlushQueuedBatches();
+	QD3D12_ResolveGBufferForCurrentFrame(*g_currentWindow);
 
 	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
 	ID3D12Resource* sceneColor = g_currentWindow->sceneColorBuffers[g_currentWindow->frameIndex].Get();
@@ -10052,29 +10534,42 @@ void glLightScene(void)
 
 	if (!glRaytracingLightingExecute(&pass))
 	{
-		QD3D12_TransitionResource(
-			cl,
-			sceneColor,
-			g_currentWindow->sceneColorState[g_currentWindow->frameIndex],
-			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		if (QD3D12_GBufferMsaaEnabled())
+		{
+			QD3D12_TransitionResource(cl, g_currentWindow->sceneColorMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->sceneColorMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, g_currentWindow->normalMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->normalMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, g_currentWindow->positionMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->positionMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, g_currentWindow->velocityMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->velocityMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, g_currentWindow->depthMsaaBuffer.Get(), g_currentWindow->depthMsaaState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		}
+		else
+		{
+			QD3D12_TransitionResource(
+				cl,
+				sceneColor,
+				g_currentWindow->sceneColorState[g_currentWindow->frameIndex],
+				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		QD3D12_TransitionResource(
-			cl,
-			sceneNormal,
-			g_currentWindow->normalBufferState[g_currentWindow->frameIndex],
-			D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(
+				cl,
+				sceneNormal,
+				g_currentWindow->normalBufferState[g_currentWindow->frameIndex],
+				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		QD3D12_TransitionResource(
-			cl,
-			scenePosition,
-			g_currentWindow->positionBufferState[g_currentWindow->frameIndex],
-			D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(
+				cl,
+				scenePosition,
+				g_currentWindow->positionBufferState[g_currentWindow->frameIndex],
+				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		QD3D12_TransitionResource(
-			cl,
-			sceneDepth,
-			g_currentWindow->depthState,
-			D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			QD3D12_TransitionResource(
+				cl,
+				sceneDepth,
+				g_currentWindow->depthState,
+				D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		}
+
+		g_gl.gbufferResolvedThisFrame = false;
 		return;
 	}
 
@@ -10118,7 +10613,7 @@ void glLightScene(void)
 			cl,
 			g_gl.postCopyPSO.Get(),
 			g_lightingTexture->srvGpu,
-			CurrentRTV(),
+			CurrentResolvedSceneColorRTV(),
 			viewport,
 			scissor);
 	}

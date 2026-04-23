@@ -4531,7 +4531,7 @@ void Face_Draw(face_t *f) {
 		return;
 	}
 
-	glBegin(GL_POLYGON);
+	glBegin(GL_QUADS);
 	for (i = 0; i < f->face_winding->GetNumPoints(); i++) {
 		glVertex3fv( (*f->face_winding)[i].ToFloatPtr() );
 	}
