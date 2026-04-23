@@ -98,6 +98,17 @@ typedef struct glconfig_s {
 	bool				isInitialized;
 } glconfig_t;
 
+//
+// dxrWorldId_t
+//
+enum dxrWorldId_t {
+	DXR_WORLD_MAINMENU = 0,
+	DXR_WORLD_GAME,
+	DXR_WORLD_EDITOR,
+	DXR_MATERIAL_PREVIEW,
+	DXR_WIDGET_0,
+	DXR_WORLD_NUM
+};
 
 // font support 
 const int GLYPH_START			= 0;
@@ -179,7 +190,7 @@ public:
 	virtual int				GetScreenHeight( void ) const = 0;
 
 	// allocate a renderWorld to be used for drawing
-	virtual idRenderWorld *	AllocRenderWorld( void ) = 0;
+	virtual idRenderWorld *	AllocRenderWorld( dxrWorldId_t worldId ) = 0;
 	virtual	void			FreeRenderWorld( idRenderWorld * rw ) = 0;
 
 	// All data that will be used in a level should be

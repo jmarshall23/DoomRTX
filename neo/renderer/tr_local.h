@@ -166,7 +166,7 @@ class idRenderEntity {
 public:
 	virtual					~idRenderEntity() {}
 
-	virtual void			FreeRenderEntity() = 0;
+	virtual void			FreeRenderEntity(glRaytracingSceneHandle_t sceneHandle) = 0;
 	virtual void			UpdateRenderEntity( const renderEntity_t *re, bool forceUpdate = false ) = 0;
 	virtual void			GetRenderEntity( renderEntity_t *re ) = 0;
 	virtual void			ForceUpdate() = 0;
@@ -238,7 +238,7 @@ class idRenderEntityLocal : public idRenderEntity {
 public:
 							idRenderEntityLocal();
 
-	virtual void			FreeRenderEntity();
+	virtual void			FreeRenderEntity(glRaytracingSceneHandle_t sceneHandle);
 	virtual void			UpdateRenderEntity( const renderEntity_t *re, bool forceUpdate = false );
 	virtual void			GetRenderEntity( renderEntity_t *re );
 	virtual void			ForceUpdate();
@@ -703,7 +703,7 @@ public:
 	virtual bool			IsFullScreen( void ) const;
 	virtual int				GetScreenWidth( void ) const;
 	virtual int				GetScreenHeight( void ) const;
-	virtual idRenderWorld *	AllocRenderWorld( void );
+	virtual idRenderWorld *	AllocRenderWorld(dxrWorldId_t worldId);
 	virtual void			FreeRenderWorld( idRenderWorld *rw );
 	virtual void			BeginLevelLoad( void );
 	virtual void			EndLevelLoad( void );
@@ -734,7 +734,6 @@ public:
 	virtual void			UnCrop();
 	virtual void			GetCardCaps( bool &oldCard, bool &nv10or20 );
 	virtual bool			UploadImage( const char *imageName, const byte *data, int width, int height );
-
 public:
 	// internal functions
 							idRenderSystemLocal( void );
@@ -806,6 +805,8 @@ public:
 	class idGuiModel *		demoGuiModel;
 
 	unsigned short			gammaTable[256];	// brightness / gamma modify this
+
+	glRaytracingSceneHandle_t dxrWorldHandles[dxrWorldId_t::DXR_WORLD_NUM];
 };
 
 extern backEndState_t		backEnd;

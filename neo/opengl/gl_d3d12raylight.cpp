@@ -11,6 +11,7 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <algorithm>
 #include <string.h>
 #include <stdio.h>
@@ -219,6 +220,7 @@ struct glRaytracingCmdContext_t
 };
 
 static glRaytracingCmdContext_t g_glRaytracingCmd;
+static std::mutex g_glRaytracingMutex;
 
 static void glRaytracingWaitFenceValue(UINT64 value)
 {
@@ -250,11 +252,27 @@ static void glRaytracingWaitIdle(void)
 
 static int glRaytracingInitCmdContext(void)
 {
-	if (g_glRaytracingCmd.initialized)
-		return 1;
-
 	ID3D12Device* baseDevice = QD3D12_GetDevice();
 	ID3D12CommandQueue* baseQueue = QD3D12_GetQueue();
+
+	if (g_glRaytracingCmd.initialized)
+	{
+		if (!baseDevice || !baseQueue)
+		{
+			glRaytracingFatal("glRaytracingInitCmdContext: missing device or queue");
+			return 0;
+		}
+
+		ComPtr<ID3D12Device5> currentDevice;
+		HRESULT hr = baseDevice->QueryInterface(IID_PPV_ARGS(&currentDevice));
+		if (FAILED(hr) || currentDevice.Get() != g_glRaytracingCmd.device.Get() || baseQueue != g_glRaytracingCmd.queue.Get())
+		{
+			glRaytracingFatal("glRaytracingInitCmdContext: D3D12 device/queue changed. DXR state is device-local; create/use all windows with the same D3D12 device and queue, or fully shut down raytracing before switching devices.");
+			return 0;
+		}
+
+		return 1;
+	}
 
 	if (!baseDevice || !baseQueue)
 	{
@@ -397,9 +415,19 @@ static UINT64 glRaytracingEndTlasCmd(void)
 	return g_glRaytracingCmd.tlasLastFenceValue;
 }
 
+
 // ============================================================
 // Scene builder state
 // ============================================================
+
+#ifndef GL_RAYTRACING_MAX_RENDER_WORLDS
+#define GL_RAYTRACING_MAX_RENDER_WORLDS 24
+#endif
+
+#ifndef GL_RAYTRACING_SCENE_HANDLE_T_DEFINED
+typedef uint32_t glRaytracingSceneHandle_t;
+#define GL_RAYTRACING_SCENE_HANDLE_T_DEFINED
+#endif
 
 struct glRaytracingMeshRecord_t
 {
@@ -472,17 +500,18 @@ struct glRaytracingSceneUploadBuffer_t
 	}
 };
 
-struct glRaytracingSceneState_t
+// One render world owns exactly one TLAS pair and its own list of geometry
+// instances. Mesh/BLAS resources stay shared across all worlds.
+struct glRaytracingRenderWorld_t
 {
-	std::vector<glRaytracingMeshRecord_t> meshes;
+	uint32_t handle;
+	int alive;
+
 	std::vector<glRaytracingInstanceRecord_t> instances;
 	std::vector<int> activeInstanceIndices;
 	std::vector<D3D12_RAYTRACING_INSTANCE_DESC> cpuInstanceDescs;
-
-	std::vector<int> meshHandleToIndex;
 	std::vector<int> instanceHandleToIndex;
 
-	uint32_t nextMeshHandle;
 	uint32_t nextInstanceHandle;
 
 	glRaytracingSceneUploadBuffer_t instanceDescUpload[2];
@@ -492,8 +521,6 @@ struct glRaytracingSceneState_t
 	UINT64 tlasScratchSize;
 	UINT64 tlasResultSize;
 
-	int initialized;
-
 	UINT activeInstanceCount;
 	UINT builtInstanceCount;
 
@@ -502,14 +529,13 @@ struct glRaytracingSceneState_t
 	int tlasNeedsUpdate;
 	int currentTLASIndex;
 
-	glRaytracingSceneState_t()
+	glRaytracingRenderWorld_t()
 	{
-		nextMeshHandle = 1;
+		handle = 0;
+		alive = 0;
 		nextInstanceHandle = 1;
 		tlasScratchSize = 0;
 		tlasResultSize = 0;
-		initialized = 0;
-
 		activeInstanceCount = 0;
 		builtInstanceCount = 0;
 		tlasBuilt = 0;
@@ -519,9 +545,170 @@ struct glRaytracingSceneState_t
 	}
 };
 
+struct glRaytracingSceneState_t
+{
+	std::vector<glRaytracingMeshRecord_t> meshes;
+	std::vector<int> meshHandleToIndex;
+
+	uint32_t nextMeshHandle;
+
+	glRaytracingRenderWorld_t worlds[GL_RAYTRACING_MAX_RENDER_WORLDS];
+
+	int initialized;
+
+	glRaytracingSceneState_t()
+	{
+		nextMeshHandle = 1;
+		initialized = 0;
+	}
+};
+
 static glRaytracingSceneState_t g_glRaytracingScene;
 
 void glRaytracingClear(void);
+
+static void glRaytracingReleaseWorldResources(glRaytracingRenderWorld_t* world)
+{
+	if (!world)
+		return;
+
+	for (int i = 0; i < 2; ++i)
+	{
+		if (world->instanceDescUpload[i].buffer.resource && world->instanceDescUpload[i].mapped)
+			world->instanceDescUpload[i].buffer.resource->Unmap(0, nullptr);
+
+		world->instanceDescUpload[i] = glRaytracingSceneUploadBuffer_t();
+		world->tlasResult[i].resource.Reset();
+	}
+
+	world->tlasScratch.resource.Reset();
+	world->tlasScratchSize = 0;
+	world->tlasResultSize = 0;
+}
+
+static void glRaytracingResetWorldSlot(glRaytracingRenderWorld_t* world, uint32_t handle, int alive)
+{
+	if (!world)
+		return;
+
+	glRaytracingReleaseWorldResources(world);
+	*world = glRaytracingRenderWorld_t();
+	world->handle = handle;
+	world->alive = alive ? 1 : 0;
+	world->nextInstanceHandle = 1;
+}
+
+static int glRaytracingWorldHandleToSlot(glRaytracingSceneHandle_t worldHandle)
+{
+	if (worldHandle == 0 || worldHandle > GL_RAYTRACING_MAX_RENDER_WORLDS)
+		return -1;
+	return (int)(worldHandle - 1);
+}
+
+static glRaytracingRenderWorld_t* glRaytracingFindWorld(glRaytracingSceneHandle_t worldHandle)
+{
+	const int slot = glRaytracingWorldHandleToSlot(worldHandle);
+	if (slot < 0)
+		return nullptr;
+
+	glRaytracingRenderWorld_t& world = g_glRaytracingScene.worlds[slot];
+	if (!world.alive || world.handle != worldHandle)
+		return nullptr;
+
+	return &world;
+}
+
+static const glRaytracingRenderWorld_t* glRaytracingFindWorldConst(glRaytracingSceneHandle_t worldHandle)
+{
+	const int slot = glRaytracingWorldHandleToSlot(worldHandle);
+	if (slot < 0)
+		return nullptr;
+
+	const glRaytracingRenderWorld_t& world = g_glRaytracingScene.worlds[slot];
+	if (!world.alive || world.handle != worldHandle)
+		return nullptr;
+
+	return &world;
+}
+
+static void glRaytracingClearWorldContents(glRaytracingRenderWorld_t* world)
+{
+	if (!world)
+		return;
+
+	const uint32_t handle = world->handle;
+	const int alive = world->alive;
+
+	glRaytracingReleaseWorldResources(world);
+
+	world->instances.clear();
+	world->activeInstanceIndices.clear();
+	world->cpuInstanceDescs.clear();
+	world->instanceHandleToIndex.clear();
+
+	world->handle = handle;
+	world->alive = alive;
+	world->nextInstanceHandle = 1;
+	world->tlasScratchSize = 0;
+	world->tlasResultSize = 0;
+	world->activeInstanceCount = 0;
+	world->builtInstanceCount = 0;
+	world->tlasBuilt = 0;
+	world->tlasNeedsRebuild = 1;
+	world->tlasNeedsUpdate = 1;
+	world->currentTLASIndex = 0;
+}
+
+static void glRaytracingClearAllSceneStateInternal(void)
+{
+	for (int i = 0; i < GL_RAYTRACING_MAX_RENDER_WORLDS; ++i)
+		glRaytracingReleaseWorldResources(&g_glRaytracingScene.worlds[i]);
+
+	const int wasInitialized = g_glRaytracingScene.initialized;
+	g_glRaytracingScene = glRaytracingSceneState_t();
+	g_glRaytracingScene.initialized = wasInitialized;
+}
+
+static void glRaytracingMarkWorldNeedsRebuild(glRaytracingRenderWorld_t* world)
+{
+	if (!world || !world->alive)
+		return;
+
+	world->tlasNeedsRebuild = 1;
+	world->tlasNeedsUpdate = 0;
+}
+
+static void glRaytracingMarkWorldNeedsUpdate(glRaytracingRenderWorld_t* world)
+{
+	if (!world || !world->alive)
+		return;
+
+	if (!world->tlasNeedsRebuild)
+		world->tlasNeedsUpdate = 1;
+}
+
+static void glRaytracingMarkAllWorldsNeedRebuild(void)
+{
+	for (int i = 0; i < GL_RAYTRACING_MAX_RENDER_WORLDS; ++i)
+	{
+		if (g_glRaytracingScene.worlds[i].alive)
+			glRaytracingMarkWorldNeedsRebuild(&g_glRaytracingScene.worlds[i]);
+	}
+}
+
+static uint32_t glRaytracingCountAliveInstances(const glRaytracingRenderWorld_t* world)
+{
+	if (!world)
+		return 0;
+
+	uint32_t count = 0;
+	for (size_t i = 0; i < world->instances.size(); ++i)
+	{
+		if (world->instances[i].alive)
+			++count;
+	}
+	return count;
+}
 
 static void glRaytracingEnsureMeshHandleTable(uint32_t handle)
 {
@@ -529,10 +716,13 @@ static void glRaytracingEnsureMeshHandleTable(uint32_t handle)
 		g_glRaytracingScene.meshHandleToIndex.resize((size_t)handle + 1, -1);
 }
 
-static void glRaytracingEnsureInstanceHandleTable(uint32_t handle)
+static void glRaytracingEnsureInstanceHandleTable(glRaytracingRenderWorld_t* world, uint32_t handle)
 {
-	if (handle >= g_glRaytracingScene.instanceHandleToIndex.size())
-		g_glRaytracingScene.instanceHandleToIndex.resize((size_t)handle + 1, -1);
+	if (!world)
+		return;
+
+	if (handle >= world->instanceHandleToIndex.size())
+		world->instanceHandleToIndex.resize((size_t)handle + 1, -1);
 }
 
 static glRaytracingBuffer_t* glRaytracingGetMeshCurrentBLAS(glRaytracingMeshRecord_t* mesh)
@@ -549,35 +739,40 @@ static const glRaytracingBuffer_t* glRaytracingGetMeshCurrentBLASConst(const glR
 	return &mesh->blasResult[mesh->currentBlasIndex & 1];
 }
 
-static int glRaytracingGetInactiveTLASIndex(void)
+static int glRaytracingGetInactiveTLASIndex(const glRaytracingRenderWorld_t* world)
 {
-	return g_glRaytracingScene.currentTLASIndex ^ 1;
+	if (!world)
+		return 0;
+	return world->currentTLASIndex ^ 1;
 }
 
-static glRaytracingSceneUploadBuffer_t* glRaytracingGetBuildInstanceUpload(void)
+static glRaytracingSceneUploadBuffer_t* glRaytracingGetBuildInstanceUpload(glRaytracingRenderWorld_t* world)
 {
-	return &g_glRaytracingScene.instanceDescUpload[glRaytracingGetInactiveTLASIndex()];
+	return &world->instanceDescUpload[glRaytracingGetInactiveTLASIndex(world)];
 }
 
-static glRaytracingBuffer_t* glRaytracingGetCurrentTLASBuffer(void)
+static glRaytracingBuffer_t* glRaytracingGetCurrentTLASBuffer(glRaytracingRenderWorld_t* world)
 {
-	return &g_glRaytracingScene.tlasResult[g_glRaytracingScene.currentTLASIndex & 1];
+	return &world->tlasResult[world->currentTLASIndex & 1];
 }
 
-static const glRaytracingBuffer_t* glRaytracingGetCurrentTLASBufferConst(void)
+static const glRaytracingBuffer_t* glRaytracingGetCurrentTLASBufferConst(const glRaytracingRenderWorld_t* world)
 {
-	return &g_glRaytracingScene.tlasResult[g_glRaytracingScene.currentTLASIndex & 1];
+	return &world->tlasResult[world->currentTLASIndex & 1];
 }
 
-static glRaytracingBuffer_t* glRaytracingGetBuildTLASBuffer(void)
+static glRaytracingBuffer_t* glRaytracingGetBuildTLASBuffer(glRaytracingRenderWorld_t* world)
 {
-	return &g_glRaytracingScene.tlasResult[glRaytracingGetInactiveTLASIndex()];
+	return &world->tlasResult[glRaytracingGetInactiveTLASIndex(world)];
 }
-
 
 static int glRaytracingEnsureTLASBuffers(
+	glRaytracingRenderWorld_t* world,
 	const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS* inputs)
 {
+	if (!world)
+		return 0;
+
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild = {};
 	g_glRaytracingCmd.device->GetRaytracingAccelerationStructurePrebuildInfo(inputs, &prebuild);
 
@@ -595,42 +790,42 @@ static int glRaytracingEnsureTLASBuffers(
 		prebuild.ResultDataMaxSizeInBytes,
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
 
-	if (!g_glRaytracingScene.tlasScratch.resource ||
-		g_glRaytracingScene.tlasScratchSize < requiredScratch)
+	if (!world->tlasScratch.resource ||
+		world->tlasScratchSize < requiredScratch)
 	{
-		g_glRaytracingScene.tlasScratch.resource.Reset();
-		g_glRaytracingScene.tlasScratch = glRaytracingCreateBuffer(
+		world->tlasScratch.resource.Reset();
+		world->tlasScratch = glRaytracingCreateBuffer(
 			g_glRaytracingCmd.device.Get(),
 			requiredScratch,
 			D3D12_HEAP_TYPE_DEFAULT,
 			D3D12_RESOURCE_STATE_COMMON,
 			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
-		if (!g_glRaytracingScene.tlasScratch.resource)
+		if (!world->tlasScratch.resource)
 			return 0;
 
-		g_glRaytracingScene.tlasScratchSize = requiredScratch;
+		world->tlasScratchSize = requiredScratch;
 	}
 
 	for (int i = 0; i < 2; ++i)
 	{
-		if (!g_glRaytracingScene.tlasResult[i].resource ||
-			g_glRaytracingScene.tlasResultSize < requiredResult)
+		if (!world->tlasResult[i].resource ||
+			world->tlasResultSize < requiredResult)
 		{
-			g_glRaytracingScene.tlasResult[i].resource.Reset();
-			g_glRaytracingScene.tlasResult[i] = glRaytracingCreateBuffer(
+			world->tlasResult[i].resource.Reset();
+			world->tlasResult[i] = glRaytracingCreateBuffer(
 				g_glRaytracingCmd.device.Get(),
 				requiredResult,
 				D3D12_HEAP_TYPE_DEFAULT,
 				D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
 				D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
-			if (!g_glRaytracingScene.tlasResult[i].resource)
+			if (!world->tlasResult[i].resource)
 				return 0;
 		}
 	}
 
-	g_glRaytracingScene.tlasResultSize = requiredResult;
+	world->tlasResultSize = requiredResult;
 	return 1;
 }
 
@@ -666,16 +861,32 @@ static const glRaytracingMeshRecord_t* glRaytracingFindMeshConst(uint32_t handle
 	return &mesh;
 }
 
-static glRaytracingInstanceRecord_t* glRaytracingFindInstance(uint32_t handle)
+static glRaytracingInstanceRecord_t* glRaytracingFindInstance(glRaytracingRenderWorld_t* world, uint32_t handle)
 {
-	if (handle == 0 || handle >= g_glRaytracingScene.instanceHandleToIndex.size())
+	if (!world || handle == 0 || handle >= world->instanceHandleToIndex.size())
 		return nullptr;
 
-	const int index = g_glRaytracingScene.instanceHandleToIndex[handle];
-	if (index < 0 || (size_t)index >= g_glRaytracingScene.instances.size())
+	const int index = world->instanceHandleToIndex[handle];
+	if (index < 0 || (size_t)index >= world->instances.size())
 		return nullptr;
 
-	glRaytracingInstanceRecord_t& inst = g_glRaytracingScene.instances[(size_t)index];
+	glRaytracingInstanceRecord_t& inst = world->instances[(size_t)index];
+	if (!inst.alive || inst.handle != handle)
+		return nullptr;
+
+	return &inst;
+}
+
+static const glRaytracingInstanceRecord_t* glRaytracingFindInstanceConst(const glRaytracingRenderWorld_t* world, uint32_t handle)
+{
+	if (!world || handle == 0 || handle >= world->instanceHandleToIndex.size())
+		return nullptr;
+
+	const int index = world->instanceHandleToIndex[handle];
+	if (index < 0 || (size_t)index >= world->instances.size())
+		return nullptr;
+
+	const glRaytracingInstanceRecord_t& inst = world->instances[(size_t)index];
 	if (!inst.alive || inst.handle != handle)
 		return nullptr;
 
@@ -786,16 +997,19 @@ static int glRaytracingResolveInstanceDesc(
 	return 1;
 }
 
-static int glRaytracingRebuildActiveInstanceCache(void)
+static int glRaytracingRebuildActiveInstanceCache(glRaytracingRenderWorld_t* world)
 {
-	g_glRaytracingScene.activeInstanceIndices.clear();
-	g_glRaytracingScene.cpuInstanceDescs.clear();
-	g_glRaytracingScene.activeInstanceIndices.reserve(g_glRaytracingScene.instances.size());
-	g_glRaytracingScene.cpuInstanceDescs.reserve(g_glRaytracingScene.instances.size());
+	if (!world)
+		return 0;
 
-	for (size_t i = 0; i < g_glRaytracingScene.instances.size(); ++i)
+	world->activeInstanceIndices.clear();
+	world->cpuInstanceDescs.clear();
+	world->activeInstanceIndices.reserve(world->instances.size());
+	world->cpuInstanceDescs.reserve(world->instances.size());
+
+	for (size_t i = 0; i < world->instances.size(); ++i)
 	{
-		glRaytracingInstanceRecord_t& inst = g_glRaytracingScene.instances[i];
+		glRaytracingInstanceRecord_t& inst = world->instances[i];
 		glRaytracingInvalidateInstanceCache(&inst);
 
 		if (!inst.alive)
@@ -811,23 +1025,26 @@ static int glRaytracingRebuildActiveInstanceCache(void)
 		inst.cachedDescCpu = desc;
 		inst.dirty = 0;
 
-		g_glRaytracingScene.activeInstanceIndices.push_back((int)i);
-		g_glRaytracingScene.cpuInstanceDescs.push_back(desc);
+		world->activeInstanceIndices.push_back((int)i);
+		world->cpuInstanceDescs.push_back(desc);
 	}
 
-	g_glRaytracingScene.activeInstanceCount = (UINT)g_glRaytracingScene.cpuInstanceDescs.size();
+	world->activeInstanceCount = (UINT)world->cpuInstanceDescs.size();
 	return 1;
 }
 
-static int glRaytracingRefreshDirtyInstanceCache(void)
+static int glRaytracingRefreshDirtyInstanceCache(glRaytracingRenderWorld_t* world)
 {
-	for (size_t listIndex = 0; listIndex < g_glRaytracingScene.activeInstanceIndices.size(); ++listIndex)
+	if (!world)
+		return 0;
+
+	for (size_t listIndex = 0; listIndex < world->activeInstanceIndices.size(); ++listIndex)
 	{
-		const int instIndex = g_glRaytracingScene.activeInstanceIndices[listIndex];
-		if (instIndex < 0 || (size_t)instIndex >= g_glRaytracingScene.instances.size())
+		const int instIndex = world->activeInstanceIndices[listIndex];
+		if (instIndex < 0 || (size_t)instIndex >= world->instances.size())
 			return 0;
 
-		glRaytracingInstanceRecord_t& inst = g_glRaytracingScene.instances[(size_t)instIndex];
+		glRaytracingInstanceRecord_t& inst = world->instances[(size_t)instIndex];
 		if (!inst.alive)
 			return 0;
 
@@ -841,37 +1058,40 @@ static int glRaytracingRefreshDirtyInstanceCache(void)
 			inst.cachedActive = 1;
 			inst.cachedBlasGpuVA = blasGpuVA;
 			inst.cachedDescCpu = desc;
-			g_glRaytracingScene.cpuInstanceDescs[listIndex] = desc;
+			world->cpuInstanceDescs[listIndex] = desc;
 		}
 
 		inst.dirty = 0;
 	}
 
-	g_glRaytracingScene.activeInstanceCount = (UINT)g_glRaytracingScene.cpuInstanceDescs.size();
+	world->activeInstanceCount = (UINT)world->cpuInstanceDescs.size();
 	return 1;
 }
 
-static int glRaytracingEnsureSceneUploadBuffer(UINT64 requiredBytes);
-static int glRaytracingUploadCachedInstanceDescs(void)
+static int glRaytracingEnsureSceneUploadBuffer(glRaytracingRenderWorld_t* world, UINT64 requiredBytes);
+
+static int glRaytracingUploadCachedInstanceDescs(glRaytracingRenderWorld_t* world)
 {
-	const UINT activeCount = (UINT)g_glRaytracingScene.cpuInstanceDescs.size();
+	if (!world)
+		return 0;
+
+	const UINT activeCount = (UINT)world->cpuInstanceDescs.size();
 	const UINT64 instBytes = glRaytracingAlignUp(
 		(UINT64)activeCount * (UINT64)sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
 		D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
-	if (!glRaytracingEnsureSceneUploadBuffer(instBytes))
+	if (!glRaytracingEnsureSceneUploadBuffer(world, instBytes))
 		return 0;
 
-	glRaytracingSceneUploadBuffer_t* upload = glRaytracingGetBuildInstanceUpload();
+	glRaytracingSceneUploadBuffer_t* upload = glRaytracingGetBuildInstanceUpload(world);
 	if (!upload->mapped)
 		return 0;
 
 	if (activeCount > 0)
-		memcpy(upload->mapped, g_glRaytracingScene.cpuInstanceDescs.data(), (size_t)activeCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
+		memcpy(upload->mapped, world->cpuInstanceDescs.data(), (size_t)activeCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC));
 
 	return 1;
 }
-
 
 static int glRaytracingUploadMeshBuffers(glRaytracingMeshRecord_t* mesh);
 
@@ -999,8 +1219,7 @@ static int glRaytracingBuildDirtyMeshesInternal(void)
 		mesh->dirty = 0;
 	}
 
-	g_glRaytracingScene.tlasNeedsRebuild = 1;
-	g_glRaytracingScene.tlasNeedsUpdate = 0;
+	glRaytracingMarkAllWorldsNeedRebuild();
 	return 1;
 }
 
@@ -1051,9 +1270,12 @@ static int glRaytracingBuildMeshInternal(glRaytracingMeshRecord_t* mesh)
 	return ok;
 }
 
-static int glRaytracingEnsureSceneUploadBuffer(UINT64 requiredBytes)
+static int glRaytracingEnsureSceneUploadBuffer(glRaytracingRenderWorld_t* world, UINT64 requiredBytes)
 {
-	glRaytracingSceneUploadBuffer_t* upload = glRaytracingGetBuildInstanceUpload();
+	if (!world)
+		return 0;
+
+	glRaytracingSceneUploadBuffer_t* upload = glRaytracingGetBuildInstanceUpload(world);
 
 	if (requiredBytes == 0)
 		requiredBytes = D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT;
@@ -1099,22 +1321,19 @@ static int glRaytracingEnsureSceneUploadBuffer(UINT64 requiredBytes)
 	return 1;
 }
 
-struct glRaytracingResolvedInstance_t
+static int glRaytracingBuildSceneInternal(glRaytracingRenderWorld_t* world)
 {
-	const glRaytracingInstanceRecord_t* inst;
-	D3D12_GPU_VIRTUAL_ADDRESS blasGpuVA;
-};
+	if (!world || !world->alive)
+		return 0;
 
-static int glRaytracingBuildSceneInternal(void)
-{
 	UINT aliveCount = 0;
 	int anyDirty = 0;
-	int needsRebuild = g_glRaytracingScene.tlasNeedsRebuild;
-	int needsUpdate = g_glRaytracingScene.tlasNeedsUpdate;
+	int needsRebuild = world->tlasNeedsRebuild;
+	int needsUpdate = world->tlasNeedsUpdate;
 
-	for (size_t i = 0; i < g_glRaytracingScene.instances.size(); ++i)
+	for (size_t i = 0; i < world->instances.size(); ++i)
 	{
-		const glRaytracingInstanceRecord_t& inst = g_glRaytracingScene.instances[i];
+		const glRaytracingInstanceRecord_t& inst = world->instances[i];
 		if (!inst.alive)
 			continue;
 
@@ -1125,62 +1344,62 @@ static int glRaytracingBuildSceneInternal(void)
 
 	if (aliveCount == 0)
 	{
-		g_glRaytracingScene.activeInstanceIndices.clear();
-		g_glRaytracingScene.cpuInstanceDescs.clear();
-		g_glRaytracingScene.activeInstanceCount = 0;
-		g_glRaytracingScene.builtInstanceCount = 0;
-		g_glRaytracingScene.tlasBuilt = 0;
-		g_glRaytracingScene.tlasNeedsRebuild = 0;
-		g_glRaytracingScene.tlasNeedsUpdate = 0;
+		world->activeInstanceIndices.clear();
+		world->cpuInstanceDescs.clear();
+		world->activeInstanceCount = 0;
+		world->builtInstanceCount = 0;
+		world->tlasBuilt = 0;
+		world->tlasNeedsRebuild = 0;
+		world->tlasNeedsUpdate = 0;
 		return 1;
 	}
 
-	if (!g_glRaytracingScene.tlasBuilt)
+	if (!world->tlasBuilt)
 		needsRebuild = 1;
 
-	if ((UINT)g_glRaytracingScene.activeInstanceIndices.size() != g_glRaytracingScene.builtInstanceCount)
+	if ((UINT)world->activeInstanceIndices.size() != world->builtInstanceCount)
 		needsRebuild = 1;
 
 	if (needsRebuild)
 	{
-		if (!glRaytracingRebuildActiveInstanceCache())
+		if (!glRaytracingRebuildActiveInstanceCache(world))
 			return 0;
 	}
 	else
 	{
 		if (!needsUpdate && !anyDirty)
 		{
-			g_glRaytracingScene.activeInstanceCount = (UINT)g_glRaytracingScene.cpuInstanceDescs.size();
+			world->activeInstanceCount = (UINT)world->cpuInstanceDescs.size();
 			return 1;
 		}
 
-		if (!glRaytracingRefreshDirtyInstanceCache())
+		if (!glRaytracingRefreshDirtyInstanceCache(world))
 		{
-			g_glRaytracingScene.tlasNeedsRebuild = 1;
-			if (!glRaytracingRebuildActiveInstanceCache())
+			world->tlasNeedsRebuild = 1;
+			if (!glRaytracingRebuildActiveInstanceCache(world))
 				return 0;
 			needsRebuild = 1;
 		}
 	}
 
-	const UINT activeCount = (UINT)g_glRaytracingScene.cpuInstanceDescs.size();
+	const UINT activeCount = (UINT)world->cpuInstanceDescs.size();
 	if (activeCount == 0)
 	{
-		g_glRaytracingScene.activeInstanceCount = 0;
-		g_glRaytracingScene.builtInstanceCount = 0;
-		g_glRaytracingScene.tlasBuilt = 0;
-		g_glRaytracingScene.tlasNeedsRebuild = 0;
-		g_glRaytracingScene.tlasNeedsUpdate = 0;
+		world->activeInstanceCount = 0;
+		world->builtInstanceCount = 0;
+		world->tlasBuilt = 0;
+		world->tlasNeedsRebuild = 0;
+		world->tlasNeedsUpdate = 0;
 		return 1;
 	}
 
-	if (!g_glRaytracingScene.tlasBuilt || activeCount != g_glRaytracingScene.builtInstanceCount)
+	if (!world->tlasBuilt || activeCount != world->builtInstanceCount)
 		needsRebuild = 1;
 
-	if (!glRaytracingUploadCachedInstanceDescs())
+	if (!glRaytracingUploadCachedInstanceDescs(world))
 		return 0;
 
-	glRaytracingSceneUploadBuffer_t* upload = glRaytracingGetBuildInstanceUpload();
+	glRaytracingSceneUploadBuffer_t* upload = glRaytracingGetBuildInstanceUpload(world);
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
 	inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
@@ -1191,11 +1410,11 @@ static int glRaytracingBuildSceneInternal(void)
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE |
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
-	if (!glRaytracingEnsureTLASBuffers(&inputs))
+	if (!glRaytracingEnsureTLASBuffers(world, &inputs))
 		return 0;
 
-	glRaytracingBuffer_t* dstTLAS = glRaytracingGetBuildTLASBuffer();
-	const glRaytracingBuffer_t* srcTLAS = glRaytracingGetCurrentTLASBufferConst();
+	glRaytracingBuffer_t* dstTLAS = glRaytracingGetBuildTLASBuffer(world);
+	const glRaytracingBuffer_t* srcTLAS = glRaytracingGetCurrentTLASBufferConst(world);
 
 	glRaytracingWaitFenceValue(g_glRaytracingCmd.blasLastFenceValue);
 
@@ -1204,11 +1423,11 @@ static int glRaytracingBuildSceneInternal(void)
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc = {};
 	buildDesc.Inputs = inputs;
-	buildDesc.ScratchAccelerationStructureData = g_glRaytracingScene.tlasScratch.gpuVA;
+	buildDesc.ScratchAccelerationStructureData = world->tlasScratch.gpuVA;
 	buildDesc.DestAccelerationStructureData = dstTLAS->gpuVA;
 	buildDesc.SourceAccelerationStructureData = 0;
 
-	if (!needsRebuild && g_glRaytracingScene.tlasBuilt)
+	if (!needsRebuild && world->tlasBuilt)
 	{
 		buildDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
 		buildDesc.SourceAccelerationStructureData = srcTLAS->gpuVA;
@@ -1227,20 +1446,52 @@ static int glRaytracingBuildSceneInternal(void)
 
 	glRaytracingWaitFenceValue(tlasFenceValue);
 
-	g_glRaytracingScene.currentTLASIndex = glRaytracingGetInactiveTLASIndex();
-	g_glRaytracingScene.activeInstanceCount = activeCount;
-	g_glRaytracingScene.builtInstanceCount = activeCount;
-	g_glRaytracingScene.tlasBuilt = 1;
-	g_glRaytracingScene.tlasNeedsRebuild = 0;
-	g_glRaytracingScene.tlasNeedsUpdate = 0;
+	world->currentTLASIndex = glRaytracingGetInactiveTLASIndex(world);
+	world->activeInstanceCount = activeCount;
+	world->builtInstanceCount = activeCount;
+	world->tlasBuilt = 1;
+	world->tlasNeedsRebuild = 0;
+	world->tlasNeedsUpdate = 0;
 
-	for (size_t i = 0; i < g_glRaytracingScene.instances.size(); ++i)
+	for (size_t i = 0; i < world->instances.size(); ++i)
 	{
-		if (g_glRaytracingScene.instances[i].alive)
-			g_glRaytracingScene.instances[i].dirty = 0;
+		if (world->instances[i].alive)
+			world->instances[i].dirty = 0;
 	}
 
 	return 1;
+}
+
+static void glRaytracingInvalidateInstancesForMesh(uint32_t meshHandle, int deleteInstances)
+{
+	for (int w = 0; w < GL_RAYTRACING_MAX_RENDER_WORLDS; ++w)
+	{
+		glRaytracingRenderWorld_t& world = g_glRaytracingScene.worlds[w];
+		if (!world.alive)
+			continue;
+
+		int touched = 0;
+		for (size_t i = 0; i < world.instances.size(); ++i)
+		{
+			glRaytracingInstanceRecord_t& inst = world.instances[i];
+			if (inst.alive && inst.descCpu.meshHandle == meshHandle)
+			{
+				glRaytracingInvalidateInstanceCache(&inst);
+				inst.dirty = 1;
+				touched = 1;
+
+				if (deleteInstances)
+				{
+					inst.alive = 0;
+					if (inst.handle < world.instanceHandleToIndex.size())
+						world.instanceHandleToIndex[inst.handle] = -1;
+				}
+			}
+		}
+
+		if (touched)
+			glRaytracingMarkWorldNeedsRebuild(&world);
+	}
 }
 
 // ============================================================
@@ -1249,6 +1500,8 @@ static int glRaytracingBuildSceneInternal(void)
 
 int glRaytracingInit(void)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (g_glRaytracingScene.initialized)
 		return 1;
 
@@ -1256,51 +1509,91 @@ int glRaytracingInit(void)
 		return 0;
 
 	g_glRaytracingScene.initialized = 1;
+
 	glRaytracingLog("glRaytracingInit ok");
 	return 1;
 }
 
 void glRaytracingShutdown(void)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized)
 		return;
 
-	glRaytracingClear();
+	glRaytracingClearAllSceneStateInternal();
 	g_glRaytracingScene = glRaytracingSceneState_t();
 	glRaytracingShutdownCmdContext();
 }
 
 void glRaytracingClear(void)
 {
-	g_glRaytracingScene.meshes.clear();
-	g_glRaytracingScene.instances.clear();
-	g_glRaytracingScene.activeInstanceIndices.clear();
-	g_glRaytracingScene.cpuInstanceDescs.clear();
-	g_glRaytracingScene.meshHandleToIndex.clear();
-	g_glRaytracingScene.instanceHandleToIndex.clear();
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
 
-	for (int i = 0; i < 2; ++i)
+	glRaytracingClearAllSceneStateInternal();
+}
+
+glRaytracingSceneHandle_t glRaytracingCreateScene(void)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (!g_glRaytracingScene.initialized)
+		return 0;
+
+	for (uint32_t i = 0; i < GL_RAYTRACING_MAX_RENDER_WORLDS; ++i)
 	{
-		if (g_glRaytracingScene.instanceDescUpload[i].buffer.resource && g_glRaytracingScene.instanceDescUpload[i].mapped)
-			g_glRaytracingScene.instanceDescUpload[i].buffer.resource->Unmap(0, nullptr);
-
-		g_glRaytracingScene.instanceDescUpload[i] = glRaytracingSceneUploadBuffer_t();
-		g_glRaytracingScene.tlasResult[i].resource.Reset();
+		glRaytracingRenderWorld_t& world = g_glRaytracingScene.worlds[i];
+		if (!world.alive)
+		{
+			const uint32_t handle = i + 1;
+			glRaytracingResetWorldSlot(&world, handle, 1);
+			return handle;
+		}
 	}
 
-	g_glRaytracingScene.tlasScratch.resource.Reset();
-	g_glRaytracingScene.tlasScratchSize = 0;
-	g_glRaytracingScene.tlasResultSize = 0;
-	g_glRaytracingScene.activeInstanceCount = 0;
-	g_glRaytracingScene.builtInstanceCount = 0;
-	g_glRaytracingScene.tlasBuilt = 0;
-	g_glRaytracingScene.tlasNeedsRebuild = 1;
-	g_glRaytracingScene.tlasNeedsUpdate = 1;
-	g_glRaytracingScene.currentTLASIndex = 0;
+	return 0;
+}
+
+void glRaytracingClearScene(glRaytracingSceneHandle_t worldHandle)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
+		return;
+
+	glRaytracingClearWorldContents(world);
+}
+
+void glRaytracingDeleteScene(glRaytracingSceneHandle_t worldHandle)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
+		return;
+
+	glRaytracingReleaseWorldResources(world);
+	*world = glRaytracingRenderWorld_t();
+}
+
+uint32_t glRaytracingGetSceneCount(void)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	uint32_t count = 0;
+	for (int i = 0; i < GL_RAYTRACING_MAX_RENDER_WORLDS; ++i)
+	{
+		if (g_glRaytracingScene.worlds[i].alive)
+			++count;
+	}
+	return count;
 }
 
 glRaytracingMeshHandle_t glRaytracingCreateMesh(const glRaytracingMeshDesc_t* desc)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized || !desc)
 		return 0;
 
@@ -1327,6 +1620,8 @@ glRaytracingMeshHandle_t glRaytracingCreateMesh(const glRaytracingMeshDesc_t* de
 
 int glRaytracingUpdateMesh(glRaytracingMeshHandle_t meshHandle, const glRaytracingMeshDesc_t* desc)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized || !desc)
 		return 0;
 
@@ -1348,82 +1643,88 @@ int glRaytracingUpdateMesh(glRaytracingMeshHandle_t meshHandle, const glRaytraci
 	mesh->blasScratch.resource.Reset();
 	mesh->blasResult[0].resource.Reset();
 	mesh->blasResult[1].resource.Reset();
+	mesh->blasScratchSize = 0;
+	mesh->blasResultSize = 0;
 	mesh->blasBuilt = 0;
 	mesh->dirty = 1;
 	mesh->currentBlasIndex = 0;
 
-	for (size_t i = 0; i < g_glRaytracingScene.instances.size(); ++i)
-	{
-		if (g_glRaytracingScene.instances[i].alive &&
-			g_glRaytracingScene.instances[i].descCpu.meshHandle == meshHandle)
-		{
-			glRaytracingInvalidateInstanceCache(&g_glRaytracingScene.instances[i]);
-			g_glRaytracingScene.instances[i].dirty = 1;
-		}
-	}
-	g_glRaytracingScene.tlasNeedsRebuild = 1;
-	g_glRaytracingScene.tlasNeedsUpdate = 0;
+	glRaytracingInvalidateInstancesForMesh(meshHandle, 0);
+	glRaytracingMarkAllWorldsNeedRebuild();
 
 	return 1;
 }
 
 void glRaytracingDeleteMesh(glRaytracingMeshHandle_t meshHandle)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	glRaytracingMeshRecord_t* mesh = glRaytracingFindMesh(meshHandle);
 	if (!mesh)
 		return;
 
-	for (size_t i = 0; i < g_glRaytracingScene.instances.size(); ++i)
-	{
-		if (g_glRaytracingScene.instances[i].alive &&
-			g_glRaytracingScene.instances[i].descCpu.meshHandle == meshHandle)
-		{
-			glRaytracingInvalidateInstanceCache(&g_glRaytracingScene.instances[i]);
-			g_glRaytracingScene.instances[i].alive = 0;
-			if (g_glRaytracingScene.instances[i].handle < g_glRaytracingScene.instanceHandleToIndex.size())
-				g_glRaytracingScene.instanceHandleToIndex[g_glRaytracingScene.instances[i].handle] = -1;
-		}
-	}
+	glRaytracingInvalidateInstancesForMesh(meshHandle, 1);
 
 	mesh->alive = 0;
+	mesh->vertexBuffer.resource.Reset();
+	mesh->indexBuffer.resource.Reset();
+	mesh->blasScratch.resource.Reset();
+	mesh->blasResult[0].resource.Reset();
+	mesh->blasResult[1].resource.Reset();
+	mesh->blasScratchSize = 0;
+	mesh->blasResultSize = 0;
+	mesh->blasBuilt = 0;
+	mesh->dirty = 0;
 
 	if (meshHandle < g_glRaytracingScene.meshHandleToIndex.size())
 		g_glRaytracingScene.meshHandleToIndex[meshHandle] = -1;
 
-	g_glRaytracingScene.tlasNeedsRebuild = 1;
+	glRaytracingMarkAllWorldsNeedRebuild();
 }
 
-glRaytracingInstanceHandle_t glRaytracingCreateInstance(const glRaytracingInstanceDesc_t* desc)
+glRaytracingInstanceHandle_t glRaytracingCreateInstanceInScene(glRaytracingSceneHandle_t worldHandle, const glRaytracingInstanceDesc_t* desc)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized || !desc)
+		return 0;
+
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
 		return 0;
 
 	if (!glRaytracingFindMeshConst(desc->meshHandle))
 		return 0;
 
 	glRaytracingInstanceRecord_t inst;
-	inst.handle = g_glRaytracingScene.nextInstanceHandle++;
+	inst.handle = world->nextInstanceHandle++;
 	inst.alive = 1;
 	inst.descCpu = *desc;
 	inst.dirty = 1;
 
-	g_glRaytracingScene.instances.push_back(inst);
-	const size_t newIndex = g_glRaytracingScene.instances.size() - 1;
-	glRaytracingEnsureInstanceHandleTable(inst.handle);
-	g_glRaytracingScene.instanceHandleToIndex[inst.handle] = (int)newIndex;
-	g_glRaytracingScene.tlasNeedsRebuild = 1;
+	world->instances.push_back(inst);
+	const size_t newIndex = world->instances.size() - 1;
+	glRaytracingEnsureInstanceHandleTable(world, inst.handle);
+	world->instanceHandleToIndex[inst.handle] = (int)newIndex;
+	glRaytracingMarkWorldNeedsRebuild(world);
 	return inst.handle;
 }
 
-int glRaytracingUpdateInstance(glRaytracingInstanceHandle_t instanceHandle, const glRaytracingInstanceDesc_t* desc)
+int glRaytracingUpdateInstanceInScene(glRaytracingSceneHandle_t worldHandle, glRaytracingInstanceHandle_t instanceHandle, const glRaytracingInstanceDesc_t* desc)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized || !desc)
+		return 0;
+
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
 		return 0;
 
 	if (!glRaytracingFindMeshConst(desc->meshHandle))
 		return 0;
 
-	glRaytracingInstanceRecord_t* inst = glRaytracingFindInstance(instanceHandle);
+	glRaytracingInstanceRecord_t* inst = glRaytracingFindInstance(world, instanceHandle);
 	if (!inst)
 		return 0;
 
@@ -1435,32 +1736,39 @@ int glRaytracingUpdateInstance(glRaytracingInstanceHandle_t instanceHandle, cons
 	if (oldMeshHandle != desc->meshHandle)
 	{
 		glRaytracingInvalidateInstanceCache(inst);
-		g_glRaytracingScene.tlasNeedsRebuild = 1;
+		glRaytracingMarkWorldNeedsRebuild(world);
 	}
 	else
 	{
-		g_glRaytracingScene.tlasNeedsUpdate = 1;
+		glRaytracingMarkWorldNeedsUpdate(world);
 	}
 
 	return 1;
 }
 
-void glRaytracingDeleteInstance(glRaytracingInstanceHandle_t instanceHandle)
+void glRaytracingDeleteInstanceInScene(glRaytracingSceneHandle_t worldHandle, glRaytracingInstanceHandle_t instanceHandle)
 {
-	glRaytracingInstanceRecord_t* inst = glRaytracingFindInstance(instanceHandle);
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
+		return;
+
+	glRaytracingInstanceRecord_t* inst = glRaytracingFindInstance(world, instanceHandle);
 	if (!inst)
 		return;
 
 	glRaytracingInvalidateInstanceCache(inst);
 	inst->alive = 0;
-	if (instanceHandle < g_glRaytracingScene.instanceHandleToIndex.size())
-		g_glRaytracingScene.instanceHandleToIndex[instanceHandle] = -1;
-	g_glRaytracingScene.tlasNeedsRebuild = 1;
-	g_glRaytracingScene.tlasNeedsUpdate = 0;
+	if (instanceHandle < world->instanceHandleToIndex.size())
+		world->instanceHandleToIndex[instanceHandle] = -1;
+	glRaytracingMarkWorldNeedsRebuild(world);
 }
 
 int glRaytracingBuildMesh(glRaytracingMeshHandle_t meshHandle)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized)
 		return 0;
 
@@ -1473,30 +1781,58 @@ int glRaytracingBuildMesh(glRaytracingMeshHandle_t meshHandle)
 
 int glRaytracingBuildAllMeshes(void)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized)
 		return 0;
 
 	return glRaytracingBuildDirtyMeshesInternal();
 }
 
-int glRaytracingBuildScene(void)
+int glRaytracingBuildSceneForHandle(glRaytracingSceneHandle_t worldHandle)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	if (!g_glRaytracingScene.initialized)
 		return 0;
 
-	if (!glRaytracingBuildAllMeshes())
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
 		return 0;
 
-	return glRaytracingBuildSceneInternal();
+	if (!glRaytracingBuildDirtyMeshesInternal())
+		return 0;
+
+	return glRaytracingBuildSceneInternal(world);
 }
 
-ID3D12Resource* glRaytracingGetTopLevelAS(void)
+ID3D12Resource* glRaytracingGetTopLevelASForScene(glRaytracingSceneHandle_t worldHandle)
 {
-	return glRaytracingGetCurrentTLASBuffer()->resource.Get();
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (!g_glRaytracingScene.initialized)
+		return nullptr;
+
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
+		return nullptr;
+
+	if (!glRaytracingBuildDirtyMeshesInternal())
+		return nullptr;
+
+	if (!glRaytracingBuildSceneInternal(world))
+		return nullptr;
+
+	if (!world->tlasBuilt)
+		return nullptr;
+
+	return glRaytracingGetCurrentTLASBuffer(world)->resource.Get();
 }
 
 uint32_t glRaytracingGetMeshCount(void)
 {
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
 	uint32_t count = 0;
 	for (size_t i = 0; i < g_glRaytracingScene.meshes.size(); ++i)
 	{
@@ -1506,15 +1842,12 @@ uint32_t glRaytracingGetMeshCount(void)
 	return count;
 }
 
-uint32_t glRaytracingGetInstanceCount(void)
+uint32_t glRaytracingGetInstanceCountForScene(glRaytracingSceneHandle_t worldHandle)
 {
-	uint32_t count = 0;
-	for (size_t i = 0; i < g_glRaytracingScene.instances.size(); ++i)
-	{
-		if (g_glRaytracingScene.instances[i].alive)
-			++count;
-	}
-	return count;
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	const glRaytracingRenderWorld_t* world = glRaytracingFindWorldConst(worldHandle);
+	return glRaytracingCountAliveInstances(world);
 }
 
 // ============================================================
@@ -2551,7 +2884,9 @@ static int glRaytracingLightingCreateShaderTables(void)
 	return 1;
 }
 
-static void glRaytracingLightingCreatePerPassDescriptors(const glRaytracingLightingPassDesc_t* pass)
+static void glRaytracingLightingCreatePerPassDescriptors(
+	const glRaytracingLightingPassDesc_t* pass,
+	ID3D12Resource* topLevelAS)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE base = g_glRaytracingLighting.descriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
@@ -2598,7 +2933,7 @@ static void glRaytracingLightingCreatePerPassDescriptors(const glRaytracingLight
 	D3D12_SHADER_RESOURCE_VIEW_DESC tlasSrv = {};
 	tlasSrv.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	tlasSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	tlasSrv.RaytracingAccelerationStructure.Location = pass->topLevelAS->GetGPUVirtualAddress();
+	tlasSrv.RaytracingAccelerationStructure.Location = topLevelAS->GetGPUVirtualAddress();
 	g_glRaytracingCmd.device->CreateShaderResourceView(
 		nullptr,
 		&tlasSrv,
@@ -2614,183 +2949,23 @@ static void glRaytracingLightingCreatePerPassDescriptors(const glRaytracingLight
 		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, 6));
 }
 
+
 // ============================================================
 // Lighting public API
 // ============================================================
 
-bool glRaytracingLightingInit(void)
+static bool glRaytracingLightingExecuteInternal(
+	const glRaytracingLightingPassDesc_t* pass,
+	ID3D12Resource* topLevelAS)
 {
-	if (g_glRaytracingLighting.initialized)
-		return true;
-
-	if (!glRaytracingInitCmdContext())
-		return false;
-
-	if (!glRaytracingLightingCreateDescriptorHeap())
-		return false;
-
-	if (!glRaytracingLightingCreateRootSignatures())
-		return false;
-
-	if (!glRaytracingLightingCreateBuffers())
-		return false;
-
-	glRaytracingLightingCreatePersistentLightSRV();
-
-	if (!glRaytracingLightingCreateStateObject())
-		return false;
-
-	if (!glRaytracingLightingCreateShaderTables())
-		return false;
-
-	memset(&g_glRaytracingLighting.constants, 0, sizeof(g_glRaytracingLighting.constants));
-	g_glRaytracingLighting.constants.ambientColor[0] = 0.08f;
-	g_glRaytracingLighting.constants.ambientColor[1] = 0.08f;
-	g_glRaytracingLighting.constants.ambientColor[2] = 0.09f;
-	g_glRaytracingLighting.constants.ambientColor[3] = 1.0f;
-	g_glRaytracingLighting.constants.enableSpecular = 1;
-	g_glRaytracingLighting.constants.enableHalfLambert = 1;
-	g_glRaytracingLighting.constants.normalReconstructZ = 1.0f;
-	g_glRaytracingLighting.constants.shadowBias = 1.5f;
-
-	glRaytracingLightingUpdateConstants();
-
-	g_glRaytracingLighting.initialized = true;
-	glRaytracingLog("glRaytracingLightingInit ok");
-	return true;
-}
-
-void glRaytracingLightingShutdown(void)
-{
-	if (!g_glRaytracingLighting.initialized)
-		return;
-
-	g_glRaytracingLighting = glRaytracingLightingState_t();
-}
-
-bool glRaytracingLightingIsInitialized(void)
-{
-	return g_glRaytracingLighting.initialized;
-}
-
-void glRaytracingLightingClearLights(bool clearPersistant)
-{
-	if (clearPersistant)
-	{
-		g_glRaytracingLighting.cpuLights.clear();
-	}
-	else
-	{
-		size_t writeIndex = 0;
-
-		for (size_t i = 0; i < g_glRaytracingLighting.cpuLights.size(); ++i)
-		{
-			if (g_glRaytracingLighting.cpuLights[i].persistant)
-			{
-				if (writeIndex != i)
-				{
-					g_glRaytracingLighting.cpuLights[writeIndex] = g_glRaytracingLighting.cpuLights[i];
-				}
-				++writeIndex;
-			}
-		}
-
-		g_glRaytracingLighting.cpuLights.resize(writeIndex);
-	}
-
-	g_glRaytracingLighting.constants.lightCount =
-		(uint32_t)g_glRaytracingLighting.cpuLights.size();
-
-	glRaytracingLightingUpdateConstants();
-}
-
-bool glRaytracingLightingAddLight(const glRaytracingLight_t* light)
-{
-	if (!g_glRaytracingLighting.initialized || !light)
-		return false;
-
-	if (g_glRaytracingLighting.cpuLights.size() >= GL_RAYTRACING_MAX_LIGHTS)
-		return false;
-
-	g_glRaytracingLighting.cpuLights.push_back(*light);
-	g_glRaytracingLighting.constants.lightCount = (uint32_t)g_glRaytracingLighting.cpuLights.size();
-
-	glRaytracingLightingUpdateLights();
-	glRaytracingLightingUpdateConstants();
-	return true;
-}
-
-void glRaytracingLightingSetAmbient(float r, float g, float b, float intensity)
-{
-	g_glRaytracingLighting.constants.ambientColor[0] = r;
-	g_glRaytracingLighting.constants.ambientColor[1] = g;
-	g_glRaytracingLighting.constants.ambientColor[2] = b;
-	g_glRaytracingLighting.constants.ambientColor[3] = intensity;
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingSetCameraPosition(float x, float y, float z)
-{
-	g_glRaytracingLighting.constants.cameraPos[0] = x;
-	g_glRaytracingLighting.constants.cameraPos[1] = y;
-	g_glRaytracingLighting.constants.cameraPos[2] = z;
-	g_glRaytracingLighting.constants.cameraPos[3] = 1.0f;
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingSetInvViewProjMatrix(const float* m16)
-{
-	if (!m16)
-		return;
-
-	memcpy(g_glRaytracingLighting.constants.invViewProj, m16, sizeof(float) * 16);
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingSetInvViewMatrix(const float* m16)
-{
-	if (!m16)
-		return;
-
-	memcpy(g_glRaytracingLighting.constants.invViewMatrix, m16, sizeof(float) * 16);
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingSetNormalReconstructSign(float signValue)
-{
-	g_glRaytracingLighting.constants.normalReconstructZ = signValue;
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingEnableSpecular(int enable)
-{
-	g_glRaytracingLighting.constants.enableSpecular = enable ? 1u : 0u;
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingEnableHalfLambert(int enable)
-{
-	g_glRaytracingLighting.constants.enableHalfLambert = enable ? 1u : 0u;
-	glRaytracingLightingUpdateConstants();
-}
-
-void glRaytracingLightingSetShadowBias(float bias)
-{
-	g_glRaytracingLighting.constants.shadowBias = bias;
-	glRaytracingLightingUpdateConstants();
-}
-
-bool glRaytracingLightingExecute(const glRaytracingLightingPassDesc_t* pass)
-{
-	if (!g_glRaytracingLighting.initialized || !pass)
+	if (!g_glRaytracingLighting.initialized || !pass || !topLevelAS)
 		return false;
 
 	if (!pass->albedoTexture ||
 		!pass->depthTexture ||
 		!pass->normalTexture ||
 		!pass->positionTexture ||
-		!pass->outputTexture ||
-		!pass->topLevelAS)
+		!pass->outputTexture)
 	{
 		return false;
 	}
@@ -2807,7 +2982,7 @@ bool glRaytracingLightingExecute(const glRaytracingLightingPassDesc_t* pass)
 
 	glRaytracingLightingUpdateLights();
 	glRaytracingLightingUpdateConstants();
-	glRaytracingLightingCreatePerPassDescriptors(pass);
+	glRaytracingLightingCreatePerPassDescriptors(pass, topLevelAS);
 
 	if (!glRaytracingBeginCmd())
 		return false;
@@ -2864,48 +3039,236 @@ bool glRaytracingLightingExecute(const glRaytracingLightingPassDesc_t* pass)
 	uav.UAV.pResource = pass->outputTexture;
 	g_glRaytracingCmd.cmdList->ResourceBarrier(1, &uav);
 
-	ID3D12Resource* backBuffer = QD3D12_GetCurrentBackBuffer();
-	if (backBuffer)
-	{
-		glRaytracingTransition(
-			g_glRaytracingCmd.cmdList.Get(),
-			pass->outputTexture,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-			D3D12_RESOURCE_STATE_COPY_SOURCE);
-
-		glRaytracingTransition(
-			g_glRaytracingCmd.cmdList.Get(),
-			backBuffer,
-			D3D12_RESOURCE_STATE_PRESENT,
-			D3D12_RESOURCE_STATE_COPY_DEST);
-
-		g_glRaytracingCmd.cmdList->CopyResource(backBuffer, pass->outputTexture);
-
-		glRaytracingTransition(
-			g_glRaytracingCmd.cmdList.Get(),
-			backBuffer,
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_PRESENT);
-
-		glRaytracingTransition(
-			g_glRaytracingCmd.cmdList.Get(),
-			pass->outputTexture,
-			D3D12_RESOURCE_STATE_COPY_SOURCE,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	}
-	else
-	{
-		glRaytracingTransition(
-			g_glRaytracingCmd.cmdList.Get(),
-			pass->outputTexture,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	}
+	// Do not copy to QD3D12_GetCurrentBackBuffer() here. In multi-window
+	// mode that global/current back buffer can belong to a different window.
+	// The caller should copy/present pass->outputTexture in the correct
+	// per-window context after this function returns.
+	glRaytracingTransition(
+		g_glRaytracingCmd.cmdList.Get(),
+		pass->outputTexture,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	if (!glRaytracingEndCmd())
 		return false;
 
 	return true;
+}
+
+static ID3D12Resource* glRaytracingResolveTLASForWorld(glRaytracingSceneHandle_t worldHandle)
+{
+	glRaytracingRenderWorld_t* world = glRaytracingFindWorld(worldHandle);
+	if (!world)
+		return nullptr;
+
+	if (!glRaytracingBuildDirtyMeshesInternal())
+		return nullptr;
+
+	if (!glRaytracingBuildSceneInternal(world))
+		return nullptr;
+
+	if (!world->tlasBuilt)
+		return nullptr;
+
+	return glRaytracingGetCurrentTLASBuffer(world)->resource.Get();
+}
+
+bool glRaytracingLightingInit(void)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (g_glRaytracingLighting.initialized)
+		return true;
+
+	if (!glRaytracingInitCmdContext())
+		return false;
+
+	if (!glRaytracingLightingCreateDescriptorHeap())
+		return false;
+
+	if (!glRaytracingLightingCreateRootSignatures())
+		return false;
+
+	if (!glRaytracingLightingCreateBuffers())
+		return false;
+
+	glRaytracingLightingCreatePersistentLightSRV();
+
+	if (!glRaytracingLightingCreateStateObject())
+		return false;
+
+	if (!glRaytracingLightingCreateShaderTables())
+		return false;
+
+	memset(&g_glRaytracingLighting.constants, 0, sizeof(g_glRaytracingLighting.constants));
+	g_glRaytracingLighting.constants.ambientColor[0] = 0.08f;
+	g_glRaytracingLighting.constants.ambientColor[1] = 0.08f;
+	g_glRaytracingLighting.constants.ambientColor[2] = 0.09f;
+	g_glRaytracingLighting.constants.ambientColor[3] = 1.0f;
+	g_glRaytracingLighting.constants.enableSpecular = 1;
+	g_glRaytracingLighting.constants.enableHalfLambert = 1;
+	g_glRaytracingLighting.constants.normalReconstructZ = 1.0f;
+	g_glRaytracingLighting.constants.shadowBias = 1.5f;
+
+	glRaytracingLightingUpdateConstants();
+
+	g_glRaytracingLighting.initialized = true;
+	glRaytracingLog("glRaytracingLightingInit ok");
+	return true;
+}
+
+void glRaytracingLightingShutdown(void)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (!g_glRaytracingLighting.initialized)
+		return;
+
+	g_glRaytracingLighting = glRaytracingLightingState_t();
+}
+
+bool glRaytracingLightingIsInitialized(void)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+	return g_glRaytracingLighting.initialized;
+}
+
+void glRaytracingLightingClearLights(bool clearPersistant)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (clearPersistant)
+	{
+		g_glRaytracingLighting.cpuLights.clear();
+	}
+	else
+	{
+		size_t writeIndex = 0;
+
+		for (size_t i = 0; i < g_glRaytracingLighting.cpuLights.size(); ++i)
+		{
+			if (g_glRaytracingLighting.cpuLights[i].persistant)
+			{
+				if (writeIndex != i)
+				{
+					g_glRaytracingLighting.cpuLights[writeIndex] = g_glRaytracingLighting.cpuLights[i];
+				}
+				++writeIndex;
+			}
+		}
+
+		g_glRaytracingLighting.cpuLights.resize(writeIndex);
+	}
+
+	g_glRaytracingLighting.constants.lightCount =
+		(uint32_t)g_glRaytracingLighting.cpuLights.size();
+
+	glRaytracingLightingUpdateConstants();
+}
+
+bool glRaytracingLightingAddLight(const glRaytracingLight_t* light)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (!g_glRaytracingLighting.initialized || !light)
+		return false;
+
+	if (g_glRaytracingLighting.cpuLights.size() >= GL_RAYTRACING_MAX_LIGHTS)
+		return false;
+
+	g_glRaytracingLighting.cpuLights.push_back(*light);
+	g_glRaytracingLighting.constants.lightCount = (uint32_t)g_glRaytracingLighting.cpuLights.size();
+
+	glRaytracingLightingUpdateLights();
+	glRaytracingLightingUpdateConstants();
+	return true;
+}
+
+void glRaytracingLightingSetAmbient(float r, float g, float b, float intensity)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.constants.ambientColor[0] = r;
+	g_glRaytracingLighting.constants.ambientColor[1] = g;
+	g_glRaytracingLighting.constants.ambientColor[2] = b;
+	g_glRaytracingLighting.constants.ambientColor[3] = intensity;
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingSetCameraPosition(float x, float y, float z)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.constants.cameraPos[0] = x;
+	g_glRaytracingLighting.constants.cameraPos[1] = y;
+	g_glRaytracingLighting.constants.cameraPos[2] = z;
+	g_glRaytracingLighting.constants.cameraPos[3] = 1.0f;
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingSetInvViewProjMatrix(const float* m16)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (!m16)
+		return;
+
+	memcpy(g_glRaytracingLighting.constants.invViewProj, m16, sizeof(float) * 16);
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingSetInvViewMatrix(const float* m16)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	if (!m16)
+		return;
+
+	memcpy(g_glRaytracingLighting.constants.invViewMatrix, m16, sizeof(float) * 16);
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingSetNormalReconstructSign(float signValue)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.constants.normalReconstructZ = signValue;
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingEnableSpecular(int enable)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.constants.enableSpecular = enable ? 1u : 0u;
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingEnableHalfLambert(int enable)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.constants.enableHalfLambert = enable ? 1u : 0u;
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingSetShadowBias(float bias)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.constants.shadowBias = bias;
+	glRaytracingLightingUpdateConstants();
+}
+
+bool glRaytracingLightingExecuteForScene(const glRaytracingLightingPassDesc_t* pass, glRaytracingSceneHandle_t worldHandle)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	ID3D12Resource* topLevelAS = glRaytracingResolveTLASForWorld(worldHandle);
+	if (!topLevelAS)
+		return false;
+
+	return glRaytracingLightingExecuteInternal(pass, topLevelAS);
 }
 
 glRaytracingLight_t glRaytracingLightingMakePointLight(

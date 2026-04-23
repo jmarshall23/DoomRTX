@@ -125,10 +125,12 @@ void R_ListRenderEntityDefs_f( const idCmdArgs &args ) {
 idRenderWorldLocal::idRenderWorldLocal
 ===================
 */
-idRenderWorldLocal::idRenderWorldLocal() {
+idRenderWorldLocal::idRenderWorldLocal(dxrWorldId_t dxrWorldId) {
 	mapName.Clear();
 	mapTimeStamp = FILE_NOT_FOUND_TIMESTAMP;
 
+	this->dxrWorldId = tr.dxrWorldHandles[dxrWorldId];
+	
 	generateAllInteractionsCalled = false;
 
 	areaNodes = NULL;
@@ -285,7 +287,7 @@ void idRenderWorldLocal::UpdateEntityDef( qhandle_t entityHandle, const renderEn
 		float dxrTransformMatrix[16];
 
 		RB_CopyModelMatrixToDXRTransform(def->modelMatrix, dxrTransformMatrix);
-		glUpdateTopLevelAceelStructure(def->dxrBottomAccelStruct, dxrTransformMatrix, def->dxrTopAccelStruct);
+		glUpdateTopLevelAceelStructure(dxrWorldId, def->dxrBottomAccelStruct, dxrTransformMatrix, def->dxrTopAccelStruct);
 	}
 
 	def->lastModifiedFrameNum = tr.frameCount;
@@ -339,6 +341,8 @@ void idRenderWorldLocal::FreeEntityDef( qhandle_t entityHandle ) {
 	def->parms.gui[ 0 ] = NULL;
 	def->parms.gui[ 1 ] = NULL;
 	def->parms.gui[ 2 ] = NULL;
+
+	def->FreeRenderEntity(dxrWorldId);
 
 	delete def;
 	entityDefs[ entityHandle ] = NULL;

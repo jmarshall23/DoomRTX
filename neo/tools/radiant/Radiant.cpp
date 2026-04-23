@@ -106,7 +106,7 @@ void RadiantInit( void ) {
 
 	// allocate a renderWorld and a soundWorld
 	if ( g_qeglobals.rw == NULL ) {
-		g_qeglobals.rw = renderSystem->AllocRenderWorld();
+		g_qeglobals.rw = renderSystem->AllocRenderWorld(dxrWorldId_t::DXR_WORLD_EDITOR);
 		g_qeglobals.rw->InitFromMap( NULL );
 	}
 	if ( g_qeglobals.sw == NULL ) {

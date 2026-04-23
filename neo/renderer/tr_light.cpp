@@ -1143,7 +1143,7 @@ idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def ) {
 			float dxrTransformMatrix[16];
 			staticMesh->UpdateDXR(def->dxrBottomAccelStruct);
 			RB_CopyModelMatrixToDXRTransform(def->modelMatrix, dxrTransformMatrix);
-			glUpdateTopLevelAceelStructure(def->dxrBottomAccelStruct, dxrTransformMatrix, def->dxrTopAccelStruct);
+			glUpdateTopLevelAceelStructure(tr.primaryWorld->dxrWorldId, def->dxrBottomAccelStruct, dxrTransformMatrix, def->dxrTopAccelStruct);
 		}
 
 		if ( def->cachedDynamicModel ) {

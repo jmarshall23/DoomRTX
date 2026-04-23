@@ -43,6 +43,13 @@ void idRenderWorldLocal::FreeWorld() {
 	// this will free all the lightDefs and entityDefs
 	FreeDefs();
 
+	// clear the dxr models.
+	glRaytracingClearScene(dxrWorldId);
+	for (i = 0; i < worldDXRmodels.Num(); i++) {
+		glRaytracingDeleteMesh(worldDXRmodels[i].dxrBottomAcel);
+	}
+	worldDXRmodels.Clear();
+
 	// free all the portals and check light/model references
 	for ( i = 0 ; i < numPortalAreas ; i++ ) {
 		portalArea_t	*area;
@@ -180,7 +187,7 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src ) {
 			idRenderModelStatic* modelStatic = (idRenderModelStatic*)model;
 			dxrWorldModel_t dxrModel;
 			modelStatic->UpdateDXR(dxrModel.dxrBottomAcel, model->NumSurfaces() - 1);
-			glUpdateTopLevelAceelStructure(dxrModel.dxrBottomAcel, NULL, dxrModel.topAccelStruct);
+			glUpdateTopLevelAceelStructure(dxrWorldId, dxrModel.dxrBottomAcel, NULL, dxrModel.topAccelStruct);
 			worldDXRmodels.Append(dxrModel);
 		}
 	}
@@ -498,7 +505,6 @@ bool idRenderWorldLocal::InitFromMap( const char *name ) {
 		ClearWorld();
 		return true;
 	}
-
 
 	// load it
 	filename = name;

@@ -81,7 +81,7 @@ struct dxrWorldModel_t {
 
 class idRenderWorldLocal : public idRenderWorld {
 public:
-							idRenderWorldLocal();
+							idRenderWorldLocal(dxrWorldId_t dxrWorldId);
 	virtual					~idRenderWorldLocal();
 
 	virtual	qhandle_t		AddEntityDef( const renderEntity_t *re );
@@ -262,6 +262,7 @@ public:
 	// tr_light.c
 	void					CreateLightDefInteractions( idRenderLightLocal *ldef );
 
+	glRaytracingSceneHandle_t dxrWorldId;
 	idList<dxrWorldModel_t>	worldDXRmodels;
 };
 

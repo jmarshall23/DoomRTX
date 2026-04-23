@@ -10441,10 +10441,18 @@ static void QD3D12_ResolveSceneToOutputAndEnterNativePhase(QD3D12Window& w)
 	QD3D12_BindTargetsForCurrentPhase(w);
 }
 
-void glLightScene(void)
+void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 {
-	const int width = (int)g_currentWindow->renderWidth;
-	const int height = (int)g_currentWindow->renderHeight;
+	if (sceneHandle == 0)
+		return;
+
+	auto* window = g_currentWindow;
+	if (!window)
+		return;
+
+	const int width = (int)window->renderWidth;
+	const int height = (int)window->renderHeight;
+	const auto frameIndex = window->frameIndex;
 
 	if (width <= 0 || height <= 0)
 		return;
@@ -10458,48 +10466,54 @@ void glLightScene(void)
 	if (!lightingTex || !lightingTex->texture)
 		return;
 
-	glRaytracingBuildScene();
+	// Scene/TLAS ownership is now per render world. Querying the scene TLAS here
+	// also builds dirty shared BLAS resources and this scene's TLAS before we
+	// touch the window G-buffer state.
+	ID3D12Resource* tlas = glRaytracingGetTopLevelASForScene(sceneHandle);
+	if (!tlas)
+		return;
+
+	glRaytracingBuildSceneForHandle(sceneHandle);
 
 	QD3D12_FlushQueuedBatches();
-	QD3D12_ResolveGBufferForCurrentFrame(*g_currentWindow);
+	QD3D12_ResolveGBufferForCurrentFrame(*window);
 
 	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
-	ID3D12Resource* sceneColor = g_currentWindow->sceneColorBuffers[g_currentWindow->frameIndex].Get();
-	ID3D12Resource* sceneNormal = g_currentWindow->normalBuffers[g_currentWindow->frameIndex].Get();
-	ID3D12Resource* scenePosition = g_currentWindow->positionBuffers[g_currentWindow->frameIndex].Get();
-	ID3D12Resource* sceneDepth = g_currentWindow->depthBuffer.Get();
-	ID3D12Resource* tlas = glRaytracingGetTopLevelAS();
+	ID3D12Resource* sceneColor = window->sceneColorBuffers[frameIndex].Get();
+	ID3D12Resource* sceneNormal = window->normalBuffers[frameIndex].Get();
+	ID3D12Resource* scenePosition = window->positionBuffers[frameIndex].Get();
+	ID3D12Resource* sceneDepth = window->depthBuffer.Get();
 
-	if (!sceneColor || !sceneNormal || !scenePosition || !sceneDepth || !tlas)
+	if (!sceneColor || !sceneNormal || !scenePosition || !sceneDepth)
 		return;
 
 	QD3D12_TransitionResource(
 		cl,
 		sceneColor,
-		g_currentWindow->sceneColorState[g_currentWindow->frameIndex],
+		window->sceneColorState[frameIndex],
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	QD3D12_TransitionResource(
 		cl,
 		sceneNormal,
-		g_currentWindow->normalBufferState[g_currentWindow->frameIndex],
+		window->normalBufferState[frameIndex],
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	QD3D12_TransitionResource(
 		cl,
 		scenePosition,
-		g_currentWindow->positionBufferState[g_currentWindow->frameIndex],
+		window->positionBufferState[frameIndex],
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	QD3D12_TransitionResource(
 		cl,
 		sceneDepth,
-		g_currentWindow->depthState,
+		window->depthState,
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	// The external DXR module records and executes its own command list. Because
 	// of that, the scene input transitions must be submitted on the main command
-	// list before we call into glRaytracingLightingExecute.
+	// list before we call into glRaytracingLightingExecuteForScene.
 	if (g_lightingTextureState != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
 	{
 		QD3D12_TransitionResource(
@@ -10507,9 +10521,11 @@ void glLightScene(void)
 			lightingTex->texture.Get(),
 			g_lightingTextureState,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		g_lightingTextureState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	}
 
-	QD3D12_ExecuteMainCommandListAndWait(*g_currentWindow);
+	QD3D12_ExecuteMainCommandListAndWait(*window);
 	cl = g_gl.cmdList.Get();
 
 	glRaytracingLightingPassDesc_t pass = {};
@@ -10528,44 +10544,43 @@ void glLightScene(void)
 	pass.outputTexture = lightingTex->texture.Get();
 	pass.outputFormat = lightingTex->dxgiFormat;
 
-	pass.topLevelAS = tlas;
 	pass.width = (uint32_t)width;
 	pass.height = (uint32_t)height;
 
-	if (!glRaytracingLightingExecute(&pass))
+	if (!glRaytracingLightingExecuteForScene(&pass, sceneHandle))
 	{
 		if (QD3D12_GBufferMsaaEnabled())
 		{
-			QD3D12_TransitionResource(cl, g_currentWindow->sceneColorMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->sceneColorMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-			QD3D12_TransitionResource(cl, g_currentWindow->normalMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->normalMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-			QD3D12_TransitionResource(cl, g_currentWindow->positionMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->positionMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-			QD3D12_TransitionResource(cl, g_currentWindow->velocityMsaaBuffers[g_currentWindow->frameIndex].Get(), g_currentWindow->velocityMsaaState[g_currentWindow->frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
-			QD3D12_TransitionResource(cl, g_currentWindow->depthMsaaBuffer.Get(), g_currentWindow->depthMsaaState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			QD3D12_TransitionResource(cl, window->sceneColorMsaaBuffers[frameIndex].Get(), window->sceneColorMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, window->normalMsaaBuffers[frameIndex].Get(), window->normalMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, window->positionMsaaBuffers[frameIndex].Get(), window->positionMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, window->velocityMsaaBuffers[frameIndex].Get(), window->velocityMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, window->depthMsaaBuffer.Get(), window->depthMsaaState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		}
 		else
 		{
 			QD3D12_TransitionResource(
 				cl,
 				sceneColor,
-				g_currentWindow->sceneColorState[g_currentWindow->frameIndex],
+				window->sceneColorState[frameIndex],
 				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 			QD3D12_TransitionResource(
 				cl,
 				sceneNormal,
-				g_currentWindow->normalBufferState[g_currentWindow->frameIndex],
+				window->normalBufferState[frameIndex],
 				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 			QD3D12_TransitionResource(
 				cl,
 				scenePosition,
-				g_currentWindow->positionBufferState[g_currentWindow->frameIndex],
+				window->positionBufferState[frameIndex],
 				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 			QD3D12_TransitionResource(
 				cl,
 				sceneDepth,
-				g_currentWindow->depthState,
+				window->depthState,
 				D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		}
 
@@ -10573,46 +10588,55 @@ void glLightScene(void)
 		return;
 	}
 
-	g_lightingTextureState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	// The scene-handle DXR path leaves outputTexture in PIXEL_SHADER_RESOURCE.
+	g_lightingTextureState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-	QD3D12_RunRayAIDenoiseIfEnabled(cl, *g_currentWindow, lightingTex->texture.Get());
+	QD3D12_RunRayAIDenoiseIfEnabled(cl, *window, lightingTex->texture.Get());
 
-	QD3D12_TransitionResource(
-		cl,
-		lightingTex->texture.Get(),
-		g_lightingTextureState,
-		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	// If the denoiser changes the texture state and updates g_lightingTextureState,
+	// restore the texture to a shader-readable state for the post/upscale pass.
+	if (g_lightingTextureState != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+	{
+		QD3D12_TransitionResource(
+			cl,
+			lightingTex->texture.Get(),
+			g_lightingTextureState,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		g_lightingTextureState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	}
 
 	g_gl.raytracedLightingReadyThisFrame = true;
 
-	if (!QD3D12_UseLightingTextureAsUpscaleInput(*g_currentWindow))
+	if (!QD3D12_UseLightingTextureAsUpscaleInput(*window))
 	{
 		QD3D12_TransitionResource(
 			cl,
 			sceneColor,
-			g_currentWindow->sceneColorState[g_currentWindow->frameIndex],
+			window->sceneColorState[frameIndex],
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		D3D12_VIEWPORT viewport{};
 		viewport.TopLeftX = 0.0f;
 		viewport.TopLeftY = 0.0f;
-		viewport.Width = (float)g_currentWindow->renderWidth;
-		viewport.Height = (float)g_currentWindow->renderHeight;
+		viewport.Width = (float)window->renderWidth;
+		viewport.Height = (float)window->renderHeight;
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
 
 		D3D12_RECT scissor{};
 		scissor.left = 0;
 		scissor.top = 0;
-		scissor.right = (LONG)g_currentWindow->renderWidth;
-		scissor.bottom = (LONG)g_currentWindow->renderHeight;
+		scissor.right = (LONG)window->renderWidth;
+		scissor.bottom = (LONG)window->renderHeight;
 
 		// Non-RR path: replace the low-resolution scene color with the lit result,
-		// then upscale that scene color into the backbuffer.
+		// then upscale that scene color into the backbuffer. Use the texture returned
+		// for this window instead of a separate global texture pointer.
 		QD3D12_PostFullscreenPass(
 			cl,
 			g_gl.postCopyPSO.Get(),
-			g_lightingTexture->srvGpu,
+			lightingTex->srvGpu,
 			CurrentResolvedSceneColorRTV(),
 			viewport,
 			scissor);
@@ -10624,8 +10648,9 @@ void glLightScene(void)
 		// guide instead of overwriting it here.
 	}
 
-	QD3D12_ResolveSceneToOutputAndEnterNativePhase(*g_currentWindow);
+	QD3D12_ResolveSceneToOutputAndEnterNativePhase(*window);
 }
+
 
 ID3D12Resource* QD3D12_GetCurrentBackBuffer()
 {
@@ -12090,9 +12115,17 @@ void glUpdateBottomAccelStructure(bool opaque, uint32_t& meshHandle)
 		meshHandle = glRaytracingCreateMesh(&meshDesc);
 }
 
-void glUpdateTopLevelAceelStructure(uint32_t mesh, float* transform, uint32_t& topLevelHandle) {
+void glUpdateTopLevelAceelStructure(
+	glRaytracingSceneHandle_t scene,
+	uint32_t mesh,
+	float* transform,
+	uint32_t& topLevelHandle)
+{
+	if (scene == 0 || mesh == 0)
+		return;
+
 	glRaytracingInstanceDesc_t instDesc = {};
-	instDesc.meshHandle = mesh;
+	instDesc.meshHandle = (glRaytracingMeshHandle_t)mesh;
 	instDesc.instanceID = 0;
 	instDesc.mask = 0xFF;
 
@@ -12104,15 +12137,25 @@ void glUpdateTopLevelAceelStructure(uint32_t mesh, float* transform, uint32_t& t
 	}
 	else
 	{
+		// Same contract as the old helper: transform is a 12-float
+		// D3D12_RAYTRACING_INSTANCE_DESC-compatible 3x4 transform.
 		memcpy(instDesc.transform, transform, sizeof(float) * 12);
 	}
 
 	if (topLevelHandle == 0)
 	{
-		topLevelHandle = glRaytracingCreateInstance(&instDesc);
-	}
-	else {
-		glRaytracingUpdateInstance(topLevelHandle, &instDesc);
+		topLevelHandle = glRaytracingCreateInstanceInScene(scene, &instDesc);
+		return;
 	}
 
+	if (!glRaytracingUpdateInstanceInScene(
+		scene,
+		(glRaytracingInstanceHandle_t)topLevelHandle,
+		&instDesc))
+	{
+		// The saved handle can become stale if the scene was cleared/deleted, or if
+		// the caller accidentally reuses a handle from another render world. Create
+		// a new per-scene instance and return that handle to the caller.
+		topLevelHandle = glRaytracingCreateInstanceInScene(scene, &instDesc);
+	}
 }

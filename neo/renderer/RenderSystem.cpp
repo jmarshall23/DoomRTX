@@ -989,9 +989,9 @@ void idRenderSystemLocal::CaptureRenderToFile( const char *fileName, bool fixAlp
 AllocRenderWorld
 ==============
 */
-idRenderWorld *idRenderSystemLocal::AllocRenderWorld() {
-	idRenderWorldLocal *rw;
-	rw = new idRenderWorldLocal;
+idRenderWorld *idRenderSystemLocal::AllocRenderWorld(dxrWorldId_t worldId) {
+	idRenderWorldLocal *rw = new idRenderWorldLocal(worldId);
+	glRaytracingClearScene(rw->dxrWorldId);
 	worlds.Append( rw );
 	return rw;
 }

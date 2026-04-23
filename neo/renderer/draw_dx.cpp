@@ -50,6 +50,6 @@ void RB_DXDrawInteractions(void) {
 
 
 	glFinish();
-	glLightScene();
+	glLightScene(backEnd.viewDef->renderWorld->dxrWorldId);
 	glRaytracingLightingClearLights(false);
 }

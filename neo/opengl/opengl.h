@@ -275,6 +275,15 @@ typedef char GLchar;
 #define GL_TRUE 1
 #endif
 
+#ifndef GL_RAYTRACING_MAX_RENDER_WORLDS
+#define GL_RAYTRACING_MAX_RENDER_WORLDS 24
+#endif
+
+#ifndef GL_RAYTRACING_SCENE_HANDLE_T_DEFINED
+typedef uint32_t glRaytracingSceneHandle_t;
+#define GL_RAYTRACING_SCENE_HANDLE_T_DEFINED
+#endif
+
 #ifndef GL_ARRAY_BUFFER
 #define GL_ARRAY_BUFFER 0x8892
 #endif
@@ -1540,8 +1549,6 @@ enum GeometryFlag_t
 
 void APIENTRY glGeometryFlagf(GLfloat flag);
 
-void glUpdateBottomAccelStructure(bool opaque, uint32_t& meshHandle);
-void glUpdateTopLevelAceelStructure(uint32_t mesh, float* transform, uint32_t& topLevelHandle);
 #endif
 
 struct GLVertex
@@ -1669,8 +1676,6 @@ typedef struct glRaytracingLightingPassDesc_s
 	ID3D12Resource* outputTexture;
 	DXGI_FORMAT     outputFormat;
 
-	ID3D12Resource* topLevelAS;
-
 	uint32_t        width;
 	uint32_t        height;
 } glRaytracingLightingPassDesc_t;
@@ -1679,21 +1684,41 @@ int                        glRaytracingInit(void);
 void                       glRaytracingShutdown(void);
 void                       glRaytracingClear(void);
 
+// Render-world / TLAS APIs.
+// A render world owns its own instance list and TLAS. Meshes and BLAS resources
+// remain shared globally. Valid scene handles are returned by glRaytracingCreateScene()
+// and are in the range 1..GL_RAYTRACING_MAX_RENDER_WORLDS.
+glRaytracingSceneHandle_t  glRaytracingCreateScene(void);
+void                       glRaytracingClearScene(glRaytracingSceneHandle_t sceneHandle);
+void                       glRaytracingDeleteScene(glRaytracingSceneHandle_t sceneHandle);
+uint32_t                   glRaytracingGetSceneCount(void);
+
 glRaytracingMeshHandle_t   glRaytracingCreateMesh(const glRaytracingMeshDesc_t* desc);
 int                        glRaytracingUpdateMesh(glRaytracingMeshHandle_t meshHandle, const glRaytracingMeshDesc_t* desc);
 void                       glRaytracingDeleteMesh(glRaytracingMeshHandle_t meshHandle);
 
-glRaytracingInstanceHandle_t glRaytracingCreateInstance(const glRaytracingInstanceDesc_t* desc);
-int                          glRaytracingUpdateInstance(glRaytracingInstanceHandle_t instanceHandle, const glRaytracingInstanceDesc_t* desc);
-void                         glRaytracingDeleteInstance(glRaytracingInstanceHandle_t instanceHandle);
+// Scene-specific instance APIs for multiple render worlds.
+glRaytracingInstanceHandle_t glRaytracingCreateInstanceInScene(
+	glRaytracingSceneHandle_t sceneHandle,
+	const glRaytracingInstanceDesc_t* desc);
+
+int                          glRaytracingUpdateInstanceInScene(
+	glRaytracingSceneHandle_t sceneHandle,
+	glRaytracingInstanceHandle_t instanceHandle,
+	const glRaytracingInstanceDesc_t* desc);
+
+void                         glRaytracingDeleteInstanceInScene(
+	glRaytracingSceneHandle_t sceneHandle,
+	glRaytracingInstanceHandle_t instanceHandle);
 
 int                        glRaytracingBuildMesh(glRaytracingMeshHandle_t meshHandle);
 int                        glRaytracingBuildAllMeshes(void);
-int                        glRaytracingBuildScene(void);
-int                        glRaytracingBuildSceneIfDirty(void);
+int                        glRaytracingBuildSceneForHandle(glRaytracingSceneHandle_t sceneHandle);
+
+ID3D12Resource* glRaytracingGetTopLevelASForScene(glRaytracingSceneHandle_t sceneHandle);
 
 uint32_t                   glRaytracingGetMeshCount(void);
-uint32_t                   glRaytracingGetInstanceCount(void);
+uint32_t                   glRaytracingGetInstanceCountForScene(glRaytracingSceneHandle_t sceneHandle);
 
 bool                       glRaytracingLightingInit(void);
 void                       glRaytracingLightingShutdown(void);
@@ -1711,7 +1736,9 @@ void                       glRaytracingLightingEnableSpecular(int enable);
 void                       glRaytracingLightingEnableHalfLambert(int enable);
 void                       glRaytracingLightingSetShadowBias(float bias);
 
-bool                       glRaytracingLightingExecute(const glRaytracingLightingPassDesc_t* pass);
+bool                       glRaytracingLightingExecuteForScene(
+	const glRaytracingLightingPassDesc_t* pass,
+	glRaytracingSceneHandle_t sceneHandle);
 
 glRaytracingLight_t glRaytracingLightingMakePointLight(
 	float px, float py, float pz,
@@ -1732,7 +1759,7 @@ glRaytracingLight_t        glRaytracingLightingMakeRectLight(
 
 uint32_t                   glRaytracingLightingGetLightCount(void);
 
-void                       glLightScene(void);
+void                       glLightScene(glRaytracingSceneHandle_t sceneHandle);
 
 ID3D12Device* QD3D12_GetDevice(void);
 ID3D12CommandQueue* QD3D12_GetQueue(void);
@@ -2134,3 +2161,9 @@ void APIENTRY glBindNormalMapTexture(GLuint texture);                    // 0 di
 void APIENTRY glNormalMapTexture(GLuint texture);                        // alias
 void APIENTRY glNormalMapStrengthf(GLfloat strength);                    // default 1.0
 void APIENTRY glNormalMapYSignf(GLfloat sign);                           // default +1, pass -1 to flip green/Y
+
+void glUpdateTopLevelAceelStructure(
+	glRaytracingSceneHandle_t scene,
+	uint32_t mesh,
+	float* transform,
+	uint32_t& topLevelHandle);

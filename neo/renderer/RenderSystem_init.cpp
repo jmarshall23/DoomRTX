@@ -515,6 +515,12 @@ void R_InitOpenGL( void ) {
 	// Reset our gamma
 	R_SetColorMappings();
 
+	// Create the DXR worlds.
+	for (int i = 0; i < DXR_WORLD_NUM; i++)
+	{
+		tr.dxrWorldHandles[i] = glRaytracingCreateScene();
+	}
+
 #ifdef _WIN32
 	static bool glCheck = false;
 	if ( !glCheck && win32.osversion.dwMajorVersion == 6 ) {

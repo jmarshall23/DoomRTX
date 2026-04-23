@@ -2845,7 +2845,7 @@ void idSessionLocal::Init() {
 	// the same idRenderWorld will be used for all games
 	// and demos, insuring that level specific models
 	// will be freed
-	rw = renderSystem->AllocRenderWorld();
+	rw = renderSystem->AllocRenderWorld(dxrWorldId_t::DXR_WORLD_GAME);
 	sw = soundSystem->AllocSoundWorld( rw );
 
 	menuSoundWorld = soundSystem->AllocSoundWorld( rw );

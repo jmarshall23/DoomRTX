@@ -241,7 +241,7 @@ void idGLDrawableView::ResetView( void ) {
 void idGLDrawableView::InitWorld() {
 	
 	if ( world == NULL ) {
-		world = renderSystem->AllocRenderWorld();
+		world = renderSystem->AllocRenderWorld(dxrWorldId_t::DXR_MATERIAL_PREVIEW);
 	}
 	if ( worldModel == NULL ) {
 		worldModel = renderModelManager->AllocModel();

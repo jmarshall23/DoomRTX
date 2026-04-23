@@ -47,7 +47,7 @@ idRenderWindow::~idRenderWindow() {
 }
 
 void idRenderWindow::CommonInit() {
-	world = renderSystem->AllocRenderWorld();
+	world = renderSystem->AllocRenderWorld(dxrWorldId_t::DXR_WORLD_MAINMENU);
 	needsRender = true;
 	lightOrigin = idVec4(-128.0f, 0.0f, 0.0f, 1.0f);
 	lightColor = idVec4(1.0f, 1.0f, 1.0f, 1.0f);

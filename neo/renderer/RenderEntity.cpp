@@ -51,10 +51,18 @@ idRenderEntityLocal::idRenderEntityLocal() {
 	entityRefs				= NULL;
 	firstInteraction		= NULL;
 	lastInteraction			= NULL;
+	dxrBottomAccelStruct = 0;
 	needsPortalSky			= false;
 }
 
-void idRenderEntityLocal::FreeRenderEntity() {
+void idRenderEntityLocal::FreeRenderEntity(glRaytracingSceneHandle_t sceneHandle) {
+	if (dxrBottomAccelStruct != 0)
+	{
+		glRaytracingDeleteMesh(dxrBottomAccelStruct);
+		glRaytracingDeleteInstanceInScene(sceneHandle, dxrTopAccelStruct);
+	}
+
+	dxrBottomAccelStruct = 0;
 }
 
 void idRenderEntityLocal::UpdateRenderEntity( const renderEntity_t *re, bool forceUpdate ) {
