@@ -815,7 +815,7 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 		if ( ( pStage->drawStateBits & (GLS_SRCBLEND_BITS|GLS_DSTBLEND_BITS) ) == ( GLS_SRCBLEND_ZERO | GLS_DSTBLEND_ONE ) ) {
 			continue;
 		}
-
+#if 0
 		// see if we are a new-style stage
 		newShaderStage_t *newStage = pStage->newStage;
 		if ( newStage ) {
@@ -899,7 +899,7 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 			glDisableClientState( GL_NORMAL_ARRAY );
 			continue;
 		}
-
+#endif
 		//--------------------------
 		//
 		// old style stages
