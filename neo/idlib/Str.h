@@ -37,41 +37,6 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-// these library functions should not be used for cross platform compatibility
-#define strcmp			idStr::Cmp		// use_idStr_Cmp
-#define strncmp			use_idStr_Cmpn
-
-#if defined( StrCmpN )
-#undef StrCmpN
-#endif
-#define StrCmpN			use_idStr_Cmpn
-
-#if defined( strcmpi )
-#undef strcmpi
-#endif
-#define strcmpi			use_idStr_Icmp
-
-#if defined( StrCmpI )
-#undef StrCmpI
-#endif
-#define StrCmpI			use_idStr_Icmp
-
-#if defined( StrCmpNI )
-#undef StrCmpNI
-#endif
-#define StrCmpNI		use_idStr_Icmpn
-
-#define stricmp			idStr::Icmp		// use_idStr_Icmp
-#define _stricmp		use_idStr_Icmp
-#define strcasecmp		use_idStr_Icmp
-#define strnicmp		use_idStr_Icmpn
-#define _strnicmp		use_idStr_Icmpn
-#define _memicmp		use_idStr_Icmpn
-#define snprintf		use_idStr_snPrintf
-#define _snprintf		use_idStr_snPrintf
-#define vsnprintf		use_idStr_vsnPrintf
-#define _vsnprintf		use_idStr_vsnPrintf
-
 class idVec4;
 
 #ifndef FILE_HASH_SIZE
