@@ -1636,27 +1636,38 @@ typedef struct glRaytracingVec3_s
 typedef struct glRaytracingLight_s
 {
 	glRaytracingVec3_t position;
-	float              radius;
+	float              radius;        // point: max XYZ radius / fallback range
+	// rect : influence range
+	// spot : far clip distance
 
 	glRaytracingVec3_t color;
 	float              intensity;
 
-	glRaytracingVec3_t normal;
-	uint32_t           type;
+	glRaytracingVec3_t normal;        // rect: emitter normal
+	// spot: forward direction
+	// point: ignored
+	uint32_t           type;          // POINT / RECT / SPOT
 
-	glRaytracingVec3_t axisU;
-	float              halfWidth;
+	glRaytracingVec3_t axisU;         // rect: local X axis
+	// spot: right basis
+	float              halfWidth;     // rect: half extent along axisU
+	// spot: projected half-width slope
 
-	glRaytracingVec3_t axisV;
-	float              halfHeight;
+	glRaytracingVec3_t axisV;         // rect: local Y axis
+	// spot: up basis
+	float              halfHeight;    // rect: half extent along axisV
+	// spot: projected half-height slope
 
-	uint32_t           samples;
-	uint32_t           twoSided;
+	uint32_t           samples;       // rect: sample count
+	// point/spot: 0 disables shadows, non-zero enables them
+	uint32_t           twoSided;      // rect: 0/1, ignored for point / spot
 	float              persistant;
 	float              pad1;
 
-	glRaytracingVec3_t pointRadius;
-	float pointRadiusPad;
+	glRaytracingVec3_t pointRadius;   // point: XYZ attenuation radii
+	// spot: x = near clip, y/z unused
+	// rect : scalar range copy
+	float              pointRadiusPad; // non-zero disables specular for this light
 } glRaytracingLight_t;
 
 typedef struct glRaytracingLightingPassDesc_s
@@ -1746,7 +1757,20 @@ glRaytracingLight_t glRaytracingLightingMakePointLight(
 	float r, float g, float b,
 	float intensity);
 
-glRaytracingLight_t        glRaytracingLightingMakeRectLight(
+glRaytracingLight_t glRaytracingLightingMakeSpotLight(
+	float px, float py, float pz,
+	float dx, float dy, float dz,
+	float ux, float uy, float uz,
+	float vx, float vy, float vz,
+	float nearPlane,
+	float farPlane,
+	float tanHalfWidth,
+	float tanHalfHeight,
+	float r, float g, float b,
+	float intensity,
+	uint32_t samples);
+
+glRaytracingLight_t glRaytracingLightingMakeRectLight(
 	float px, float py, float pz,
 	float nx, float ny, float nz,
 	float ux, float uy, float uz,
@@ -1801,6 +1825,7 @@ static void glRaytracingCross3(
 
 static const int GL_RAYTRACING_LIGHT_TYPE_POINT = 0;
 static const int GL_RAYTRACING_LIGHT_TYPE_RECT = 1;
+static const int GL_RAYTRACING_LIGHT_TYPE_SPOT = 2;
 
 void TessellatePolygon(const std::vector<GLVertex>& src, std::vector<GLVertex>& out);
 

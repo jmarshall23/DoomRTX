@@ -417,55 +417,7 @@ helper function that takes the current width/height and might make them smaller
 ================
 */
 void idImage::GetDownsize( int &scaled_width, int &scaled_height ) const {
-	int size = 0;
-
-	// perform optional picmip operation to save texture memory
-	if ( depth == TD_SPECULAR && globalImages->image_downSizeSpecular.GetInteger() ) {
-		size = globalImages->image_downSizeSpecularLimit.GetInteger();
-		if ( size == 0 ) {
-			size = 64;
-		}
-	} else if ( depth == TD_BUMP && globalImages->image_downSizeBump.GetInteger() ) {
-		size = globalImages->image_downSizeBumpLimit.GetInteger();
-		if ( size == 0 ) {
-			size = 64;
-		}
-	} else if ( ( allowDownSize || globalImages->image_forceDownSize.GetBool() ) && globalImages->image_downSize.GetInteger() ) {
-		size = globalImages->image_downSizeLimit.GetInteger();
-		if ( size == 0 ) {
-			size = 256;
-		}
-	}
-
-	if ( size > 0 ) {
-		while ( scaled_width > size || scaled_height > size ) {
-			if ( scaled_width > 1 ) {
-				scaled_width >>= 1;
-			}
-			if ( scaled_height > 1 ) {
-				scaled_height >>= 1;
-			}
-		}
-	}
-
-	// clamp to minimum size
-	if ( scaled_width < 1 ) {
-		scaled_width = 1;
-	}
-	if ( scaled_height < 1 ) {
-		scaled_height = 1;
-	}
-
-	// clamp size to the hardware specific upper limit
-	// scale both axis down equally so we don't have to
-	// deal with a half mip resampling
-	// This causes a 512*256 texture to sample down to
-	// 256*128 on a voodoo3, even though it could be 256*256
-	while ( scaled_width > glConfig.maxTextureSize
-		|| scaled_height > glConfig.maxTextureSize ) {
-		scaled_width >>= 1;
-		scaled_height >>= 1;
-	}
+	
 }
 
 /*

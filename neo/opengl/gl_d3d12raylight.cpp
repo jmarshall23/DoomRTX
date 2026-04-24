@@ -1924,9 +1924,11 @@ struct Light
     float  pad1;
 
     // For point lights, this is the axis-aligned XYZ attenuation radius.
-    // The scalar radius above is still kept as a max/fallback range and for rect lights.
+    // For spot lights, pointRadius.x stores the near clip plane.
+    // The scalar radius above is still kept as a max/fallback range for point lights,
+    // as the influence range for rect lights, and as the far clip distance for spot lights.
     float3 pointRadius;
-    float  pointRadiusPad;
+    float  pointRadiusPad; // non-zero disables specular for this light
 };
 
 struct ShadowPayload
@@ -1958,6 +1960,7 @@ RWTexture2D<float4>     gOutputTex   : register(u0);
 
 static const uint GL_RAYTRACING_LIGHT_TYPE_POINT = 0;
 static const uint GL_RAYTRACING_LIGHT_TYPE_RECT  = 1;
+static const uint GL_RAYTRACING_LIGHT_TYPE_SPOT  = 2;
 
 static const uint GEOMETRY_FLAG_SKELETAL = 1;
 static const uint GEOMETRY_FLAG_UNLIT    = 2;
@@ -2097,7 +2100,55 @@ float ComputePointLightAttenuation(float3 worldPos, Light Lgt)
     // and radius.z controls Z reach in world space.
     float ellipsoidDistance = length(normalizedOffset);
     float atten = saturate(1.0 - ellipsoidDistance);
-    return atten * atten;
+    return atten;
+}
+
+float ComputeSpotLightAttenuation(float3 worldPos, Light Lgt)
+{
+    float3 lightToSurface = worldPos - Lgt.position;
+
+    float nearClip = max(Lgt.pointRadius.x, 0.0);
+    float farClip  = max(Lgt.radius, nearClip + 1e-4);
+
+    float depth = dot(lightToSurface, Lgt.normal);
+    if (depth <= nearClip || depth >= farClip)
+        return 0.0;
+
+    float invDepth = 1.0 / max(depth, 1e-4);
+
+    float projU = dot(lightToSurface, Lgt.axisU) * invDepth;
+    float projV = dot(lightToSurface, Lgt.axisV) * invDepth;
+
+    float halfU = max(abs(Lgt.halfWidth), 1e-4);
+    float halfV = max(abs(Lgt.halfHeight), 1e-4);
+
+    float edgeU = abs(projU) / halfU;
+    float edgeV = abs(projV) / halfV;
+    float edge  = max(edgeU, edgeV);
+
+    if (edge >= 1.0)
+        return 0.0;
+
+    float coneAtten = saturate(1.0 - edge);
+    coneAtten = coneAtten;
+
+    float rangeAtten = saturate((farClip - depth) / max(farClip - nearClip, 1e-4));
+    rangeAtten = rangeAtten;
+
+    return coneAtten * rangeAtten;
+}
+
+float TraceSpotShadow(float3 worldPos, float3 N, float3 toLight, float dist)
+{
+    float3 L = toLight / max(dist, 1e-6);
+
+    float NdotLRaw   = saturate(dot(N, L));
+    float normalBias = lerp(gShadowBias * 3.0, gShadowBias * 0.75, NdotLRaw);
+
+    float3 shadowOrigin = worldPos + N * normalBias + L * (gShadowBias * 0.5);
+    float  shadowTMax   = max(dist - gShadowBias * 0.5, 0.001);
+
+    return TraceShadow(shadowOrigin, L, shadowTMax);
 }
 
 float TraceSoftShadow(float3 worldPos, float3 N, Light Lgt, float3 toLight, float dist)
@@ -2438,7 +2489,7 @@ void RayGen()
             float NdotLWrap = saturate((dot(N, L) + wrap) / (1.0 + wrap));
 
             float shadow = 1.0;
-            if (NdotLWrap > 0.0001 && atten > 0.0 && dist > 0.01)
+            if (Lgt.samples != 0u && NdotLWrap > 0.0001 && atten > 0.0 && dist > 0.01)
             {
                 shadow = TraceSoftShadow(worldPos, N, Lgt, toLight, dist);
             }
@@ -2446,7 +2497,44 @@ void RayGen()
             float3 diffuse = Lgt.color * (Lgt.intensity * atten * NdotLWrap * shadow);
             lightingAccum += diffuse;
 
-            specularAccum += ComputeSpecular(N, V, L, Lgt.color, Lgt.intensity, atten, shadow, baseAlbedo);
+            if (Lgt.pointRadiusPad <= 0.5)
+            {
+                specularAccum += ComputeSpecular(N, V, L, Lgt.color, Lgt.intensity, atten, shadow, baseAlbedo);
+            }
+        }
+        else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
+        {
+            float3 toLight = Lgt.position - worldPos;
+            float  distSq  = dot(toLight, toLight);
+            float  dist    = sqrt(max(distSq, 1e-6));
+            float3 L       = toLight / dist;
+
+            float atten = ComputeSpotLightAttenuation(worldPos, Lgt);
+
+            float wrap = 0.35;
+            float NdotLWrap = saturate((dot(N, L) + wrap) / (1.0 + wrap));
+
+            float shadow = 1.0;
+            if (Lgt.samples != 0u && NdotLWrap > 0.0001 && atten > 0.0 && dist > 0.01)
+            {
+                shadow = TraceSpotShadow(worldPos, N, toLight, dist);
+            }
+
+            float3 diffuse = Lgt.color * (Lgt.intensity * atten * NdotLWrap * shadow);
+            lightingAccum += diffuse;
+
+            if (Lgt.pointRadiusPad <= 0.5)
+            {
+                specularAccum += ComputeSpecular(
+                    N,
+                    V,
+                    L,
+                    Lgt.color,
+                    Lgt.intensity,
+                    atten,
+                    shadow,
+                    baseAlbedo);
+            }
         }
         else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_RECT)
         {
@@ -2460,7 +2548,7 @@ void RayGen()
             atten = atten * atten * atten * atten;
 
             float shadow = 1.0;
-            if (atten > 0.0 && centerDist > 0.01)
+            if (Lgt.samples != 0u && atten > 0.0 && centerDist > 0.01)
             {
                 shadow = RectLightShadow(worldPos, N, Lgt, pixel);
             }
@@ -2498,15 +2586,18 @@ void RayGen()
 
                 rectDiffuseAccum += Lgt.color * sampleWeight;
 
-                rectSpecAccum += ComputeSpecular(
-                    N,
-                    V,
-                    L,
-                    Lgt.color,
-                    Lgt.intensity * faceTerm,
-                    1.0,
-                    1.0,
-                    baseAlbedo);
+                if (Lgt.pointRadiusPad <= 0.5)
+                {
+                    rectSpecAccum += ComputeSpecular(
+                        N,
+                        V,
+                        L,
+                        Lgt.color,
+                        Lgt.intensity * faceTerm,
+                        1.0,
+                        1.0,
+                        baseAlbedo);
+                }
             }
 
             rectDiffuseAccum /= (float)sampleCount;
@@ -3326,6 +3417,120 @@ glRaytracingLight_t glRaytracingLightingMakePointLight(
 	l.twoSided = 0;
 	l.persistant = 0.0f;
 	l.pad1 = 0.0f;
+	return l;
+}
+
+
+glRaytracingLight_t glRaytracingLightingMakeSpotLight(
+	float px, float py, float pz,
+	float dx, float dy, float dz,
+	float ux, float uy, float uz,
+	float vx, float vy, float vz,
+	float nearPlane,
+	float farPlane,
+	float tanHalfWidth,
+	float tanHalfHeight,
+	float r, float g, float b,
+	float intensity,
+	uint32_t samples)
+{
+	glRaytracingLight_t l = {};
+
+	glRaytracingNormalize3(dx, dy, dz);
+
+	// Make U perpendicular to D.
+	{
+		const float du = dx * ux + dy * uy + dz * uz;
+		ux -= dx * du;
+		uy -= dy * du;
+		uz -= dz * du;
+
+		const float uLenSq = ux * ux + uy * uy + uz * uz;
+		if (uLenSq <= 1e-20f)
+		{
+			const float absDz = (dz < 0.0f) ? -dz : dz;
+			if (absDz < 0.999f)
+			{
+				glRaytracingCross3(0.0f, 0.0f, 1.0f, dx, dy, dz, ux, uy, uz);
+			}
+			else
+			{
+				glRaytracingCross3(0.0f, 1.0f, 0.0f, dx, dy, dz, ux, uy, uz);
+			}
+		}
+		glRaytracingNormalize3(ux, uy, uz);
+	}
+
+	// Rebuild V from D x U so the basis is orthonormal, while preserving the
+	// sign of the caller-provided V whenever possible.
+	{
+		float builtVx, builtVy, builtVz;
+		glRaytracingCross3(dx, dy, dz, ux, uy, uz, builtVx, builtVy, builtVz);
+		glRaytracingNormalize3(builtVx, builtVy, builtVz);
+
+		const float sign = builtVx * vx + builtVy * vy + builtVz * vz;
+		if (sign < 0.0f)
+		{
+			builtVx = -builtVx;
+			builtVy = -builtVy;
+			builtVz = -builtVz;
+		}
+
+		vx = builtVx;
+		vy = builtVy;
+		vz = builtVz;
+	}
+
+	if (nearPlane < 0.0f)
+		nearPlane = 0.0f;
+	if (farPlane <= nearPlane)
+		farPlane = nearPlane + 1e-3f;
+
+	if (tanHalfWidth < 0.0f)  tanHalfWidth = -tanHalfWidth;
+	if (tanHalfHeight < 0.0f) tanHalfHeight = -tanHalfHeight;
+
+	if (tanHalfWidth <= 1e-4f)
+		tanHalfWidth = 1e-4f;
+	if (tanHalfHeight <= 1e-4f)
+		tanHalfHeight = 1e-4f;
+
+	l.position.x = px;
+	l.position.y = py;
+	l.position.z = pz;
+
+	// For spot lights, radius stores the far clip distance while pointRadius.x
+	// stores the near clip distance.
+	l.radius = farPlane;
+	l.pointRadius.x = nearPlane;
+	l.pointRadius.y = 0.0f;
+	l.pointRadius.z = 0.0f;
+	l.pointRadiusPad = 0.0f;
+
+	l.color.x = r;
+	l.color.y = g;
+	l.color.z = b;
+	l.intensity = intensity;
+
+	l.normal.x = dx;
+	l.normal.y = dy;
+	l.normal.z = dz;
+	l.type = GL_RAYTRACING_LIGHT_TYPE_SPOT;
+
+	l.axisU.x = ux;
+	l.axisU.y = uy;
+	l.axisU.z = uz;
+	l.halfWidth = tanHalfWidth;
+
+	l.axisV.x = vx;
+	l.axisV.y = vy;
+	l.axisV.z = vz;
+	l.halfHeight = tanHalfHeight;
+
+	l.samples = samples ? samples : 1u;
+	l.twoSided = 0;
+	l.persistant = 0.0f;
+	l.pad1 = 0.0f;
+
 	return l;
 }
 

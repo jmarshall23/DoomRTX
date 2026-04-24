@@ -2465,7 +2465,7 @@ void idCommonLocal::Frame(void) {
 
 		eventLoop->RunEventLoop();
 
-		if (1)
+		if (Sys_IsWindowVisible())
 		{
 			//--------------------------------------------
 			// Determine how many game tics we are going to run,
