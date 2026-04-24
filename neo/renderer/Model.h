@@ -137,6 +137,8 @@ typedef struct srfTriangles_s {
 	struct vertCache_s *		ambientCache;			// idDrawVert
 	struct vertCache_s *		lightingCache;			// lightingCache_t
 	struct vertCache_s *		shadowCache;			// shadowCache_t
+
+	bool						isSkeletal;
 } srfTriangles_t;
 
 typedef idList<srfTriangles_t *> idTriList;

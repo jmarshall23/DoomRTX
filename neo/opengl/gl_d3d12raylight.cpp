@@ -1962,8 +1962,31 @@ static const uint GL_RAYTRACING_LIGHT_TYPE_POINT = 0;
 static const uint GL_RAYTRACING_LIGHT_TYPE_RECT  = 1;
 static const uint GL_RAYTRACING_LIGHT_TYPE_SPOT  = 2;
 
+static const uint GEOMETRY_FLAG_NONE     = 0;
 static const uint GEOMETRY_FLAG_SKELETAL = 1;
 static const uint GEOMETRY_FLAG_UNLIT    = 2;
+
+uint DecodeGeometryFlag(float geoFlag)
+{
+    // position.w comes from a render target / buffer path, so do not require exact
+    // float equality. Values like 0.999, 1.001, 1.99, 2.02 should decode correctly.
+    //
+    // Clamp negative garbage to 0, then round to nearest integer flag.
+    float f = max(geoFlag, 0.0);
+    return (uint)floor(f + 0.5);
+}
+
+bool GeometryFlagEquals(float geoFlag, uint expectedFlag)
+{
+    return DecodeGeometryFlag(geoFlag) == expectedFlag;
+}
+
+bool GeometryFlagHas(float geoFlag, uint expectedFlag)
+{
+    // Supports both current single-value usage and future bitmask usage.
+    uint decoded = DecodeGeometryFlag(geoFlag);
+    return (decoded & expectedFlag) != 0u;
+}
 
 float3 LoadScenePosition(uint2 pixel)
 {
@@ -2005,7 +2028,7 @@ float TraceShadow(float3 origin, float3 dir, float maxT)
         RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_CULL_FRONT_FACING_TRIANGLES,
         0xFF,
         0,
-        1,
+        0,
         0,
         ray,
         payload);
@@ -2290,41 +2313,91 @@ float ComputeAmbientOcclusion(float3 worldPos, float3 N, uint2 pixel)
     return visibility;
 }
 
-
+float3 GetSkyLightDirection10AM()
+{
+    // Direction from the shaded point TO the sky/sun.
+    // 10:00 AM style: angled, not straight vertical.
+    //
+    // Flip X/Y signs if you want the shadows cast the opposite horizontal way.
+    return normalize(float3(-0.55, -0.25, 0.80));
+}
+)"
+R"(
 float ComputeSkyVisibility(float3 worldPos, float3 N, uint2 pixel)
 {
-    const uint SKY_SAMPLES = 8;
-    const float SKY_TMAX   = 1000000.0;
+    const uint  SKY_SAMPLES = 12;
+    const float SKY_TMAX    = 1000000.0;
+
+    // Soft angular size of the sky/sun shadow cone.
+    // Larger = softer shadows, but more chance of light leaking.
+    const float SKY_SOFTNESS = 0.085;
+
+    float3 skyCenterDir = GetSkyLightDirection10AM();
+
+    float NoSky = dot(N, skyCenterDir);
+
+    // Mostly back-facing relative to the sky direction.
+    // Return black visibility instead of casting unstable grazing rays.
+    if (NoSky <= -0.35)
+    {
+        return 0.0;
+    }
 
     float3 tangent, bitangent;
-    BuildOrthonormalBasis(N, tangent, bitangent);
+    BuildOrthonormalBasis(skyCenterDir, tangent, bitangent);
 
-    float rand = Hash12((float2)pixel * 1.37 + worldPos.xy + float2(worldPos.z, dot(N.xy, N.xy)));
+    float normalBias = lerp(gShadowBias * 4.0, gShadowBias * 1.0, saturate(NoSky));
 
-    float vis = 0.0;
+    float3 baseOrigin =
+        worldPos +
+        N * normalBias +
+        skyCenterDir * (gShadowBias * 2.0);
 
+    float visibility = 0.0;
+
+    // IMPORTANT:
+    // No per-pixel random rotation here.
+    // The old noise came from random hemisphere sky sampling.
+    // This keeps the soft shadow sampling pattern stable per pixel/frame.
     [unroll]
     for (uint i = 0; i < SKY_SAMPLES; ++i)
     {
-        float2 xi = Hammersley2D(i, SKY_SAMPLES, rand);
-        float3 h  = CosineSampleHemisphere(xi);
+        float2 xi = Hammersley2D(i, SKY_SAMPLES, 0.0);
+        float2 d  = ConcentricSampleDisk(xi) * SKY_SOFTNESS;
 
-        float3 skyDir =
-            tangent   * h.x +
-            bitangent * h.y +
-            N         * h.z;
+        float3 skyDir = normalize(
+            skyCenterDir +
+            tangent   * d.x +
+            bitangent * d.y);
 
-        skyDir = normalize(skyDir);
-
-        if (skyDir.z <= 0.05)
+        // Do not shoot rays below the world horizon.
+        if (skyDir.z <= 0.02)
+        {
+            visibility += 0.0;
             continue;
+        }
 
-        float3 skyOrigin = worldPos + N * (gShadowBias * 2.0) + skyDir * (gShadowBias * 2.0);
-        vis += TraceShadow(skyOrigin, skyDir, SKY_TMAX);
+        float sampleFacing = dot(N, skyDir);
+
+        // Avoid very noisy grazing rays on back-facing surfaces.
+        if (sampleFacing <= -0.35)
+        {
+            visibility += 0.0;
+            continue;
+        }
+
+        float3 skyOrigin =
+            worldPos +
+            N * normalBias +
+            skyDir * (gShadowBias * 2.0);
+
+        visibility += TraceShadow(skyOrigin, skyDir, SKY_TMAX);
     }
 
-    vis /= (float)SKY_SAMPLES;
-    return saturate(vis);
+    visibility /= (float)SKY_SAMPLES;
+
+    // Slightly smooth the binary ray result so it does not look harsh.
+    return saturate(visibility);
 }
 
 float ComputeCavity(uint2 pixel, float3 worldPos, float3 N)
@@ -2419,6 +2492,29 @@ float3 ComputeSpecular(float3 N, float3 V, float3 L, float3 lightColor, float li
 }
 )"
 R"(
+float TraceStraightUpToSky(float3 worldPos, float3 N)
+{
+    const float SKY_TMAX = 1000000.0;
+
+    // Straight world-up sky ray.
+    float3 skyDir = float3(0.0, 0.0, 1.0);
+
+    float NoSky = dot(N, skyDir);
+
+    // Same style of biasing as the sky visibility code.
+    float normalBias = lerp(gShadowBias * 4.0, gShadowBias * 1.0, saturate(NoSky));
+
+    float3 skyOrigin =
+        worldPos +
+        N * normalBias +
+        skyDir * (gShadowBias * 2.0);
+
+    // TraceShadow returns:
+    // 1.0 = missed scene geometry, so it reached sky
+    // 0.0 = hit scene geometry, so sky is blocked
+    return TraceShadow(skyOrigin, skyDir, SKY_TMAX);
+}
+
 [shader("raygeneration")]
 void RayGen()
 {
@@ -2436,37 +2532,44 @@ void RayGen()
         return;
     }
 
-    float3 baseAlbedo    = albedoSample.rgb;
+    float3 baseAlbedo     = albedoSample.rgb;
     float4 positionSample = gPositionTex.Load(int3(pixel, 0));
     float3 worldPos       = positionSample.xyz;
-    float4 normalSample  = LoadSceneNormal(pixel);
-    float3 N             = normalize(normalSample.xyz);
-    float3 V             = normalize(gCameraPos.xyz - worldPos);
+    float4 normalSample   = LoadSceneNormal(pixel);
+    float3 N              = normalize(normalSample.xyz);
+    float3 V              = normalize(gCameraPos.xyz - worldPos);
 
-    float geoFlag = positionSample.w;
+    float geoFlagRaw = positionSample.w;
+    uint  geoFlag    = DecodeGeometryFlag(geoFlagRaw);
+
+    bool isSkeletal = (geoFlag & GEOMETRY_FLAG_SKELETAL) != 0u;
+    bool isUnlit    = (geoFlag & GEOMETRY_FLAG_UNLIT)    != 0u;
 
     float cavity = ComputeCavity(pixel, worldPos, N);
     float microShadow = lerp(0.75, 1.0, cavity);
     float3 albedo = baseAlbedo * cavity;
     albedo *= microShadow;
 
-    float aoRay      = ComputeAmbientOcclusion(worldPos, N, pixel);
-    float ao         = aoRay;
+    float aoRay   = ComputeAmbientOcclusion(worldPos, N, pixel);
+    float ao      = aoRay;
     float skyVis  = ComputeSkyVisibility(worldPos, N, pixel);
+    float ambientSkyVis = TraceStraightUpToSky(worldPos, N);
 
     float upness = saturate(N.z * 0.5 + 0.5);
 
+    float3 skyColorRGB = float3(0.98, 0.55, 0.35);
     float3 skyColor =
-        float3(0.5, 0.5, 0.5) * (0.35 + 0.65 * upness);
+       skyColorRGB  * (0.35 + 0.65 * upness);
 
-    float skyStrength = 2.0;
+    float skyStrength = 0.7;
 
     float3 lightingAccum = 0.0;
     float3 specularAccum = 0.0;
 
     lightingAccum += skyColor * (skyStrength * skyVis);
+    lightingAccum += (ambientSkyVis * (skyColorRGB * 0.15));
 
-    if (geoFlag == GEOMETRY_FLAG_SKELETAL)
+    if (isSkeletal)
     {
         lightingAccum += 0.1;
     }
@@ -2611,13 +2714,13 @@ void RayGen()
     lightingAccum *= ao;
     specularAccum *= ao;
 
-    if (geoFlag == GEOMETRY_FLAG_SKELETAL)
+    if (isSkeletal)
     {
         lightingAccum *= 1.2;
         specularAccum *= 1.15;
     }
 
-    if (geoFlag == GEOMETRY_FLAG_UNLIT)
+    if (isUnlit)
     {
         gOutputTex[pixel] = float4(baseAlbedo, albedoSample.a);
     }

@@ -301,7 +301,7 @@ void idMD5Mesh::UpdateSurface( const struct renderEntity_s *ent, const idJointMa
 	tri->deformedSurface = true;
 	tri->tangentsCalculated = false;
 	tri->facePlanesCalculated = false;
-
+	tri->isSkeletal = true;
 	tri->numIndexes = deformInfo->numIndexes;
 	tri->indexes = deformInfo->indexes;
 	tri->silIndexes = deformInfo->silIndexes;

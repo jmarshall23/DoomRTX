@@ -500,8 +500,7 @@ void RB_T_FillDepthBuffer( const drawSurf_t *surf ) {
 
 	// draw the entire surface solid
 		// draw the entire surface solid
-	if (drawSolid) {
-		glDisable(GL_BLEND);
+	if (drawSolid && !shader->IsSky()) {
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		// bind the texture
 		GL_SelectTexture(0);
@@ -512,6 +511,15 @@ void RB_T_FillDepthBuffer( const drawSurf_t *surf ) {
 		glEnable(GL_TEXTURE_2D);
 		shader->GetBumpImage()->Bind();
 		glBindNormalMapTexture(shader->GetBumpImage()->texnum);
+
+		if (!surf->geo->isSkeletal)
+		{
+			glGeometryFlagf(GEOMETRY_FLAG_NONE);
+		}
+		else
+		{
+			glGeometryFlagf(GEOMETRY_FLAG_SKELETAL);
+		}
 
 		// set texture matrix and texGens.  The Quake 4 path needs to know this is a depth fill.
 		RB_PrepareStageTexturing(pStage, surf, ac);
@@ -524,7 +532,6 @@ void RB_T_FillDepthBuffer( const drawSurf_t *surf ) {
 		GL_SelectTexture(1);
 		globalImages->BindNull();
 		GL_SelectTexture(0);
-		glEnable(GL_BLEND);
 	}
 
 

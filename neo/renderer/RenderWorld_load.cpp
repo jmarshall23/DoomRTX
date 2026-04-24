@@ -182,7 +182,7 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src ) {
 		// add the completed surface to the model
 		model->AddSurface( surf );
 
-		if(!surf.shader->IsSky())
+		if (!surf.shader->IsSky())
 		{
 			idRenderModelStatic* modelStatic = (idRenderModelStatic*)model;
 			dxrWorldModel_t dxrModel;

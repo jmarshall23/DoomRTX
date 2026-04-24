@@ -428,14 +428,6 @@ static bool R_ParseImageProgram_r( idLexer &src, byte **pic, int *width, int *he
 			return false;
 		}
 
-		if (width2 <= 0 || height2 <= 0) {
-			if (pic) {
-				R_StaticFree(*pic);
-				*pic = NULL;
-			}
-			return false;
-		}
-		
 		// process it
 		if ( pic ) {
 			R_AddNormalMaps( *pic, *width, *height, pic2, width2, height2 );

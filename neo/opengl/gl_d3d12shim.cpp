@@ -260,8 +260,11 @@ enum QD3D12RTVSlotGroup
 	QD3D12_RTV_POSITION_RENDER = 2,
 	QD3D12_RTV_VELOCITY_RENDER = 3,
 	QD3D12_RTV_SCENE_RESOLVED = 4,
-	QD3D12_RTV_BACKBUFFER = 5,
-	QD3D12_RTV_GROUP_COUNT = 6
+	QD3D12_RTV_NORMAL_RESOLVED = 5,
+	QD3D12_RTV_POSITION_RESOLVED = 6,
+	QD3D12_RTV_VELOCITY_RESOLVED = 7,
+	QD3D12_RTV_BACKBUFFER = 8,
+	QD3D12_RTV_GROUP_COUNT = 9
 };
 
 static const DXGI_FORMAT QD3D12_SceneColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -690,8 +693,9 @@ struct QD3D12Window
 	// RTV descriptor groups:
 	//   SCENE_RENDER/normal/position/velocity : active low-res render targets
 	//     (MSAA textures when enabled, resolved single-sample textures otherwise)
-	//   SCENE_RESOLVED : single-sample scene color for lighting resolve/copy
-	//   BACKBUFFER     : swap-chain/output render target
+	//   *_RESOLVED : single-sample outputs used after MSAA conversion.
+	//     Scene color uses hardware resolve; normals/position/velocity are point-resolved.
+	//   BACKBUFFER  : swap-chain/output render target
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> sceneColorBuffers;
 	D3D12_RESOURCE_STATES sceneColorState[QD3D12_FrameCount] = {};
 
@@ -750,6 +754,18 @@ struct QD3D12Window
 	UINT depthMsaaSrvIndex = UINT_MAX;
 	D3D12_CPU_DESCRIPTOR_HANDLE depthMsaaSrvCpu{};
 	D3D12_GPU_DESCRIPTOR_HANDLE depthMsaaSrvGpu{};
+
+	UINT normalMsaaSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
+	D3D12_CPU_DESCRIPTOR_HANDLE normalMsaaSrvCpu[QD3D12_FrameCount]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE normalMsaaSrvGpu[QD3D12_FrameCount]{};
+
+	UINT positionMsaaSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
+	D3D12_CPU_DESCRIPTOR_HANDLE positionMsaaSrvCpu[QD3D12_FrameCount]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE positionMsaaSrvGpu[QD3D12_FrameCount]{};
+
+	UINT velocityMsaaSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
+	D3D12_CPU_DESCRIPTOR_HANDLE velocityMsaaSrvCpu[QD3D12_FrameCount]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE velocityMsaaSrvGpu[QD3D12_FrameCount]{};
 
 	D3D12_VIEWPORT viewport{};
 	D3D12_RECT scissor{};
@@ -1047,6 +1063,7 @@ struct GLState
 	ComPtr<ID3D12PipelineState> postAdditivePSO;
 	ComPtr<ID3D12PipelineState> postDepthCopyPSO;
 	ComPtr<ID3D12PipelineState> postDepthResolveMsaaPSO;
+	ComPtr<ID3D12PipelineState> postGBufferPointResolveMsaaPSO;
 
 	ComPtr<ID3DBlob> vsMainBlob;
 	ComPtr<ID3DBlob> psMainBlob;
@@ -1060,6 +1077,7 @@ struct GLState
 	ComPtr<ID3DBlob> postPsAddBlob;
 	ComPtr<ID3DBlob> postPsDepthCopyBlob;
 	ComPtr<ID3DBlob> postPsDepthResolveMsaaBlob;
+	ComPtr<ID3DBlob> postPsGBufferPointResolveMsaaBlob;
 
 	TextureResource whiteTexture;
 
@@ -1209,6 +1227,24 @@ static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedSceneColorRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
 	return QD3D12_RtvAt(w, QD3D12_RTV_SCENE_RESOLVED, w.frameIndex);
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedNormalRTV()
+{
+	QD3D12Window& w = *g_currentWindow;
+	return QD3D12_RtvAt(w, QD3D12_RTV_NORMAL_RESOLVED, w.frameIndex);
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedPositionRTV()
+{
+	QD3D12Window& w = *g_currentWindow;
+	return QD3D12_RtvAt(w, QD3D12_RTV_POSITION_RESOLVED, w.frameIndex);
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedVelocityRTV()
+{
+	QD3D12Window& w = *g_currentWindow;
+	return QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RESOLVED, w.frameIndex);
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferRTV()
@@ -1925,7 +1961,10 @@ float4 PSMainUntexturedColorOnly(VSOut i) : SV_Target0
 
 static const char* kQD3D12PostHLSL = R"HLSL(
 Texture2D gTex0 : register(t0);
-Texture2DMS<float> gDepthMS : register(t1);
+Texture2DMS<float>  gDepthMS    : register(t1);
+Texture2DMS<float4> gNormalMS   : register(t2);
+Texture2DMS<float4> gPositionMS : register(t3);
+Texture2DMS<float4> gVelocityMS : register(t4);
 SamplerState gSamp0 : register(s0);
 
 struct VSOut
@@ -1970,6 +2009,25 @@ float PSDepthCopy(VSOut i) : SV_Depth
     return gTex0.Load(int3(int2(srcPixel), 0)).r;
 }
 
+uint QD3D12_SelectNearestDepthSample(uint2 srcPixel, uint sampleCount)
+{
+    uint nearestSample = 0u;
+    float nearestDepth = 1.0;
+
+    [loop]
+    for (uint sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex)
+    {
+        float sampleDepth = gDepthMS.Load(int2(srcPixel), sampleIndex);
+        if (sampleDepth < nearestDepth)
+        {
+            nearestDepth = sampleDepth;
+            nearestSample = sampleIndex;
+        }
+    }
+
+    return nearestSample;
+}
+
 float PSDepthResolveMS(VSOut i) : SV_Depth
 {
     uint srcW, srcH, sampleCount;
@@ -1983,9 +2041,40 @@ float PSDepthResolveMS(VSOut i) : SV_Depth
     float depth = 1.0;
     [loop]
     for (uint sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex)
-        depth = min(depth, gDepthMS.Load(srcPixel, sampleIndex));
+        depth = min(depth, gDepthMS.Load(int2(srcPixel), sampleIndex));
 
     return depth;
+}
+
+struct PSGBufferPointResolveOut
+{
+    float4 normal   : SV_Target0;
+    float4 position : SV_Target1;
+    float4 velocity : SV_Target2;
+};
+
+PSGBufferPointResolveOut PSGBufferPointResolveMS(VSOut i)
+{
+    uint srcW, srcH, sampleCount;
+    gDepthMS.GetDimensions(srcW, srcH, sampleCount);
+
+    float2 uv = saturate(i.uv);
+    uint2 srcPixel = min(
+        (uint2)(uv * float2(srcW, srcH)),
+        uint2(max(srcW, 1u) - 1u, max(srcH, 1u) - 1u));
+
+    uint sampleIndex = QD3D12_SelectNearestDepthSample(srcPixel, sampleCount);
+
+    PSGBufferPointResolveOut o;
+
+    // Do not hardware-resolve these buffers. Normals, positions, material flags,
+    // and motion vectors are discontinuous at geometry edges, so averaging them
+    // corrupts the deferred/DXR inputs. Pick one MSAA sample by depth instead.
+    o.normal   = gNormalMS.Load(int2(srcPixel), sampleIndex);
+    o.position = gPositionMS.Load(int2(srcPixel), sampleIndex);
+    o.velocity = gVelocityMS.Load(int2(srcPixel), sampleIndex);
+
+    return o;
 }
 )HLSL";
 
@@ -3747,12 +3836,15 @@ static bool QD3D12_CanUseGBufferSampleCount(UINT sampleCount)
 		return true;
 
 	return
+		// Scene color/albedo is color-like, so the hardware color resolve is fine.
 		QD3D12_FormatSupportsSampleCount(QD3D12_SceneColorFormat, sampleCount) &&
 		QD3D12_FormatSupportsMsaaResolve(QD3D12_SceneColorFormat) &&
+
+		// Normals, world positions, material flags, and motion vectors are not
+		// hardware-resolved. They only need to support MSAA render-target + SRV use;
+		// QD3D12_PointResolveMsaaGBufferToSingleSample() point-loads one sample.
 		QD3D12_FormatSupportsSampleCount(DXGI_FORMAT_R16G16B16A16_FLOAT, sampleCount) &&
-		QD3D12_FormatSupportsMsaaResolve(DXGI_FORMAT_R16G16B16A16_FLOAT) &&
 		QD3D12_FormatSupportsSampleCount(QD3D12_VelocityFormat, sampleCount) &&
-		QD3D12_FormatSupportsMsaaResolve(QD3D12_VelocityFormat) &&
 		QD3D12_FormatSupportsSampleCount(QD3D12_DepthDsvFormat, sampleCount);
 }
 
@@ -3963,8 +4055,8 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
 				QD3D12_RtvAt(w, QD3D12_RTV_NORMAL_RENDER, i), true);
 			CreateTexture2D(w.normalBuffers[i], w.normalBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, normalClear, false,
-				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-				D3D12_CPU_DESCRIPTOR_HANDLE{}, false);
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				QD3D12_RtvAt(w, QD3D12_RTV_NORMAL_RESOLVED, i), true);
 		}
 		else
 		{
@@ -3982,8 +4074,8 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
 				QD3D12_RtvAt(w, QD3D12_RTV_POSITION_RENDER, i), true);
 			CreateTexture2D(w.positionBuffers[i], w.positionBufferState[i], DXGI_FORMAT_R16G16B16A16_FLOAT, positionClear, false,
-				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-				D3D12_CPU_DESCRIPTOR_HANDLE{}, false);
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				QD3D12_RtvAt(w, QD3D12_RTV_POSITION_RESOLVED, i), true);
 		}
 		else
 		{
@@ -4001,8 +4093,8 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
 				QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RENDER, i), true);
 			CreateTexture2D(w.velocityBuffers[i], w.velocityBufferState[i], QD3D12_VelocityFormat, velocityClear, false,
-				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-				D3D12_CPU_DESCRIPTOR_HANDLE{}, false);
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RESOLVED, i), true);
 		}
 		else
 		{
@@ -4052,6 +4144,26 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 			g_gl.device->CreateShaderResourceView(res, &sd, cpu);
 		};
 
+	auto CreateTextureMsaaSrv = [&](ID3D12Resource* res, DXGI_FORMAT format, UINT& srvIndex,
+		D3D12_CPU_DESCRIPTOR_HANDLE& cpu, D3D12_GPU_DESCRIPTOR_HANDLE& gpu)
+		{
+			if (!res)
+				return;
+
+			if (srvIndex == UINT_MAX)
+			{
+				srvIndex = g_gl.nextSrvIndex++;
+				cpu = QD3D12_SrvCpu(srvIndex);
+				gpu = QD3D12_SrvGpu(srvIndex);
+			}
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC sd{};
+			sd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+			sd.Format = format;
+			sd.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			g_gl.device->CreateShaderResourceView(res, &sd, cpu);
+		};
+
 	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 		CreateTextureSrv(w.sceneColorBuffers[i].Get(), QD3D12_SceneColorFormat, w.sceneColorSrvIndex[i], w.sceneColorSrvCpu[i], w.sceneColorSrvGpu[i]);
 
@@ -4063,6 +4175,18 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 
 	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 		CreateTextureSrv(w.velocityBuffers[i].Get(), QD3D12_VelocityFormat, w.velocitySrvIndex[i], w.velocitySrvCpu[i], w.velocitySrvGpu[i]);
+
+	if (useMsaa)
+	{
+		for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+			CreateTextureMsaaSrv(w.normalMsaaBuffers[i].Get(), DXGI_FORMAT_R16G16B16A16_FLOAT, w.normalMsaaSrvIndex[i], w.normalMsaaSrvCpu[i], w.normalMsaaSrvGpu[i]);
+
+		for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+			CreateTextureMsaaSrv(w.positionMsaaBuffers[i].Get(), DXGI_FORMAT_R16G16B16A16_FLOAT, w.positionMsaaSrvIndex[i], w.positionMsaaSrvCpu[i], w.positionMsaaSrvGpu[i]);
+
+		for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+			CreateTextureMsaaSrv(w.velocityMsaaBuffers[i].Get(), QD3D12_VelocityFormat, w.velocityMsaaSrvIndex[i], w.velocityMsaaSrvCpu[i], w.velocityMsaaSrvGpu[i]);
+	}
 }
 
 void QD3D12_CreateDSVForWindow(QD3D12Window& w)
@@ -4383,7 +4507,7 @@ static ComPtr<ID3DBlob> CompileShaderVariant(const char* entry, const char* targ
 
 static void QD3D12_CreatePostRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE ranges[2]{};
+	D3D12_DESCRIPTOR_RANGE ranges[5]{};
 	for (UINT i = 0; i < _countof(ranges); ++i)
 	{
 		ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -4393,7 +4517,7 @@ static void QD3D12_CreatePostRootSignature()
 		ranges[i].OffsetInDescriptorsFromTableStart = 0;
 	}
 
-	D3D12_ROOT_PARAMETER params[2]{};
+	D3D12_ROOT_PARAMETER params[5]{};
 	for (UINT i = 0; i < _countof(params); ++i)
 	{
 		params[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -4491,6 +4615,7 @@ static void QD3D12_CompileShaders()
 	g_gl.postPsAddBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSAdd", "ps_6_0");
 	g_gl.postPsDepthCopyBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSDepthCopy", "ps_6_0");
 	g_gl.postPsDepthResolveMsaaBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSDepthResolveMS", "ps_6_0");
+	g_gl.postPsGBufferPointResolveMsaaBlob = CompileShaderSourceVariant(kQD3D12PostHLSL, "PSGBufferPointResolveMS", "ps_6_0");
 }
 
 static const D3D12_INPUT_ELEMENT_DESC kGLVertexInputLayout[] =
@@ -4678,6 +4803,39 @@ static void QD3D12_CreatePSOs()
 
 	depthDesc.PS = { g_gl.postPsDepthResolveMsaaBlob->GetBufferPointer(), g_gl.postPsDepthResolveMsaaBlob->GetBufferSize() };
 	QD3D12_CHECK(g_gl.device->CreateGraphicsPipelineState(&depthDesc, IID_PPV_ARGS(&g_gl.postDepthResolveMsaaPSO)));
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gbufferResolveDesc{};
+	gbufferResolveDesc.pRootSignature = g_gl.postRootSig.Get();
+	gbufferResolveDesc.VS = { g_gl.postVsBlob->GetBufferPointer(), g_gl.postVsBlob->GetBufferSize() };
+	gbufferResolveDesc.PS = { g_gl.postPsGBufferPointResolveMsaaBlob->GetBufferPointer(), g_gl.postPsGBufferPointResolveMsaaBlob->GetBufferSize() };
+	gbufferResolveDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	gbufferResolveDesc.SampleDesc.Count = 1;
+	gbufferResolveDesc.SampleMask = UINT_MAX;
+	gbufferResolveDesc.NumRenderTargets = 3;
+	gbufferResolveDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	gbufferResolveDesc.RTVFormats[1] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	gbufferResolveDesc.RTVFormats[2] = QD3D12_VelocityFormat;
+	gbufferResolveDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+	gbufferResolveDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	gbufferResolveDesc.RasterizerState.DepthClipEnable = TRUE;
+	gbufferResolveDesc.BlendState.AlphaToCoverageEnable = FALSE;
+	gbufferResolveDesc.BlendState.IndependentBlendEnable = FALSE;
+	for (UINT rt = 0; rt < 3; ++rt)
+	{
+		gbufferResolveDesc.BlendState.RenderTarget[rt].BlendEnable = FALSE;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].LogicOpEnable = FALSE;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].SrcBlend = D3D12_BLEND_ONE;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].DestBlend = D3D12_BLEND_ZERO;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].BlendOp = D3D12_BLEND_OP_ADD;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].SrcBlendAlpha = D3D12_BLEND_ONE;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].DestBlendAlpha = D3D12_BLEND_ZERO;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].LogicOp = D3D12_LOGIC_OP_NOOP;
+		gbufferResolveDesc.BlendState.RenderTarget[rt].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	}
+	gbufferResolveDesc.DepthStencilState.DepthEnable = FALSE;
+	gbufferResolveDesc.DepthStencilState.StencilEnable = FALSE;
+	QD3D12_CHECK(g_gl.device->CreateGraphicsPipelineState(&gbufferResolveDesc, IID_PPV_ARGS(&g_gl.postGBufferPointResolveMsaaPSO)));
 }
 
 static uint64_t MakePSOKey(
@@ -10219,6 +10377,72 @@ static void QD3D12_ResolveMsaaDepthToSceneDepth(QD3D12Window& w)
 	cl->DrawInstanced(3, 1, 0, 0);
 }
 
+static void QD3D12_PointResolveMsaaGBufferToSingleSample(QD3D12Window& w)
+{
+	if (!QD3D12_GBufferMsaaEnabled())
+		return;
+
+	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
+	if (!cl || !g_gl.postGBufferPointResolveMsaaPSO)
+		return;
+
+	const UINT frame = w.frameIndex;
+
+	if (!w.depthMsaaBuffer ||
+		!w.normalMsaaBuffers[frame] || !w.positionMsaaBuffers[frame] || !w.velocityMsaaBuffers[frame] ||
+		!w.normalBuffers[frame] || !w.positionBuffers[frame] || !w.velocityBuffers[frame])
+	{
+		return;
+	}
+
+	QD3D12_TransitionResource(cl, w.depthMsaaBuffer.Get(), w.depthMsaaState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	QD3D12_TransitionResource(cl, w.normalMsaaBuffers[frame].Get(), w.normalMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	QD3D12_TransitionResource(cl, w.positionMsaaBuffers[frame].Get(), w.positionMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	QD3D12_TransitionResource(cl, w.velocityMsaaBuffers[frame].Get(), w.velocityMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	QD3D12_TransitionResource(cl, w.normalBuffers[frame].Get(), w.normalBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
+	QD3D12_TransitionResource(cl, w.positionBuffers[frame].Get(), w.positionBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
+	QD3D12_TransitionResource(cl, w.velocityBuffers[frame].Get(), w.velocityBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[3] =
+	{
+		CurrentResolvedNormalRTV(),
+		CurrentResolvedPositionRTV(),
+		CurrentResolvedVelocityRTV()
+	};
+
+	D3D12_VIEWPORT viewport{};
+	viewport.TopLeftX = 0.0f;
+	viewport.TopLeftY = 0.0f;
+	viewport.Width = (float)w.renderWidth;
+	viewport.Height = (float)w.renderHeight;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+
+	D3D12_RECT scissor{};
+	scissor.left = 0;
+	scissor.top = 0;
+	scissor.right = (LONG)w.renderWidth;
+	scissor.bottom = (LONG)w.renderHeight;
+
+	ID3D12DescriptorHeap* heaps[] = { g_gl.srvHeap.Get() };
+	cl->SetDescriptorHeaps(_countof(heaps), heaps);
+	cl->SetGraphicsRootSignature(g_gl.postRootSig.Get());
+	cl->SetPipelineState(g_gl.postGBufferPointResolveMsaaPSO.Get());
+	cl->OMSetRenderTargets(3, rtvs, FALSE, nullptr);
+	cl->RSSetViewports(1, &viewport);
+	cl->RSSetScissorRects(1, &scissor);
+	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// t1..t4: depth + discontinuous G-buffer attributes. The shader uses
+	// Texture2DMS.Load(), selects a single depth-nearest sample, and never averages.
+	cl->SetGraphicsRootDescriptorTable(1, w.depthMsaaSrvGpu);
+	cl->SetGraphicsRootDescriptorTable(2, w.normalMsaaSrvGpu[frame]);
+	cl->SetGraphicsRootDescriptorTable(3, w.positionMsaaSrvGpu[frame]);
+	cl->SetGraphicsRootDescriptorTable(4, w.velocityMsaaSrvGpu[frame]);
+	cl->DrawInstanced(3, 1, 0, 0);
+}
+
 static void QD3D12_ResolveGBufferForCurrentFrame(QD3D12Window& w)
 {
 	if (g_gl.gbufferResolvedThisFrame)
@@ -10254,26 +10478,11 @@ static void QD3D12_ResolveGBufferForCurrentFrame(QD3D12Window& w)
 		w.sceneColorState[frame],
 		QD3D12_SceneColorFormat);
 
-	ResolveTarget(
-		w.normalMsaaBuffers[frame].Get(),
-		w.normalMsaaState[frame],
-		w.normalBuffers[frame].Get(),
-		w.normalBufferState[frame],
-		DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-	ResolveTarget(
-		w.positionMsaaBuffers[frame].Get(),
-		w.positionMsaaState[frame],
-		w.positionBuffers[frame].Get(),
-		w.positionBufferState[frame],
-		DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-	ResolveTarget(
-		w.velocityMsaaBuffers[frame].Get(),
-		w.velocityMsaaState[frame],
-		w.velocityBuffers[frame].Get(),
-		w.velocityBufferState[frame],
-		QD3D12_VelocityFormat);
+	// Do not hardware-resolve discontinuous deferred attributes. Hardware resolve
+	// averages samples, which corrupts normals, world positions/material flags,
+	// and motion vectors at geometry edges. Convert those buffers by point-loading
+	// one MSAA sample selected from the nearest depth sample instead.
+	QD3D12_PointResolveMsaaGBufferToSingleSample(w);
 
 	QD3D12_ResolveMsaaDepthToSceneDepth(w);
 	g_gl.gbufferResolvedThisFrame = true;

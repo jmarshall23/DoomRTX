@@ -577,6 +577,7 @@ void idRenderModelStatic::UpdateDXR(uint32_t& dxrBottomAcel, int onlySurface)
 	std::vector<uint32_t> indices(numDXRIndexes);
 
 	int vertexId = 0;
+	int indexId = 0;
 	for (int i = 0; i < surfaces.Num(); i++)
 	{
 		if (onlySurface != -1 && onlySurface != i)
@@ -585,7 +586,7 @@ void idRenderModelStatic::UpdateDXR(uint32_t& dxrBottomAcel, int onlySurface)
 		modelSurface_t* surf = &surfaces[i];
 		for (int d = 0; d < surf->geometry->numIndexes; ++d)
 		{
-			indices[d] = vertexId + surf->geometry->indexes[d];
+			indices[indexId++] = vertexId + surf->geometry->indexes[d];
 		}
 
 		for (int d = 0; d < surf->geometry->numVerts; ++d)
