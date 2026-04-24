@@ -198,9 +198,10 @@ void CCamWnd::OnPaint() {
 	CPaintDC	dc(this);	// device context for painting
 	bool		bPaint = true;
 
+	UpdateCaption();
+
 	idGraphicsDeviceContextHelper context(dc.m_hDC, hglrc);
 
-	QE_CheckOpenGLForErrors();
 	g_pSplitList = NULL;
 	if (g_bClipMode) {
 		if (g_Clip1.Set() && g_Clip2.Set()) {
@@ -209,7 +210,6 @@ void CCamWnd::OnPaint() {
 	}
 
 	Cam_Draw();
-	QE_CheckOpenGLForErrors();
 }
 
 /*
@@ -960,6 +960,7 @@ void CCamWnd::Cam_Draw() {
 	if (renderMode) {
 		Cam_Render();
 	}
+
 
 	glViewport(0, 0, m_Camera.width, m_Camera.height);
 	glScissor(0, 0, m_Camera.width, m_Camera.height);
@@ -1789,7 +1790,6 @@ void CCamWnd::BuildRendererState() {
 
 	//common->Printf("Render data used %d brushes\n", numBrushes);
 	worldDirty = false;
-	UpdateCaption();
 }
 
 /*
@@ -2096,7 +2096,7 @@ void CCamWnd::Cam_Render() {
 
 	int	frontEnd, backEnd;
 
-	renderSystem->EndFrame( &frontEnd, &backEnd );
+	renderSystem->EndFrame( &frontEnd, &backEnd, false );
 //common->Printf( "front:%i back:%i\n", frontEnd, backEnd );
 
 	//glPopAttrib();

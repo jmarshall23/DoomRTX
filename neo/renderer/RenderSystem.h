@@ -235,7 +235,7 @@ public:
 	virtual void			BeginFrame( int windowWidth, int windowHeight ) = 0;
 
 	// if the pointers are not NULL, timing info will be returned
-	virtual void			EndFrame( int *frontEndMsec, int *backEndMsec ) = 0;
+	virtual void			EndFrame( int *frontEndMsec, int *backEndMsec, bool swapBuffer = true) = 0;
 
 	// aviDemo uses this.
 	// Will automatically tile render large screen shots if necessary
