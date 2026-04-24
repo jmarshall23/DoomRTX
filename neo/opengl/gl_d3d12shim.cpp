@@ -893,7 +893,7 @@ struct GLState
 	bool sceneResolvedThisFrame = false;
 	bool gbufferResolvedThisFrame = false;
 	bool raytracedLightingReadyThisFrame = false;
-	float upscalerSharpness = 0.5f;
+	float upscalerSharpness = 1.0f;
 
 	GLenum depthFunc = GL_LEQUAL;
 	UINT64 nextFenceValue = 1;
