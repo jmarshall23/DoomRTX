@@ -298,7 +298,6 @@
     <ClInclude Include="renderer\glext.h" />
     <ClInclude Include="renderer\GuiModel.h" />
     <ClInclude Include="renderer\Image.h" />
-    <ClInclude Include="renderer\Interaction.h" />
     <ClInclude Include="renderer\Material.h" />
     <ClInclude Include="renderer\MegaTexture.h" />
     <ClInclude Include="renderer\Model.h" />
@@ -1318,7 +1317,6 @@
     <ClCompile Include="renderer\Image_load.cpp" />
     <ClCompile Include="renderer\Image_process.cpp" />
     <ClCompile Include="renderer\Image_program.cpp" />
-    <ClCompile Include="renderer\Interaction.cpp" />
     <ClCompile Include="renderer\Material.cpp" />
     <ClCompile Include="renderer\MegaTexture.cpp" />
     <ClCompile Include="renderer\Model.cpp" />
@@ -1352,12 +1350,9 @@
     <ClCompile Include="renderer\tr_polytope.cpp" />
     <ClCompile Include="renderer\tr_render.cpp" />
     <ClCompile Include="renderer\tr_rendertools.cpp" />
-    <ClCompile Include="renderer\tr_shadowbounds.cpp" />
-    <ClCompile Include="renderer\tr_stencilshadow.cpp" />
     <ClCompile Include="renderer\tr_subview.cpp" />
     <ClCompile Include="renderer\tr_trace.cpp" />
     <ClCompile Include="renderer\tr_trisurf.cpp" />
-    <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
     <ClCompile Include="renderer\jpeg-6\jcapimin.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -2240,7 +2235,6 @@
     <ClCompile Include="tools\compilers\dmap\optimize_gcc.cpp" />
     <ClCompile Include="tools\compilers\dmap\output.cpp" />
     <ClCompile Include="tools\compilers\dmap\portals.cpp" />
-    <ClCompile Include="tools\compilers\dmap\shadowopt3.cpp" />
     <ClCompile Include="tools\compilers\dmap\tritjunction.cpp" />
     <ClCompile Include="tools\compilers\dmap\tritools.cpp" />
     <ClCompile Include="tools\compilers\dmap\ubrush.cpp" />

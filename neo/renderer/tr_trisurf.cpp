@@ -294,11 +294,6 @@ int R_TriSurfMemory( const srfTriangles_t *tri ) {
 		return total;
 	}
 
-	// used as a flag in interations
-	if ( tri == LIGHT_TRIS_DEFERRED ) {
-		return total;
-	}
-
 	if ( tri->shadowVertexes != NULL ) {
 		total += tri->numVerts * sizeof( tri->shadowVertexes[0] );
 	} else if ( tri->verts != NULL ) {

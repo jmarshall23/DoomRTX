@@ -432,10 +432,6 @@ void R_DeriveLightData( idRenderLightLocal *light ) {
 	R_FreeLightDefFrustum( light );
 
 	light->frustumTris = R_PolytopeSurface( 6, light->frustum, light->frustumWindings );
-
-	// a projected light will have one shadowFrustum, a point light will have
-	// six unless the light center is outside the box
-	R_MakeShadowFrustums( light );
 }
 
 /*
@@ -601,11 +597,6 @@ void R_FreeLightDefDerivedData( idRenderLightLocal *ldef ) {
 		dp->fogLight = NULL;
 	}
 
-	// free all the interactions
-	while ( ldef->firstInteraction != NULL ) {
-		ldef->firstInteraction->UnlinkAndFree();
-	}
-
 	// free all the references to the light
 	for ( lref = ldef->references ; lref ; lref = nextRef ) {
 		nextRef = lref->ownerNext;
@@ -653,11 +644,6 @@ void R_FreeEntityDefDerivedData( idRenderEntityLocal *def, bool keepDecals, bool
 		}
 	}
 
-	// free all the interactions
-	while ( def->firstInteraction != NULL ) {
-		def->firstInteraction->UnlinkAndFree();
-	}
-
 	// clear the dynamic model if present
 	if ( def->dynamicModel ) {
 		def->dynamicModel = NULL;
@@ -697,10 +683,6 @@ R_FreeEntityDefDerivedData
 ==================
 */
 void R_ClearEntityDefDynamicModel( idRenderEntityLocal *def ) {
-	// free all the interaction surfaces
-	for( idInteraction *inter = def->firstInteraction; inter != NULL && !inter->IsEmpty(); inter = inter->entityNext ) {
-		inter->FreeSurfaces();
-	}
 
 	// clear the dynamic model if present
 	if ( def->dynamicModel ) {

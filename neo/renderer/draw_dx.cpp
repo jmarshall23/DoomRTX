@@ -172,17 +172,11 @@ void RB_DXDrawInteractions(void)
 			continue;
 		}
 
-		if (!vLight->localInteractions && !vLight->globalInteractions
-			&& !vLight->translucentInteractions)
-		{
-			continue;
-		}
-
 		const renderLight_t& srcLight = vLight->lightDef->parms;
 		const float r = srcLight.shaderParms[SHADERPARM_RED];
 		const float g = srcLight.shaderParms[SHADERPARM_GREEN];
 		const float b = srcLight.shaderParms[SHADERPARM_BLUE];
-		const float intensity = 1.0f;
+		const float intensity = 2.0f;
 
 		glRaytracingLight_t light = {};
 		bool supported = true;

@@ -225,9 +225,6 @@
     <ClInclude Include="renderer\Image.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\Interaction.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\Material.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -746,9 +743,6 @@
     <ClCompile Include="renderer\Image_program.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\Interaction.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\Material.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
@@ -848,12 +842,6 @@
     <ClCompile Include="renderer\tr_rendertools.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\tr_shadowbounds.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\tr_stencilshadow.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\tr_subview.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
@@ -861,9 +849,6 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\tr_trisurf.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\tr_turboshadow.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\VertexCache.cpp">
@@ -1326,9 +1311,6 @@
       <Filter>Tools\Compilers\DMap</Filter>
     </ClCompile>
     <ClCompile Include="tools\compilers\dmap\portals.cpp">
-      <Filter>Tools\Compilers\DMap</Filter>
-    </ClCompile>
-    <ClCompile Include="tools\compilers\dmap\shadowopt3.cpp">
       <Filter>Tools\Compilers\DMap</Filter>
     </ClCompile>
     <ClCompile Include="tools\compilers\dmap\tritjunction.cpp">

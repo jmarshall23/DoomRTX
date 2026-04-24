@@ -79,6 +79,11 @@ struct dxrWorldModel_t {
 	uint32_t				topAccelStruct = 0;
 };
 
+typedef struct areaNumRef_s {
+	struct areaNumRef_s* next;
+	int						areaNum;
+} areaNumRef_t;
+
 class idRenderWorldLocal : public idRenderWorld {
 public:
 							idRenderWorldLocal(dxrWorldId_t dxrWorldId);
@@ -159,20 +164,7 @@ public:
 	idList<idRenderLightLocal*>		lightDefs;
 
 	idBlockAlloc<areaReference_t, 1024> areaReferenceAllocator;
-	idBlockAlloc<idInteraction, 256>	interactionAllocator;
 	idBlockAlloc<areaNumRef_t, 1024>	areaNumRefAllocator;
-
-	// all light / entity interactions are referenced here for fast lookup without
-	// having to crawl the doubly linked lists.  EnntityDefs are sequential for better
-	// cache access, because the table is accessed by light in idRenderWorldLocal::CreateLightDefInteractions()
-	// Growing this table is time consuming, so we add a pad value to the number
-	// of entityDefs and lightDefs
-	idInteraction **		interactionTable;
-	int						interactionTableWidth;		// entityDefs
-	int						interactionTableHeight;		// lightDefs
-
-
-	bool					generateAllInteractionsCalled;
 
 	//-----------------------
 	// RenderWorld_load.cpp
