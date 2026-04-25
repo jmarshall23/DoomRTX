@@ -32,6 +32,9 @@ If you have questions concerning this license or the applicable additional terms
 #include "snd_local.h"
 
 #include <initguid.h> 
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 #ifdef ID_DEDICATED
 idCVar idSoundSystemLocal::s_noSound( "s_noSound", "1", CVAR_SOUND | CVAR_BOOL | CVAR_ROM, "" );
@@ -99,6 +102,34 @@ DEFINE_GUID(EAXPROPERTYID_EAX40_Source,
 
 DEFINE_GUID(EAXPROPERTYID_EAX40_FXSlot0,
 	0xA8FA6882, 0x9FDA, 0x11D2, 0xBA, 0xA0, 0x00, 0xA0, 0xC9, 0x22, 0x31, 0x96);
+
+static std::thread g_soundAsyncThread;
+static std::atomic<bool> g_soundAsyncRunning{ false };
+
+void StartSoundAsyncThread() {
+	if (g_soundAsyncRunning.exchange(true)) {
+		return; // already running
+	}
+
+	g_soundAsyncThread = std::thread([]() {
+		while (g_soundAsyncRunning.load()) {
+			soundSystem->AsyncUpdate(Sys_Milliseconds());
+
+			// Prevent burning a full CPU core.
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+		});
+}
+
+void StopSoundAsyncThread() {
+	if (!g_soundAsyncRunning.exchange(false)) {
+		return; // already stopped
+	}
+
+	if (g_soundAsyncThread.joinable()) {
+		g_soundAsyncThread.join();
+	}
+}
 
 /*
 ===============
@@ -427,6 +458,8 @@ void idSoundSystemLocal::Init() {
 	useOpenAL = idSoundSystemLocal::s_useOpenAL.GetBool();
 	useEAXReverb = idSoundSystemLocal::s_useEAXReverb.GetBool();
 
+	StartSoundAsyncThread();
+
 	cmdSystem->AddCommand( "listSounds", ListSounds_f, CMD_FL_SOUND, "lists all sounds" );
 	cmdSystem->AddCommand( "listSoundDecoders", ListSoundDecoders_f, CMD_FL_SOUND, "list active sound decoders" );
 	cmdSystem->AddCommand( "reloadSounds", SoundReloadSounds_f, CMD_FL_SOUND|CMD_FL_CHEAT, "reloads all sounds" );
@@ -443,6 +476,8 @@ idSoundSystemLocal::Shutdown
 ===============
 */
 void idSoundSystemLocal::Shutdown() {
+	StopSoundAsyncThread();
+	
 	ShutdownHW();
 
 	// EAX or not, the list needs to be cleared

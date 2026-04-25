@@ -2576,8 +2576,6 @@ void idCommonLocal::Frame(void) {
 
 		idAsyncNetwork::RunFrame();
 
-		soundSystem->AsyncUpdate(Sys_Milliseconds());
-
 		if (idAsyncNetwork::IsActive()) {
 			if (idAsyncNetwork::serverDedicated.GetInteger() != 1) {
 				session->GuiFrameEvents();
