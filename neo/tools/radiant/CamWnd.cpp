@@ -2343,10 +2343,14 @@ void CCamWnd::FreeRendererState() {
 		s_editorEntityStates.RemoveIndex(i);
 	}
 
-	for (entity_t* ent = entities.next; ent != &entities; ent = ent->next) {
-		ent->modelDef = -1;
-		ent->lightDef = -1;
+	if (entities.next != NULL)
+	{
+		for (entity_t* ent = entities.next; ent != &entities; ent = ent->next) {
+			ent->modelDef = -1;
+			ent->lightDef = -1;
+		}
 	}
+	
 
 	for (int i = s_editorBModelStates.Num() - 1; i >= 0; i--) {
 		EditorFreeBModelState(i);

@@ -3928,7 +3928,7 @@ void Control_Draw(brush_t *b) {
 		}
 
 		glColor4f(1, 1, .5, 1);
-		glBegin(GL_POLYGON);
+		glBegin(GL_QUADS);
 		for (i = 0; i < w->GetNumPoints(); i++) {
 			glVertex3fv( (*w)[i].ToFloatPtr() );
 		}

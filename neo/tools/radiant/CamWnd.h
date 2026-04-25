@@ -129,6 +129,8 @@ public:
 		m_Camera.angles = angles;
 	}
 
+	bool CullBrush(brush_t* b, bool cubicOnly);
+	void	FreeRendererState();
 protected:
 	void Cam_Init();
 	void Cam_BuildMatrix();
@@ -138,7 +140,6 @@ protected:
 	void Cam_MouseUp (int x, int y, int buttons);
 	void Cam_MouseMoved (int x, int y, int buttons);
 	void InitCull();
-	bool CullBrush (brush_t *b, bool cubicOnly);
 	void Cam_Draw();
 	void Cam_Render();
 
@@ -154,7 +155,6 @@ protected:
 	bool	selectMode;
 	bool	animationMode;
 	bool	soundMode;
-	void	FreeRendererState();
 	void	UpdateCaption();
 	bool	BuildBrushRenderData(brush_t *brush);
 	void	DrawEntityData();

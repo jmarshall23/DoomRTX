@@ -222,6 +222,8 @@ void Map_Free(void) {
 		}
 	}
 
+	g_pParentWnd->GetCamera()->FreeRendererState();
+
 	// clear all the render and sound system data
 	g_qeglobals.rw->InitFromMap( NULL );
 	g_qeglobals.sw->ClearAllSoundEmitters();
