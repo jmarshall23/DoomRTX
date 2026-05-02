@@ -2522,16 +2522,85 @@ float GetPointLightMaxRadius(Light Lgt)
     return max(max(r.x, r.y), r.z);
 }
 
+float3 Doom3SafeNormalizeOr(float3 v, float3 fallbackDir)
+{
+    float lenSq = dot(v, v);
+    return (lenSq > 1e-8) ? (v * rsqrt(lenSq)) : fallbackDir;
+}
+
+float Doom3QuadraticFalloffImage(float texCoord)
+{
+    // Math version of Doom 3 BFG's built-in _quadratic lookup table.
+    // The source table is 32 texels wide, brightest at the center and clamped
+    // to black outside the light volume.
+    if (texCoord <= 0.0 || texCoord >= 1.0)
+        return 0.0;
+
+    const float QUADRATIC_WIDTH = 32.0;
+
+    // Convert a normalized lookup coordinate to the source generator's texel-space
+    // x value, then apply the same centered squared ramp used by R_QuadraticImage().
+    float x = texCoord * QUADRATIC_WIDTH - 0.5;
+    float d = x - (QUADRATIC_WIDTH * 0.5 - 0.5);
+    d = abs(d);
+    d -= 0.5;
+    d /= (QUADRATIC_WIDTH * 0.5);
+    d = 1.0 - d;
+    d = saturate(d);
+    return d * d;
+}
+
+float Doom3QuadraticCentered(float centeredCoord)
+{
+    // centeredCoord is -1 at one side of the light volume, 0 at the light center,
+    // and +1 at the opposite side.
+    return Doom3QuadraticFalloffImage(centeredCoord * 0.5 + 0.5);
+}
+
+float Doom3ProjectionTexture2D(float2 centeredCoord)
+{
+    // Doom 3 multiplies a projected light image by a separate falloff image. This
+    // renderer does not bind Doom light materials/cookies, so use the same built-in
+    // quadratic shape on S/T as a neutral default projection texture approximation.
+    if (abs(centeredCoord.x) >= 1.0 || abs(centeredCoord.y) >= 1.0)
+        return 0.0;
+
+    return Doom3QuadraticCentered(centeredCoord.x) * Doom3QuadraticCentered(centeredCoord.y);
+}
+
+float Doom3ProjectedDepthFalloff(float depth, float nearClip, float farClip)
+{
+    // For spot/projected lights, the renderer API supplies a conventional near/far
+    // range.  Sample the bright-to-far half of Doom's centered falloff image so the
+    // light is strongest at the projector and fades out at the far plane.
+    float depth01 = saturate((depth - nearClip) / max(farClip - nearClip, 1e-4));
+    return Doom3QuadraticFalloffImage(0.5 + depth01 * 0.5);
+}
+
 float ComputePointLightAttenuation(float3 worldPos, Light Lgt)
 {
     float3 radii = GetPointLightRadius(Lgt);
-    float3 normalizedOffset = (worldPos - Lgt.position) / radii;
+    float3 offset = worldPos - Lgt.position;
 
-    // Ellipsoidal falloff: radius.x controls X reach, radius.y controls Y reach,
-    // and radius.z controls Z reach in world space.
-    float ellipsoidDistance = length(normalizedOffset);
-    float atten = saturate(1.0 - ellipsoidDistance);
-    return atten;
+    // Doom 3 point lights are box/projector lights, not inverse-square or
+    // ellipsoidal distance lights. S/T sample the projected light image and the
+    // third axis samples lightFalloffImage.  Use the light axes when provided so
+    // rectangular radii behave like idTech4 light volumes.
+    float3 axisU = Doom3SafeNormalizeOr(Lgt.axisU, float3(1.0, 0.0, 0.0));
+    float3 axisV = Doom3SafeNormalizeOr(Lgt.axisV, float3(0.0, 1.0, 0.0));
+    float3 axisW = Doom3SafeNormalizeOr(Lgt.normal, float3(0.0, 0.0, 1.0));
+
+    float u = dot(offset, axisU) / radii.x;
+    float v = dot(offset, axisV) / radii.y;
+    float w = dot(offset, axisW) / radii.z;
+
+    if (abs(u) >= 1.0 || abs(v) >= 1.0 || abs(w) >= 1.0)
+        return 0.0;
+
+    float projection = Doom3ProjectionTexture2D(float2(u, v));
+    float falloff    = Doom3QuadraticCentered(w);
+
+    return projection * falloff;
 }
 
 float ComputeSpotLightAttenuation(float3 worldPos, Light Lgt)
@@ -2541,32 +2610,31 @@ float ComputeSpotLightAttenuation(float3 worldPos, Light Lgt)
     float nearClip = max(Lgt.pointRadius.x, 0.0);
     float farClip  = max(Lgt.radius, nearClip + 1e-4);
 
-    float depth = dot(lightToSurface, Lgt.normal);
+    float3 spotDir = Doom3SafeNormalizeOr(Lgt.normal, float3(0.0, 0.0, 1.0));
+    float depth = dot(lightToSurface, spotDir);
     if (depth <= nearClip || depth >= farClip)
         return 0.0;
 
-    float invDepth = 1.0 / max(depth, 1e-4);
+    float3 axisU = Doom3SafeNormalizeOr(Lgt.axisU, float3(1.0, 0.0, 0.0));
+    float3 axisV = Doom3SafeNormalizeOr(Lgt.axisV, float3(0.0, 1.0, 0.0));
 
-    float projU = dot(lightToSurface, Lgt.axisU) * invDepth;
-    float projV = dot(lightToSurface, Lgt.axisV) * invDepth;
+    float invDepth = 1.0 / max(depth, 1e-4);
+    float projU = dot(lightToSurface, axisU) * invDepth;
+    float projV = dot(lightToSurface, axisV) * invDepth;
 
     float halfU = max(abs(Lgt.halfWidth), 1e-4);
     float halfV = max(abs(Lgt.halfHeight), 1e-4);
 
-    float edgeU = abs(projU) / halfU;
-    float edgeV = abs(projV) / halfV;
-    float edge  = max(edgeU, edgeV);
+    float signedU = projU / halfU;
+    float signedV = projV / halfV;
 
-    if (edge >= 1.0)
+    if (abs(signedU) >= 1.0 || abs(signedV) >= 1.0)
         return 0.0;
 
-    float coneAtten = saturate(1.0 - edge);
-    coneAtten = coneAtten;
+    float projection = Doom3ProjectionTexture2D(float2(signedU, signedV));
+    float falloff    = Doom3ProjectedDepthFalloff(depth, nearClip, farClip);
 
-    float rangeAtten = saturate((farClip - depth) / max(farClip - nearClip, 1e-4));
-    rangeAtten = rangeAtten;
-
-    return coneAtten * rangeAtten;
+    return projection * falloff;
 }
 
 float TraceSpotShadow(float3 worldPos, float3 N, float3 toLight, float dist)
@@ -2625,7 +2693,8 @@ float TraceSoftShadow(float3 worldPos, float3 N, Light Lgt, float3 toLight, floa
 
     return shadowAccum / (float)SHADOW_SAMPLES;
 }
-
+)"
+R"(
 float RectLightShadow(float3 worldPos, float3 N, Light Lgt, uint2 pixel)
 {
     uint sampleCount = max(Lgt.samples, 1u);
