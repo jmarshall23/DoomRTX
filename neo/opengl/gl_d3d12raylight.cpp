@@ -3010,7 +3010,45 @@ float ComputeCavity(uint2 pixel, float3 worldPos, float3 N)
     return 1.0 - cavity * 0.18;
 }
 
-float3 ComputeSpecular(float3 N, float3 V, float3 L, float3 lightColor, float lightIntensity, float atten, float shadow, float3 baseAlbedo)
+float Doom3SpecularLookup(float x)
+{
+    // Doom 3 used a lookup table for specular falloff.
+    // This approximates the classic broad idTech4 highlight.
+    x = saturate(x);
+
+    // Broad enough to read like Doom 3 plastic/metal,
+    // not razor-sharp PBR.
+    return pow(x, 16.0);
+}
+
+float3 Doom3PseudoSpecularMask(float3 baseAlbedo)
+{
+    // Doom 3 normally uses a dedicated specular map.
+    // This pass does not have one bound, so DO NOT square diffuse albedo.
+    // Squaring albedo makes dark Doom 3 textures lose all specular response.
+    //
+    // Use luminance only as a weak hint, with a neutral floor.
+    float lum = dot(saturate(baseAlbedo), float3(0.299, 0.587, 0.114));
+
+    float specStrength = lerp(0.22, 0.72, saturate(lum * 1.35));
+
+    // Slight warm/colored contribution from the diffuse texture, but mostly neutral
+    // like a missing/default specular map.
+    float3 neutralSpec = float3(specStrength, specStrength, specStrength);
+    float3 tintedSpec  = saturate(baseAlbedo) * 0.35 + neutralSpec * 0.65;
+
+    return max(tintedSpec, float3(0.18, 0.18, 0.18));
+}
+
+float3 ComputeSpecular(
+    float3 N,
+    float3 V,
+    float3 L,
+    float3 lightColor,
+    float lightIntensity,
+    float atten,
+    float shadow,
+    float3 baseAlbedo)
 {
     if (gEnableSpecular == 0)
         return 0.0;
@@ -3019,37 +3057,38 @@ float3 ComputeSpecular(float3 N, float3 V, float3 L, float3 lightColor, float li
     V = normalize(V);
     L = normalize(L);
 
-    float NdotL = saturate(dot(N, L));
-    float NdotV = saturate(dot(N, V));
+    float NdotL = dot(N, L);
+    float NdotV = dot(N, V);
 
+    // Doom 3 specular should not show on the wrong side of the surface,
+    // but once it passes this gate, do not multiply the final spec by NdotL again.
+    // The old code did that and made highlights collapse too aggressively.
     if (NdotL <= 0.0 || NdotV <= 0.0 || atten <= 0.0 || shadow <= 0.0)
         return 0.0;
 
-    // Doom 3 / idTech4-style legacy specular:
-    // - Phong reflection vector, not Blinn half-vector.
-    // - Low exponent for broad plastic/metal highlights.
-    // - Strong additive multiplier like the old interaction shader.
-    // - Spec map behavior is approximated here by squaring baseAlbedo because this pass
-    //   currently has no dedicated specular texture bound.
-    const float DOOM3_SPECULAR_POWER = 8.0;
-    const float DOOM3_SPECULAR_SCALE = 6.0;
+    // idTech4/Doom 3 interaction shader uses half-angle style specular,
+    // not the reflect(-L,N) Phong vector used in the old code here.
+    float3 H = normalize(L + V);
+    float NdotH = saturate(dot(N, H));
 
-    float3 R = normalize(reflect(-L, N));
-    float  RdotV = saturate(dot(R, V));
+    float specTerm = Doom3SpecularLookup(NdotH);
 
-    float specTerm = pow(RdotV, DOOM3_SPECULAR_POWER);
+    float3 specMask = Doom3PseudoSpecularMask(baseAlbedo);
 
-    // Doom 3 squared the specular map before applying it. Since this shader only has
-    // baseAlbedo available, use squared albedo as a pseudo specular mask.
-    float3 specMask = saturate(baseAlbedo * baseAlbedo);
+    // Doom 3's interaction pass is strongly additive. Keep it punchy,
+    // but clamp enough to avoid fireflies with stochastic light sampling.
+    const float DOOM3_SPECULAR_SCALE = 4.75;
 
-    // Keep a small neutral floor so very dark diffuse textures can still catch a Doom 3
-    // style highlight when no real specular map exists.
-    specMask = max(specMask, float3(0.08, 0.08, 0.08));
+    float3 specular =
+        lightColor *
+        lightIntensity *
+        atten *
+        shadow *
+        specMask *
+        specTerm *
+        DOOM3_SPECULAR_SCALE;
 
-    float3 spec = specMask * specTerm * DOOM3_SPECULAR_SCALE;
-
-    return lightColor * (lightIntensity * atten * shadow * NdotL) * spec;
+    return clamp(specular, 0.0, 8.0);
 }
 )"
 R"(
