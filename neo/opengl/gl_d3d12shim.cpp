@@ -126,6 +126,26 @@ using Microsoft::WRL::ComPtr;
 #define GL_NORMAL_MAP_BINDING_QD3D12 0x6002
 #endif
 
+// Optional material/ray-visibility tags for the DXR path.  These are private
+// shim enums; they deliberately live next to the normal-map compatibility enums.
+#ifndef GL_QD3D12_MATERIAL_GLASS
+#define GL_QD3D12_MATERIAL_GLASS 0x6003
+#endif
+#ifndef GL_QD3D12_MATERIAL_FLAGS
+#define GL_QD3D12_MATERIAL_FLAGS 0x6004
+#endif
+#ifndef GL_RAYTRACING_MATERIAL_FLAG_GLASS
+#define GL_RAYTRACING_MATERIAL_FLAG_GLASS 0x00000001u
+#endif
+#ifndef GL_RAYTRACING_MATERIAL_FLAG_MASK_QD3D12
+#define GL_RAYTRACING_MATERIAL_FLAG_MASK_QD3D12 0x000000FFu
+#endif
+
+static constexpr uint32_t QD3D12_RT_INSTANCE_USER_ID_MASK = 0x0000FFFFu;
+static constexpr uint32_t QD3D12_RT_INSTANCE_MATERIAL_SHIFT = 16u;
+static constexpr uint32_t QD3D12_GEOMETRY_FLAG_GLASS_BIT = 4u;
+static constexpr float QD3D12_MATERIAL_TYPE_GLASS = 3.0f;
+
 #ifndef GL_RGB_S3TC
 #define GL_RGB_S3TC 0x83A0
 #endif
@@ -160,6 +180,21 @@ void APIENTRY glTangent3f(GLfloat x, GLfloat y, GLfloat z);
 void APIENTRY glTangent3fv(const GLfloat* v);
 void APIENTRY glBinormal3f(GLfloat x, GLfloat y, GLfloat z);
 void APIENTRY glBinormal3fv(const GLfloat* v);
+void APIENTRY glGlassMaterialQD3D12(GLboolean enable);
+void APIENTRY glMaterialGlassQD3D12(GLboolean enable);
+void APIENTRY glRaytracingMaterialFlagsQD3D12(GLuint flags);
+void APIENTRY glRaytracingMaterialFlagQD3D12(GLuint flag, GLboolean enable);
+
+// DXR lighting controls are defined in gl_raytracing.cpp.  They are declared
+// here too so glLightScene() can force the ray pass to emit raw/noisy radiance
+// whenever an external denoiser such as DLSS Ray Reconstruction will consume it.
+void glRaytracingLightingSetExternalDenoiser(int enable);
+void glRaytracingLightingSetPathTracingOptions(uint32_t samplesPerPixel, uint32_t maxBounces, int enableDenoiser, float denoiseStrength);
+void glRaytracingSetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle, uint32_t materialFlags);
+void glRaytracingSetMeshGlass(glRaytracingMeshHandle_t meshHandle, int isGlass);
+uint32_t glRaytracingGetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle);
+void QD3D12_SetPathTracingQuality(uint32_t samplesPerPixel, uint32_t maxBounces);
+void QD3D12_SetPathTracingFallbackSamples(uint32_t samplesPerPixel);
 
 static void QD3D12_CreateUploadRingForWindow(struct QD3D12Window& w);
 static void QD3D12_DestroyUploadRingForWindow(struct QD3D12Window& w);
@@ -452,7 +487,7 @@ struct GLBufferObject
 const char* vendor = "Justin Marshall";
 const char* renderer = "Quake D3D12 Wrapper";
 const char* version = "1.1-quake-d3d12";
-const char* extensions = "GL_SGIS_multitexture GL_ARB_multitexture GL_EXT_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_compression GL_EXT_texture_compression_s3tc GL_ARB_vertex_program GL_ARB_fragment_program GL_EXT_texture_cube_map GL_EXT_depth_bounds_test GL_EXT_stencil_two_side GL_ATI_separate_stencil GL_QD3D12_normal_map";
+const char* extensions = "GL_SGIS_multitexture GL_ARB_multitexture GL_EXT_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_compression GL_EXT_texture_compression_s3tc GL_ARB_vertex_program GL_ARB_fragment_program GL_EXT_texture_cube_map GL_EXT_depth_bounds_test GL_EXT_stencil_two_side GL_ATI_separate_stencil GL_QD3D12_normal_map GL_QD3D12_glass_material";
 
 enum TexEnvModeShader
 {
@@ -901,6 +936,7 @@ struct GLState
 	GLuint currentMotionObjectId = 0;
 	float currentSurfaceRoughness = 0.5f;
 	float currentMaterialType = 0.0f;
+	uint32_t currentRayMaterialFlags = 0;
 	std::unordered_map<GLuint, Mat4> prevObjectMVPs;
 	std::unordered_map<GLuint, Mat4> currObjectMVPs;
 	uint64_t frameSerial = 0;
@@ -911,6 +947,9 @@ struct GLState
 	bool enableRayAIDenoise = false;
 	bool enableDLSSRayReconstruction = true;
 	bool enableFSRRayRegeneration = false;
+	uint32_t pathTracingSamplesPerPixel = 1;
+	uint32_t pathTracingFallbackSamplesPerPixel = 2;
+	uint32_t pathTracingMaxBounces = 2;
 
 	float jitterX = 0.0f;
 	float jitterY = 0.0f;
@@ -1117,6 +1156,53 @@ struct GLState
 static GLState g_gl;
 static std::unordered_map<HWND, QD3D12Window> g_windows;
 QD3D12Window* g_currentWindow = nullptr;
+
+static std::unordered_map<uint32_t, uint32_t> g_qd3d12RaytracingMeshMaterialFlags;
+
+static inline uint32_t QD3D12_ClampRayMaterialFlags(uint32_t flags)
+{
+	return flags & GL_RAYTRACING_MATERIAL_FLAG_MASK_QD3D12;
+}
+
+static inline bool QD3D12_RayMaterialFlagsHaveGlass(uint32_t flags)
+{
+	return (QD3D12_ClampRayMaterialFlags(flags) & GL_RAYTRACING_MATERIAL_FLAG_GLASS) != 0u;
+}
+
+static inline uint32_t QD3D12_CurrentRayMaterialFlags()
+{
+	return QD3D12_ClampRayMaterialFlags(g_gl.currentRayMaterialFlags);
+}
+
+static inline float QD3D12_CurrentEffectiveGeometryFlag()
+{
+	uint32_t bits = (uint32_t)max(0.0f, floorf(g_gl.currentGeometryFlag + 0.5f));
+	if (QD3D12_RayMaterialFlagsHaveGlass(QD3D12_CurrentRayMaterialFlags()))
+		bits |= QD3D12_GEOMETRY_FLAG_GLASS_BIT;
+	return (float)bits;
+}
+
+static inline float QD3D12_CurrentEffectiveMaterialType()
+{
+	if (QD3D12_RayMaterialFlagsHaveGlass(QD3D12_CurrentRayMaterialFlags()) &&
+		g_gl.currentMaterialType == 0.0f)
+	{
+		return QD3D12_MATERIAL_TYPE_GLASS;
+	}
+	return g_gl.currentMaterialType;
+}
+
+static inline uint32_t QD3D12_EncodeRaytracingInstanceId(uint32_t userInstanceId, uint32_t materialFlags)
+{
+	return (userInstanceId & QD3D12_RT_INSTANCE_USER_ID_MASK) |
+		((QD3D12_ClampRayMaterialFlags(materialFlags) & 0xFFu) << QD3D12_RT_INSTANCE_MATERIAL_SHIFT);
+}
+
+static inline uint32_t QD3D12_GetRaytracingMeshMaterialFlags(uint32_t meshHandle)
+{
+	auto it = g_qd3d12RaytracingMeshMaterialFlags.find(meshHandle);
+	return (it != g_qd3d12RaytracingMeshMaterialFlags.end()) ? it->second : 0u;
+}
 
 static UINT g_qd3d12GBufferSampleCount = 1;
 
@@ -2544,9 +2630,9 @@ static BatchKey BuildCurrentBatchKey(GLenum originalMode, const TextureResource*
 	key.motionObjectId = g_gl.currentMotionObjectId;
 	key.prevMvp = QD3D12_GetPreviousMVPForObject(key.motionObjectId, key.mvp);
 	key.modelMatrix = CurrentModelMatrix();
-	key.geometryFlag = g_gl.currentGeometryFlag;
+	key.geometryFlag = QD3D12_CurrentEffectiveGeometryFlag();
 	key.roughness = g_gl.currentSurfaceRoughness;
-	key.materialType = g_gl.currentMaterialType;
+	key.materialType = QD3D12_CurrentEffectiveMaterialType();
 	g_gl.currObjectMVPs[key.motionObjectId] = key.mvp;
 	return key;
 }
@@ -3320,12 +3406,20 @@ static bool QD3D12_WantsDLSSRayReconstruction()
 {
 	return g_gl.enableDLSSRayReconstruction &&
 		g_gl.upscalerBackend == QD3D12_UPSCALER_DLSS &&
+		g_gl.upscalerQuality != QD3D12_QUALITY_NATIVE &&
 		g_qd3d12Sl.deviceBound;
 }
 
-static bool QD3D12_UseLightingTextureAsUpscaleInput(const QD3D12Window&)
+static bool QD3D12_CanUseDLSSRayReconstructionForLighting(const QD3D12Window& w)
 {
-	return QD3D12_WantsDLSSRayReconstruction() &&
+	return !w.isPbuffer &&
+		g_gl.cameraState.valid &&
+		QD3D12_WantsDLSSRayReconstruction();
+}
+
+static bool QD3D12_UseLightingTextureAsUpscaleInput(const QD3D12Window& w)
+{
+	return QD3D12_CanUseDLSSRayReconstructionForLighting(w) &&
 		g_gl.raytracedLightingReadyThisFrame &&
 		g_lightingTexture &&
 		g_lightingTexture->texture;
@@ -3360,6 +3454,7 @@ static sl::Result QD3D12_SetStreamlineCommonConstants(sl::FrameToken& frameToken
 static void QD3D12_InitStreamlineEarly() {}
 static void QD3D12_StreamlineOnDeviceCreated() {}
 static bool QD3D12_WantsDLSSRayReconstruction() { return false; }
+static bool QD3D12_CanUseDLSSRayReconstructionForLighting(const QD3D12Window&) { return false; }
 static bool QD3D12_UseLightingTextureAsUpscaleInput(const QD3D12Window&) { return false; }
 #endif
 
@@ -3545,9 +3640,12 @@ static void QD3D12_RunRayAIDenoiseIfEnabled(ID3D12GraphicsCommandList* cl, QD3D1
 	if (!g_gl.enableRayAIDenoise)
 		return;
 
+	// DLSS Ray Reconstruction is evaluated in QD3D12_RunUpscalerOrBlit(), because
+	// Streamline wants the noisy lighting input, depth, motion vectors, albedo, and
+	// normal/roughness tagged together with the final scaling output.  Do not run a
+	// second temporal shim denoiser here.
 	if (QD3D12_WantsDLSSRayReconstruction())
 		return;
-
 }
 
 static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
@@ -5285,6 +5383,7 @@ void QD3D12_ShutdownForQuake()
 
 	QD3D12ARB_Shutdown();
 	g_arbPsoCache.clear();
+	g_qd3d12RaytracingMeshMaterialFlags.clear();
 
 	g_gl = GLState{};
 }
@@ -7552,6 +7651,30 @@ void APIENTRY glNormalMapYSignf(GLfloat sign)
 {
 	g_gl.currentNormalMapYSign = (sign < 0.0f) ? -1.0f : 1.0f;
 }
+
+void APIENTRY glRaytracingMaterialFlagsQD3D12(GLuint flags)
+{
+	g_gl.currentRayMaterialFlags = QD3D12_ClampRayMaterialFlags((uint32_t)flags);
+}
+
+void APIENTRY glRaytracingMaterialFlagQD3D12(GLuint flag, GLboolean enable)
+{
+	const uint32_t bit = QD3D12_ClampRayMaterialFlags((uint32_t)flag);
+	if (enable != GL_FALSE)
+		g_gl.currentRayMaterialFlags = QD3D12_ClampRayMaterialFlags(g_gl.currentRayMaterialFlags | bit);
+	else
+		g_gl.currentRayMaterialFlags = QD3D12_ClampRayMaterialFlags(g_gl.currentRayMaterialFlags & ~bit);
+}
+
+void APIENTRY glGlassMaterialQD3D12(GLboolean enable)
+{
+	glRaytracingMaterialFlagQD3D12(GL_RAYTRACING_MATERIAL_FLAG_GLASS, enable);
+}
+
+void APIENTRY glMaterialGlassQD3D12(GLboolean enable)
+{
+	glGlassMaterialQD3D12(enable);
+}
 #ifdef _DEBUG
 #pragma optimize on
 #endif
@@ -7663,6 +7786,10 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint* params)
 
 	case GL_NORMAL_MAP_BINDING_QD3D12:
 		*params = (GLint)g_gl.currentNormalMapTexture;
+		break;
+
+	case GL_QD3D12_MATERIAL_FLAGS:
+		*params = (GLint)QD3D12_CurrentRayMaterialFlags();
 		break;
 
 #ifdef GL_ACTIVE_STENCIL_FACE_EXT
@@ -9952,15 +10079,28 @@ void APIENTRY glFrontFace(GLenum mode)
 void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat* params)
 {
 	(void)face;
-	(void)pname;
-	(void)params;
+	if (!params)
+		return;
+	glMaterialf(face, pname, params[0]);
 }
 
 void APIENTRY glMaterialf(GLenum face, GLenum pname, GLfloat param)
 {
 	(void)face;
-	(void)pname;
-	(void)param;
+
+	switch (pname)
+	{
+	case GL_QD3D12_MATERIAL_GLASS:
+		glGlassMaterialQD3D12((param != 0.0f) ? GL_TRUE : GL_FALSE);
+		return;
+
+	case GL_QD3D12_MATERIAL_FLAGS:
+		glRaytracingMaterialFlagsQD3D12((GLuint)max(0.0f, floorf(param + 0.5f)));
+		return;
+
+	default:
+		return;
+	}
 }
 
 void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat* params)
@@ -10137,8 +10277,14 @@ PROC WINAPI qd3d12_wglGetProcAddress(LPCSTR name) {
 		{ "glNormalMapTexture",          (PROC)glNormalMapTexture },
 		{ "glNormalMapStrengthf",        (PROC)glNormalMapStrengthf },
 		{ "glNormalMapYSignf",           (PROC)glNormalMapYSignf },
+		{ "glGlassMaterialQD3D12",       (PROC)glGlassMaterialQD3D12 },
+		{ "glMaterialGlassQD3D12",       (PROC)glMaterialGlassQD3D12 },
+		{ "glRaytracingMaterialFlagsQD3D12", (PROC)glRaytracingMaterialFlagsQD3D12 },
+		{ "glRaytracingMaterialFlagQD3D12",  (PROC)glRaytracingMaterialFlagQD3D12 },
 		{ "glResolveGBufferQD3D12",      (PROC)glResolveGBufferQD3D12 },
 		{ "QD3D12_ResolveGBufferNow",    (PROC)QD3D12_ResolveGBufferNow },
+		{ "QD3D12_SetPathTracingQuality", (PROC)QD3D12_SetPathTracingQuality },
+		{ "QD3D12_SetPathTracingFallbackSamples", (PROC)QD3D12_SetPathTracingFallbackSamples },
 		{ "glGenProgramsARB",           (PROC)glGenProgramsARB },
 		{ "glDeleteProgramsARB",        (PROC)glDeleteProgramsARB },
 		{ "glBindProgramARB",           (PROC)glBindProgramARB },
@@ -10737,6 +10883,20 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 	QD3D12_ExecuteMainCommandListAndWait(*window);
 	cl = g_gl.cmdList.Get();
 
+	const bool useDLSSRayReconstruction = QD3D12_CanUseDLSSRayReconstructionForLighting(*window);
+	const uint32_t raySpp = useDLSSRayReconstruction
+		? std::max<uint32_t>(1u, g_gl.pathTracingSamplesPerPixel)
+		: std::max<uint32_t>(1u, g_gl.pathTracingFallbackSamplesPerPixel);
+
+	// DLSS RR consumes raw/noisy radiance as the proper external denoiser.
+	// Without RR, keep the ray module's new non-temporal a-trous fallback enabled.
+	glRaytracingLightingSetExternalDenoiser(useDLSSRayReconstruction ? 1 : 0);
+	glRaytracingLightingSetPathTracingOptions(
+		raySpp,
+		std::max<uint32_t>(1u, g_gl.pathTracingMaxBounces),
+		useDLSSRayReconstruction ? 0 : 1,
+		useDLSSRayReconstruction ? 0.0f : 1.0f);
+
 	glRaytracingLightingPassDesc_t pass = {};
 	pass.albedoTexture = sceneColor;
 	pass.albedoFormat = QD3D12_SceneColorFormat;
@@ -10940,6 +11100,7 @@ void QD3D12_SetUpscalerSharpness(float sharpness)
 void QD3D12_EnableRayAIDenoise(int enabled)
 {
 	g_gl.enableRayAIDenoise = enabled ? true : false;
+	g_gl.motionHistoryReset = true;
 }
 
 void QD3D12_EnableDLSSRayReconstruction(int enabled)
@@ -10957,6 +11118,21 @@ void QD3D12_EnableDLSSRayReconstruction(int enabled)
 void QD3D12_EnableFSRRayRegeneration(int enabled)
 {
 	g_gl.enableFSRRayRegeneration = enabled ? true : false;
+}
+
+
+void QD3D12_SetPathTracingQuality(uint32_t samplesPerPixel, uint32_t maxBounces)
+{
+	g_gl.pathTracingSamplesPerPixel = std::max<uint32_t>(1u, std::min<uint32_t>(samplesPerPixel ? samplesPerPixel : 1u, 8u));
+	g_gl.pathTracingFallbackSamplesPerPixel = std::max<uint32_t>(g_gl.pathTracingSamplesPerPixel, 2u);
+	g_gl.pathTracingMaxBounces = std::max<uint32_t>(1u, std::min<uint32_t>(maxBounces ? maxBounces : 1u, 4u));
+	g_gl.motionHistoryReset = true;
+}
+
+void QD3D12_SetPathTracingFallbackSamples(uint32_t samplesPerPixel)
+{
+	g_gl.pathTracingFallbackSamplesPerPixel = std::max<uint32_t>(1u, std::min<uint32_t>(samplesPerPixel ? samplesPerPixel : 1u, 8u));
+	g_gl.motionHistoryReset = true;
 }
 
 void QD3D12_ResetTemporalHistory(void)
@@ -12316,12 +12492,24 @@ void glUpdateBottomAccelStructure(bool opaque, uint32_t& meshHandle)
 	meshDesc.indices = &drawIndexes[0];
 	meshDesc.indexCount = (uint32_t)drawIndexes.size();
 	meshDesc.allowUpdate = 1;
-	meshDesc.opaque = opaque;
+
+	const uint32_t materialFlags = QD3D12_CurrentRayMaterialFlags();
+	const bool isGlass = QD3D12_RayMaterialFlagsHaveGlass(materialFlags);
+
+	// Glass must be non-opaque in the BLAS so the DXR any-hit shader can run
+	// IgnoreHit() and let visibility/path rays continue through the pane.
+	meshDesc.opaque = (opaque && !isGlass) ? 1 : 0;
 
 	if (meshHandle)
 		glRaytracingUpdateMesh(meshHandle, &meshDesc);
 	else
 		meshHandle = glRaytracingCreateMesh(&meshDesc);
+
+	if (meshHandle)
+	{
+		g_qd3d12RaytracingMeshMaterialFlags[meshHandle] = materialFlags;
+		glRaytracingSetMeshMaterialFlags((glRaytracingMeshHandle_t)meshHandle, materialFlags);
+	}
 }
 
 void glUpdateTopLevelAceelStructure(
@@ -12335,7 +12523,9 @@ void glUpdateTopLevelAceelStructure(
 
 	glRaytracingInstanceDesc_t instDesc = {};
 	instDesc.meshHandle = (glRaytracingMeshHandle_t)mesh;
-	instDesc.instanceID = 0;
+
+	const uint32_t materialFlags = QD3D12_GetRaytracingMeshMaterialFlags(mesh);
+	instDesc.instanceID = QD3D12_EncodeRaytracingInstanceId(0u, materialFlags);
 	instDesc.mask = 0xFF;
 
 	if (transform == NULL)

@@ -515,6 +515,9 @@ void R_InitOpenGL( void ) {
 	// Reset our gamma
 	R_SetColorMappings();
 
+	glRaytracingLightingSetExternalDenoiser(1);
+	glRaytracingLightingSetPathTracingOptions(128, 8, 1, 1.0f);
+
 	// Create the DXR worlds.
 	for (int i = 0; i < DXR_WORLD_NUM; i++)
 	{

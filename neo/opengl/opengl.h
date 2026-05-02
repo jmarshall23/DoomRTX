@@ -2192,3 +2192,55 @@ void glUpdateTopLevelAceelStructure(
 	uint32_t mesh,
 	float* transform,
 	uint32_t& topLevelHandle);
+
+void glRaytracingLightingSetExternalDenoiser(int enable);
+void glRaytracingLightingUseExternalDenoiser(int enable);
+void glRaytracingLightingSetPathTracingOptions(uint32_t samplesPerPixel, uint32_t maxBounces, int enableDenoiser, float denoiseStrength);
+void QD3D12_SetPathTracingQuality(uint32_t samplesPerPixel, uint32_t maxBounces);
+void QD3D12_SetPathTracingFallbackSamples(uint32_t samplesPerPixel);
+
+#ifndef GL_QD3D12_MATERIAL_GLASS
+#define GL_QD3D12_MATERIAL_GLASS 0x6003
+#endif
+#ifndef GL_QD3D12_MATERIAL_FLAGS
+#define GL_QD3D12_MATERIAL_FLAGS 0x6004
+#endif
+
+#ifndef GL_RAYTRACING_MATERIAL_FLAG_GLASS
+#define GL_RAYTRACING_MATERIAL_FLAG_GLASS 0x00000001u
+#endif
+#ifndef GL_RAYTRACING_MATERIAL_FLAG_MASK_QD3D12
+#define GL_RAYTRACING_MATERIAL_FLAG_MASK_QD3D12 0x000000FFu
+#endif
+#ifndef GL_RAYTRACING_INSTANCE_USER_ID_MASK_QD3D12
+#define GL_RAYTRACING_INSTANCE_USER_ID_MASK_QD3D12 0x0000FFFFu
+#endif
+#ifndef GL_RAYTRACING_INSTANCE_MATERIAL_SHIFT_QD3D12
+#define GL_RAYTRACING_INSTANCE_MATERIAL_SHIFT_QD3D12 16u
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+	void APIENTRY glGlassMaterialQD3D12(GLboolean enable);
+	void APIENTRY glMaterialGlassQD3D12(GLboolean enable); // alias
+	void APIENTRY glRaytracingMaterialFlagsQD3D12(GLuint flags);
+	void APIENTRY glRaytracingMaterialFlagQD3D12(GLuint flag, GLboolean enable);
+
+	uint32_t glRaytracingGetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle);
+	void glRaytracingSetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle, uint32_t materialFlags);
+	void glRaytracingSetMeshGlass(glRaytracingMeshHandle_t meshHandle, int isGlass);
+
+	// For callers that create raytracing instances directly instead of using the
+	// shim's glUpdateTopLevelAceelStructure() helper. Glass meshes must also use
+	// meshDesc.opaque = 0 so the DXR any-hit shader can IgnoreHit().
+	static inline uint32_t glRaytracingEncodeInstanceIdWithMaterialQD3D12(uint32_t userInstanceId, uint32_t materialFlags)
+	{
+		return (userInstanceId & GL_RAYTRACING_INSTANCE_USER_ID_MASK_QD3D12) |
+			((materialFlags & GL_RAYTRACING_MATERIAL_FLAG_MASK_QD3D12) << GL_RAYTRACING_INSTANCE_MATERIAL_SHIFT_QD3D12);
+	}
+
+#ifdef __cplusplus
+}
+#endif
