@@ -943,7 +943,7 @@ struct GLState
 	bool motionHistoryReset = true;
 
 	QD3D12UpscalerBackend upscalerBackend = QD3D12_UPSCALER_DLSS;
-	QD3D12UpscalerQuality upscalerQuality = QD3D12_QUALITY_BALANCED;
+	QD3D12UpscalerQuality upscalerQuality = QD3D12_QUALITY_QUALITY;
 	bool enableRayAIDenoise = false;
 	bool enableDLSSRayReconstruction = true;
 	bool enableFSRRayRegeneration = false;

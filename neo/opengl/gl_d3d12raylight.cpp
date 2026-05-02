@@ -72,6 +72,90 @@ static T glRaytracingClamp(T v, T lo, T hi)
 	return (v < lo) ? lo : ((v > hi) ? hi : v);
 }
 
+static void glRaytracingSetIdentity4x4(float* m)
+{
+	if (!m)
+		return;
+
+	memset(m, 0, sizeof(float) * 16);
+	m[0] = 1.0f;
+	m[5] = 1.0f;
+	m[10] = 1.0f;
+	m[15] = 1.0f;
+}
+
+static int glRaytracingInvertMatrix4x4(const float* m, float* out)
+{
+	if (!m || !out)
+		return 0;
+
+	float a[4][8];
+
+	for (int r = 0; r < 4; ++r)
+	{
+		for (int c = 0; c < 4; ++c)
+			a[r][c] = m[r * 4 + c];
+
+		for (int c = 0; c < 4; ++c)
+			a[r][4 + c] = (r == c) ? 1.0f : 0.0f;
+	}
+
+	for (int col = 0; col < 4; ++col)
+	{
+		int pivot = col;
+		float best = a[col][col] < 0.0f ? -a[col][col] : a[col][col];
+
+		for (int r = col + 1; r < 4; ++r)
+		{
+			const float v = a[r][col] < 0.0f ? -a[r][col] : a[r][col];
+			if (v > best)
+			{
+				best = v;
+				pivot = r;
+			}
+		}
+
+		if (best <= 1.0e-8f)
+			return 0;
+
+		if (pivot != col)
+		{
+			for (int c = 0; c < 8; ++c)
+			{
+				const float tmp = a[col][c];
+				a[col][c] = a[pivot][c];
+				a[pivot][c] = tmp;
+			}
+		}
+
+		const float invPivot = 1.0f / a[col][col];
+		for (int c = 0; c < 8; ++c)
+			a[col][c] *= invPivot;
+
+		for (int r = 0; r < 4; ++r)
+		{
+			if (r == col)
+				continue;
+
+			const float f = a[r][col];
+			if (f == 0.0f)
+				continue;
+
+			for (int c = 0; c < 8; ++c)
+				a[r][c] -= f * a[col][c];
+		}
+	}
+
+	for (int r = 0; r < 4; ++r)
+	{
+		for (int c = 0; c < 4; ++c)
+			out[r * 4 + c] = a[r][4 + c];
+	}
+
+	return 1;
+}
+
+
 static DXGI_FORMAT glRaytracingGetSrvFormatForDepth(DXGI_FORMAT fmt)
 {
 	switch (fmt)
@@ -1987,6 +2071,7 @@ struct glRaytracingLightingConstants_t
 {
 	float invViewProj[16];
 	float invViewMatrix[16];
+	float viewProj[16];
 	float cameraPos[4];
 	float ambientColor[4];
 	float screenSize[4];
@@ -2127,10 +2212,19 @@ struct ShadowPayload
     uint hit;
 };
 
+struct BouncePayload
+{
+    uint  hit;
+    float hitT;
+    uint  materialFlags;
+    uint  pad0;
+};
+
 cbuffer LightingCB : register(b0)
 {
     float4x4 gInvViewProj;
     float4x4 gInvViewMatrix;
+    float4x4 gViewProj;
     float4   gCameraPos;
     float4   gAmbientColor;
     float4   gScreenSize;
@@ -2256,6 +2350,47 @@ void ShadowClosestHit(inout ShadowPayload payload, in BuiltInTriangleIntersectio
     payload.hit = 1;
 }
 
+[shader("miss")]
+void BounceMiss(inout BouncePayload payload)
+{
+    payload.hit = 0;
+    payload.hitT = 0.0;
+    payload.materialFlags = 0;
+    payload.pad0 = 0;
+}
+
+[shader("anyhit")]
+void BounceAnyHit(inout BouncePayload payload, in BuiltInTriangleIntersectionAttributes attr)
+{
+    // Secondary diffuse rays should see through the same glass that shadow rays
+    // see through.  This keeps a glass pane from killing all bounced light behind it.
+    if (CurrentRayHitIsGlass())
+    {
+        IgnoreHit();
+        return;
+    }
+}
+
+[shader("closesthit")]
+void BounceClosestHit(inout BouncePayload payload, in BuiltInTriangleIntersectionAttributes attr)
+{
+    // Fallback for glass geometry that was accidentally built opaque.  Correctly
+    // tagged glass is ignored in BounceAnyHit() above.
+    if (CurrentRayHitIsGlass())
+    {
+        payload.hit = 0;
+        payload.hitT = 0.0;
+        payload.materialFlags = DecodeInstanceMaterialFlags();
+        payload.pad0 = 0;
+        return;
+    }
+
+    payload.hit = 1;
+    payload.hitT = RayTCurrent();
+    payload.materialFlags = DecodeInstanceMaterialFlags();
+    payload.pad0 = 0;
+}
+
 float TraceShadow(float3 origin, float3 dir, float maxT)
 {
     RayDesc ray;
@@ -2278,6 +2413,35 @@ float TraceShadow(float3 origin, float3 dir, float maxT)
         payload);
 
     return (payload.hit != 0) ? 0.0 : 1.0;
+}
+
+bool TraceBounce(float3 origin, float3 dir, float maxT, out float hitT, out uint materialFlags)
+{
+    RayDesc ray;
+    ray.Origin = origin;
+    ray.Direction = dir;
+    ray.TMin = 0.001;
+    ray.TMax = maxT;
+
+    BouncePayload payload;
+    payload.hit = 0;
+    payload.hitT = 0.0;
+    payload.materialFlags = 0;
+    payload.pad0 = 0;
+
+    TraceRay(
+        gSceneBVH,
+        RAY_FLAG_NONE,
+        0xFF,
+        1,
+        0,
+        1,
+        ray,
+        payload);
+
+    hitT = payload.hitT;
+    materialFlags = payload.materialFlags;
+    return payload.hit != 0;
 }
 
 float Hash12(float2 p)
@@ -2821,6 +2985,132 @@ float TraceVisibilityBiased(float3 worldPos, float3 N, float3 dir, float maxT)
     return TraceShadow(origin, dir, max(maxT - gShadowBias * 0.5, 0.001));
 }
 
+float3 SafeNormalizeOr(float3 v, float3 fallback)
+{
+    float lenSq = dot(v, v);
+    if (lenSq <= 1e-8)
+        return fallback;
+    return v * rsqrt(lenSq);
+}
+
+bool ProjectClipToGBufferCandidate(
+    float4 clipPos,
+    bool flipY,
+    float3 rayHitPos,
+    inout float bestDistSq,
+    inout uint2 bestPixel,
+    inout float3 bestPos,
+    inout float3 bestNormal,
+    inout float3 bestAlbedo,
+    inout uint bestGeoFlag)
+{
+    if (abs(clipPos.w) <= 1e-6)
+        return false;
+
+    float3 ndc = clipPos.xyz / clipPos.w;
+
+    if (ndc.x < -1.0 || ndc.x > 1.0 ||
+        ndc.y < -1.0 || ndc.y > 1.0 ||
+        ndc.z <  0.0 || ndc.z > 1.0)
+    {
+        return false;
+    }
+
+    float2 uv;
+    uv.x = ndc.x * 0.5 + 0.5;
+    uv.y = flipY ? (0.5 - ndc.y * 0.5) : (ndc.y * 0.5 + 0.5);
+
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
+        return false;
+
+    int2 ip = int2(uv * gScreenSize.xy);
+    ip = clamp(ip, int2(0, 0), int2((int)gScreenSize.x - 1, (int)gScreenSize.y - 1));
+
+    float depth = gDepthTex.Load(int3(ip, 0));
+    if (depth <= 0.0 || depth >= 1.0)
+        return false;
+
+    float4 posSample = gPositionTex.Load(int3(ip, 0));
+    float3 gbufPos = posSample.xyz;
+    float3 delta = gbufPos - rayHitPos;
+    float distSq = dot(delta, delta);
+
+    if (distSq >= bestDistSq)
+        return false;
+
+    float4 normalSample = LoadSceneNormal(uint2(ip));
+    float3 gbufNormal = SafeNormalizeOr(normalSample.xyz, float3(0.0, 0.0, 1.0));
+    float3 gbufAlbedo = saturate(gAlbedoTex.Load(int3(ip, 0)).rgb);
+
+    bestDistSq = distSq;
+    bestPixel = uint2(ip);
+    bestPos = gbufPos;
+    bestNormal = gbufNormal;
+    bestAlbedo = gbufAlbedo;
+    bestGeoFlag = DecodeGeometryFlag(posSample.w);
+    return true;
+}
+
+bool TryFetchGBufferAtRayHit(
+    float3 rayHitPos,
+    out uint2 hitPixel,
+    out float3 hitPos,
+    out float3 hitNormal,
+    out float3 hitAlbedo,
+    out uint hitGeoFlag)
+{
+    float bestDistSq = 1.0e30;
+    uint2 bestPixel = uint2(0, 0);
+    float3 bestPos = rayHitPos;
+    float3 bestNormal = float3(0.0, 0.0, 1.0);
+    float3 bestAlbedo = float3(0.5, 0.5, 0.5);
+    uint bestGeoFlag = GEOMETRY_FLAG_NONE;
+
+    // CPU computes gViewProj from the inverse view-projection matrix.  Try both
+    // matrix-vector orders and both Y conventions so this remains tolerant of
+    // row/column-major engine uploads and render-target origin conventions.
+    float4 wpos = float4(rayHitPos, 1.0);
+    float4 clipA = mul(wpos, gViewProj);
+    float4 clipB = mul(gViewProj, wpos);
+
+    bool found = false;
+    found = ProjectClipToGBufferCandidate(clipA, true,  rayHitPos, bestDistSq, bestPixel, bestPos, bestNormal, bestAlbedo, bestGeoFlag) || found;
+    found = ProjectClipToGBufferCandidate(clipA, false, rayHitPos, bestDistSq, bestPixel, bestPos, bestNormal, bestAlbedo, bestGeoFlag) || found;
+    found = ProjectClipToGBufferCandidate(clipB, true,  rayHitPos, bestDistSq, bestPixel, bestPos, bestNormal, bestAlbedo, bestGeoFlag) || found;
+    found = ProjectClipToGBufferCandidate(clipB, false, rayHitPos, bestDistSq, bestPixel, bestPos, bestNormal, bestAlbedo, bestGeoFlag) || found;
+
+    if (!found)
+    {
+        hitPixel = uint2(0, 0);
+        hitPos = rayHitPos;
+        hitNormal = bestNormal;
+        hitAlbedo = bestAlbedo;
+        hitGeoFlag = GEOMETRY_FLAG_NONE;
+        return false;
+    }
+
+    // The TLAS hit is exact, but the material data comes from the camera G-buffer.
+    // Reject projections that land on an unrelated visible surface.
+    float viewDist = length(rayHitPos - gCameraPos.xyz);
+    float maxPositionError = max(24.0, viewDist * 0.035);
+    if (bestDistSq > maxPositionError * maxPositionError)
+    {
+        hitPixel = bestPixel;
+        hitPos = bestPos;
+        hitNormal = bestNormal;
+        hitAlbedo = bestAlbedo;
+        hitGeoFlag = bestGeoFlag;
+        return false;
+    }
+
+    hitPixel = bestPixel;
+    hitPos = bestPos;
+    hitNormal = bestNormal;
+    hitAlbedo = bestAlbedo;
+    hitGeoFlag = bestGeoFlag;
+    return true;
+}
+
 float3 EstimatePathTracedSky(float3 worldPos, float3 N, inout uint rng)
 {
     const float SKY_TMAX = 1000000.0;
@@ -2968,6 +3258,256 @@ float3 PathTraceDirectRectLight(float3 worldPos, float3 N, float3 V, float3 base
     return clamp(Lgt.color * (Lgt.intensity * NdotL * faceTerm * atten * shadow), 0.0, 4.0);
 }
 
+float3 EstimateFastBounceLight(float3 hitPos, float3 hitN, Light Lgt)
+{
+    // Secondary-bounce lighting needs to be cheap.  The primary pass already casts
+    // detailed visibility rays.  Here we evaluate every active light analytically
+    // without extra shadow rays so all lights still contribute to GI, but the
+    // indirect path no longer explodes into many TraceRay() calls per pixel.
+    if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
+    {
+        float3 toLight = Lgt.position - hitPos;
+        float dist = length(toLight);
+        if (dist <= 0.01)
+            return 0.0;
+
+        float3 L = toLight / dist;
+        float atten = ComputePointLightAttenuation(hitPos, Lgt);
+        if (atten <= 0.0)
+            return 0.0;
+
+        float wrap = 0.35;
+        float nDotL = saturate((dot(hitN, L) + wrap) / (1.0 + wrap));
+        return Lgt.color * (Lgt.intensity * atten * nDotL);
+    }
+    else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
+    {
+        float3 toLight = Lgt.position - hitPos;
+        float dist = length(toLight);
+        if (dist <= 0.01)
+            return 0.0;
+
+        float3 L = toLight / dist;
+        float atten = ComputeSpotLightAttenuation(hitPos, Lgt);
+        if (atten <= 0.0)
+            return 0.0;
+
+        float wrap = 0.35;
+        float nDotL = saturate((dot(hitN, L) + wrap) / (1.0 + wrap));
+        return Lgt.color * (Lgt.intensity * atten * nDotL);
+    }
+    else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_RECT)
+    {
+        // Use the rect center for the bounce estimate.  It is stable and avoids
+        // spending another random sample plus visibility ray on secondary hits.
+        float3 toCenter = Lgt.position - hitPos;
+        float centerDist = length(toCenter);
+        if (centerDist <= 0.01)
+            return 0.0;
+
+        float attenRadius = max(Lgt.radius, 1e-4);
+        float atten = saturate((attenRadius - centerDist) / attenRadius);
+        atten = atten * atten;
+        if (atten <= 0.0)
+            return 0.0;
+
+        float3 L = toCenter / centerDist;
+        float nDotL = saturate(dot(hitN, L));
+        if (nDotL <= 0.0)
+            return 0.0;
+
+        float faceTerm = (Lgt.twoSided != 0)
+            ? abs(dot(-L, Lgt.normal))
+            : saturate(dot(-L, Lgt.normal));
+
+        if (faceTerm <= 0.0)
+            return 0.0;
+
+        return clamp(Lgt.color * (Lgt.intensity * nDotL * faceTerm * atten), 0.0, 4.0);
+    }
+
+    return 0.0;
+}
+
+float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 hitN, float3 hitV, float3 hitAlbedo, uint hitGeoFlag, inout uint rng)
+{
+    bool hitIsSkeletal = (hitGeoFlag & GEOMETRY_FLAG_SKELETAL) != 0u;
+    bool hitIsUnlit    = (hitGeoFlag & GEOMETRY_FLAG_UNLIT)    != 0u;
+
+    // Treat unlit G-buffer surfaces as emissive-ish for bounce purposes.  This is
+    // useful for light cards / bright UI-like surfaces that deliberately bypass
+    // the regular lighting pass.
+    if (hitIsUnlit)
+        return hitAlbedo;
+
+    // Cheap environment term.  The expensive sky visibility probes stay in the
+    // primary lighting path; doing them again for every secondary hit was a major
+    // source of the framerate drop.
+    float upness = saturate(hitN.z * 0.5 + 0.5);
+    float3 lighting = gAmbientColor.rgb * (gAmbientColor.a * 0.025);
+    lighting += GetSkyRadiance(hitN) * (0.06 + 0.10 * upness);
+
+    // Still walk the full light list, but do not cast secondary-hit shadow rays.
+    // That preserves the "all lights bounce" behavior while making the cost
+    // roughly one extra bounce TraceRay() per indirect path instead of one bounce
+    // TraceRay() plus many more visibility TraceRay() calls.
+    [loop]
+    for (uint i = 0; i < gLightCount; ++i)
+    {
+        lighting += EstimateFastBounceLight(hitPos, hitN, gLights[i]);
+    }
+
+    if (hitIsSkeletal)
+        lighting *= 1.10;
+
+    // Return outgoing diffuse radiance from the bounce surface.  The caller adds
+    // this as incoming indirect light at the primary surface; primary albedo is
+    // applied later in RayGen just like direct lighting.
+    return max(hitAlbedo * max(lighting, 0.0), 0.0);
+}
+)"
+R"(
+float3 TraceOneIndirectBouncePath(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, inout uint rng)
+{
+    const float BOUNCE_TMAX = 1000000.0;
+
+    uint maxIndirectDepth = (gMaxBounces > 1u) ? 1u : 0u;
+
+    // Extra diffuse depths are very expensive because each depth launches another
+    // DXR ray.  Keep the common 1-2 SPP mode to one indirect hit.  Higher SPP can
+    // opt into one additional diffuse depth, capped at two total secondary hits.
+    if (gSamplesPerPixel >= 4u)
+        maxIndirectDepth = min(gMaxBounces - 1u, 2u);
+
+    float3 accum = 0.0;
+    float3 throughput = 1.0;
+
+    float3 pathPos = worldPos;
+    float3 pathNormal = N;
+    float3 pathView = V;
+    uint2 pathPixel = pixel;
+
+    [loop]
+    for (uint depth = 0; depth < maxIndirectDepth; ++depth)
+    {
+        float3 bounceDir = SampleCosineWorld(pathNormal, rng);
+        float NoD = saturate(dot(pathNormal, bounceDir));
+
+        float normalBias = lerp(gShadowBias * 3.0, gShadowBias * 0.75, NoD);
+        float3 bounceOrigin =
+            pathPos +
+            pathNormal * normalBias +
+            bounceDir * (gShadowBias * 0.5);
+
+        float hitT = 0.0;
+        uint materialFlags = 0;
+        bool hit = TraceBounce(bounceOrigin, bounceDir, BOUNCE_TMAX, hitT, materialFlags);
+
+        if (!hit)
+        {
+            // A miss is ordinary environment lighting for the path. Keep this
+            // modest because the main pass already has stable direct sky terms.
+            accum += throughput * GetSkyRadiance(bounceDir) * 0.18;
+            break;
+        }
+
+        float3 rayHitPos = bounceOrigin + bounceDir * hitT;
+
+        uint2 hitPixel = pathPixel;
+        float3 hitPos = rayHitPos;
+        float3 hitNormal = SafeNormalizeOr(-bounceDir, pathNormal);
+        float3 hitAlbedo = float3(0.55, 0.55, 0.55);
+        uint hitGeoFlag = GEOMETRY_FLAG_NONE;
+
+        bool hasGBufferMaterial = TryFetchGBufferAtRayHit(
+            rayHitPos,
+            hitPixel,
+            hitPos,
+            hitNormal,
+            hitAlbedo,
+            hitGeoFlag);
+
+        // If the G-buffer normal points away from the incoming bounce ray, flip it
+        // so direct lighting at the secondary hit is evaluated on the side that
+        // the ray actually reached.
+        if (dot(hitNormal, -bounceDir) < 0.0)
+            hitNormal = -hitNormal;
+
+        float3 hitV = SafeNormalizeOr(-bounceDir, pathView);
+        float3 bouncedRadiance = EstimateDirectLightingForBounceHit(
+            hitPixel,
+            hitPos,
+            hitNormal,
+            hitV,
+            hitAlbedo,
+            hitGeoFlag,
+            rng);
+
+        if (!hasGBufferMaterial)
+        {
+            // IMPORTANT: this is the path that made some lights look like they
+            // were not bouncing.  The TLAS can hit an off-screen or camera-hidden
+            // surface, and the old code returned only a tiny sky fallback because
+            // it could not fetch albedo/normal from the G-buffer.  Still shade the
+            // real ray hit against every active light using a neutral diffuse
+            // material so point, spot, and rect lights all contribute to bounce.
+            float3 skyTint = GetSkyRadiance(SafeNormalizeOr(reflect(bounceDir, pathNormal), float3(0.0, 0.0, 1.0)));
+            bouncedRadiance += skyTint * 0.035;
+        }
+
+        accum += throughput * bouncedRadiance;
+
+        if ((hitGeoFlag & GEOMETRY_FLAG_UNLIT) != 0u)
+            break;
+
+        // Cosine-weighted diffuse sampling cancels the Lambertian cosine/pdf term,
+        // so the path throughput is the surface albedo plus a conservative energy
+        // scale to keep multiple G-buffer-assisted bounces stable.
+        throughput *= saturate(hitAlbedo) * 0.68;
+
+        if (max(max(throughput.x, throughput.y), throughput.z) < 0.02)
+            break;
+
+        pathPos = hitPos;
+        pathNormal = hitNormal;
+        pathView = hitV;
+        pathPixel = hitPixel;
+    }
+
+    return accum;
+}
+
+float3 EstimatePathTracedIndirectBounce(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, inout uint rng)
+{
+    if (gMaxBounces <= 1u)
+        return 0.0;
+
+    // The previous version forced up to four secondary rays per lighting sample,
+    // which made the pass scale badly with light count and SPP.  One indirect ray
+    // is enough in the common realtime mode because each secondary hit is now
+    // shaded against every active light.  Higher SPP can buy a little more GI
+    // coverage without tanking the default framerate.
+    uint indirectRayCount = 1u;
+    if (gSamplesPerPixel >= 6u && gLightCount > 2u)
+        indirectRayCount = 2u;
+    if (gSamplesPerPixel >= 8u && gLightCount > 5u)
+        indirectRayCount = 3u;
+    indirectRayCount = min(indirectRayCount, 3u);
+
+    float3 accum = 0.0;
+
+    [loop]
+    for (uint r = 0; r < indirectRayCount; ++r)
+    {
+        accum += TraceOneIndirectBouncePath(pixel, worldPos, N, V, baseAlbedo, rng);
+    }
+
+    accum /= (float)indirectRayCount;
+
+    const float INDIRECT_STRENGTH = 0.65;
+    return accum * INDIRECT_STRENGTH;
+}
+
 float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, bool isSkeletal, inout uint rng, out float3 specularAccum)
 {
     specularAccum = 0.0;
@@ -2993,9 +3533,9 @@ float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V,
     lightingAccum += skyColor * (0.70 * skyVis);
     lightingAccum += ambientSkyVis * (skyColorRGB * 0.15);
 
-    if (gMaxBounces > 1u && gSamplesPerPixel > 1u)
+    if (gMaxBounces > 1u)
     {
-        lightingAccum += EstimatePathTracedSky(worldPos, N, rng) * 0.20;
+        lightingAccum += EstimatePathTracedIndirectBounce(pixel, worldPos, N, V, baseAlbedo, rng);
     }
 
     if (isSkeletal)
@@ -3109,6 +3649,7 @@ cbuffer LightingCB : register(b0)
 {
     float4x4 gInvViewProj;
     float4x4 gInvViewMatrix;
+    float4x4 gViewProj;
     float4   gCameraPos;
     float4   gAmbientColor;
     float4   gScreenSize;
@@ -3664,11 +4205,14 @@ static int glRaytracingLightingCreateStateObject(void)
 	if (!dxil)
 		return 0;
 
-	D3D12_EXPORT_DESC exports[4] = {};
+	D3D12_EXPORT_DESC exports[7] = {};
 	exports[0].Name = L"RayGen";
 	exports[1].Name = L"ShadowMiss";
 	exports[2].Name = L"ShadowAnyHit";
 	exports[3].Name = L"ShadowClosestHit";
+	exports[4].Name = L"BounceMiss";
+	exports[5].Name = L"BounceAnyHit";
+	exports[6].Name = L"BounceClosestHit";
 
 	D3D12_DXIL_LIBRARY_DESC libDesc = {};
 	D3D12_SHADER_BYTECODE libBytecode = {};
@@ -3678,14 +4222,19 @@ static int glRaytracingLightingCreateStateObject(void)
 	libDesc.NumExports = _countof(exports);
 	libDesc.pExports = exports;
 
-	D3D12_HIT_GROUP_DESC hitGroup = {};
-	hitGroup.HitGroupExport = L"ShadowHitGroup";
-	hitGroup.AnyHitShaderImport = L"ShadowAnyHit";
-	hitGroup.ClosestHitShaderImport = L"ShadowClosestHit";
-	hitGroup.Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+	D3D12_HIT_GROUP_DESC hitGroups[2] = {};
+	hitGroups[0].HitGroupExport = L"ShadowHitGroup";
+	hitGroups[0].AnyHitShaderImport = L"ShadowAnyHit";
+	hitGroups[0].ClosestHitShaderImport = L"ShadowClosestHit";
+	hitGroups[0].Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+
+	hitGroups[1].HitGroupExport = L"BounceHitGroup";
+	hitGroups[1].AnyHitShaderImport = L"BounceAnyHit";
+	hitGroups[1].ClosestHitShaderImport = L"BounceClosestHit";
+	hitGroups[1].Type = D3D12_HIT_GROUP_TYPE_TRIANGLES;
 
 	D3D12_RAYTRACING_SHADER_CONFIG shaderConfig = {};
-	shaderConfig.MaxPayloadSizeInBytes = sizeof(uint32_t);
+	shaderConfig.MaxPayloadSizeInBytes = 16; // BouncePayload: uint + float + uint + uint.
 	shaderConfig.MaxAttributeSizeInBytes = 8;
 
 	D3D12_GLOBAL_ROOT_SIGNATURE globalRS = {};
@@ -3702,7 +4251,11 @@ static int glRaytracingLightingCreateStateObject(void)
 	++sub;
 
 	subobjects[sub].Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
-	subobjects[sub].pDesc = &hitGroup;
+	subobjects[sub].pDesc = &hitGroups[0];
+	++sub;
+
+	subobjects[sub].Type = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+	subobjects[sub].pDesc = &hitGroups[1];
 	++sub;
 
 	subobjects[sub].Type = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
@@ -3717,9 +4270,17 @@ static int glRaytracingLightingCreateStateObject(void)
 	subobjects[sub].pDesc = &localRS;
 	++sub;
 
-	LPCWSTR localExports[] = { L"RayGen", L"ShadowMiss", L"ShadowHitGroup" };
+	LPCWSTR localExports[] =
+	{
+		L"RayGen",
+		L"ShadowMiss",
+		L"ShadowHitGroup",
+		L"BounceMiss",
+		L"BounceHitGroup"
+	};
+
 	D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION assoc = {};
-	assoc.pSubobjectToAssociate = &subobjects[4];
+	assoc.pSubobjectToAssociate = &subobjects[5];
 	assoc.NumExports = _countof(localExports);
 	assoc.pExports = localExports;
 
@@ -3747,10 +4308,12 @@ static int glRaytracingLightingCreateStateObject(void)
 static int glRaytracingLightingCreateShaderTables(void)
 {
 	void* raygenId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"RayGen");
-	void* missId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"ShadowMiss");
-	void* hitId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"ShadowHitGroup");
+	void* shadowMissId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"ShadowMiss");
+	void* bounceMissId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"BounceMiss");
+	void* shadowHitId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"ShadowHitGroup");
+	void* bounceHitId = g_glRaytracingLighting.rtStateProps->GetShaderIdentifier(L"BounceHitGroup");
 
-	if (!raygenId || !missId || !hitId)
+	if (!raygenId || !shadowMissId || !bounceMissId || !shadowHitId || !bounceHitId)
 	{
 		glRaytracingFatal("Failed to fetch shader identifiers");
 		return 0;
@@ -3758,6 +4321,8 @@ static int glRaytracingLightingCreateShaderTables(void)
 
 	const UINT shaderIdSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 	const UINT recordSize = (UINT)glRaytracingAlignUp(shaderIdSize, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
+	const UINT missTableSize = recordSize * 2u;
+	const UINT hitTableSize = recordSize * 2u;
 
 	g_glRaytracingLighting.raygenTable = glRaytracingCreateBuffer(
 		g_glRaytracingCmd.device.Get(),
@@ -3768,14 +4333,14 @@ static int glRaytracingLightingCreateShaderTables(void)
 
 	g_glRaytracingLighting.missTable = glRaytracingCreateBuffer(
 		g_glRaytracingCmd.device.Get(),
-		recordSize,
+		missTableSize,
 		D3D12_HEAP_TYPE_UPLOAD,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		D3D12_RESOURCE_FLAG_NONE);
 
 	g_glRaytracingLighting.hitTable = glRaytracingCreateBuffer(
 		g_glRaytracingCmd.device.Get(),
-		recordSize,
+		hitTableSize,
 		D3D12_HEAP_TYPE_UPLOAD,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		D3D12_RESOURCE_FLAG_NONE);
@@ -3787,19 +4352,22 @@ static int glRaytracingLightingCreateShaderTables(void)
 		return 0;
 	}
 
-	uint8_t temp[256] = {};
+	std::vector<uint8_t> temp;
+	temp.resize((size_t)max(recordSize, max(missTableSize, hitTableSize)), 0);
 
-	memset(temp, 0, sizeof(temp));
-	memcpy(temp, raygenId, shaderIdSize);
-	glRaytracingMapCopy(g_glRaytracingLighting.raygenTable.resource.Get(), temp, recordSize);
+	memset(temp.data(), 0, temp.size());
+	memcpy(temp.data(), raygenId, shaderIdSize);
+	glRaytracingMapCopy(g_glRaytracingLighting.raygenTable.resource.Get(), temp.data(), recordSize);
 
-	memset(temp, 0, sizeof(temp));
-	memcpy(temp, missId, shaderIdSize);
-	glRaytracingMapCopy(g_glRaytracingLighting.missTable.resource.Get(), temp, recordSize);
+	memset(temp.data(), 0, temp.size());
+	memcpy(temp.data(), shadowMissId, shaderIdSize);
+	memcpy(temp.data() + recordSize, bounceMissId, shaderIdSize);
+	glRaytracingMapCopy(g_glRaytracingLighting.missTable.resource.Get(), temp.data(), missTableSize);
 
-	memset(temp, 0, sizeof(temp));
-	memcpy(temp, hitId, shaderIdSize);
-	glRaytracingMapCopy(g_glRaytracingLighting.hitTable.resource.Get(), temp, recordSize);
+	memset(temp.data(), 0, temp.size());
+	memcpy(temp.data(), shadowHitId, shaderIdSize);
+	memcpy(temp.data() + recordSize, bounceHitId, shaderIdSize);
+	glRaytracingMapCopy(g_glRaytracingLighting.hitTable.resource.Get(), temp.data(), hitTableSize);
 
 	return 1;
 }
@@ -4053,10 +4621,10 @@ static bool glRaytracingLightingExecuteInternal(
 	rays.RayGenerationShaderRecord.StartAddress = g_glRaytracingLighting.raygenTable.gpuVA;
 	rays.RayGenerationShaderRecord.SizeInBytes = shaderRecordSize;
 	rays.MissShaderTable.StartAddress = g_glRaytracingLighting.missTable.gpuVA;
-	rays.MissShaderTable.SizeInBytes = shaderRecordSize;
+	rays.MissShaderTable.SizeInBytes = shaderRecordSize * 2u;
 	rays.MissShaderTable.StrideInBytes = shaderRecordSize;
 	rays.HitGroupTable.StartAddress = g_glRaytracingLighting.hitTable.gpuVA;
-	rays.HitGroupTable.SizeInBytes = shaderRecordSize;
+	rays.HitGroupTable.SizeInBytes = shaderRecordSize * 2u;
 	rays.HitGroupTable.StrideInBytes = shaderRecordSize;
 	rays.Width = pass->width;
 	rays.Height = pass->height;
@@ -4201,6 +4769,9 @@ bool glRaytracingLightingInit(void)
 		return false;
 
 	memset(&g_glRaytracingLighting.constants, 0, sizeof(g_glRaytracingLighting.constants));
+	glRaytracingSetIdentity4x4(g_glRaytracingLighting.constants.invViewProj);
+	glRaytracingSetIdentity4x4(g_glRaytracingLighting.constants.invViewMatrix);
+	glRaytracingSetIdentity4x4(g_glRaytracingLighting.constants.viewProj);
 	g_glRaytracingLighting.constants.ambientColor[0] = 0.08f;
 	g_glRaytracingLighting.constants.ambientColor[1] = 0.08f;
 	g_glRaytracingLighting.constants.ambientColor[2] = 0.09f;
@@ -4344,6 +4915,10 @@ void glRaytracingLightingSetInvViewProjMatrix(const float* m16)
 		glRaytracingLightingResetDenoiseHistory();
 
 	memcpy(g_glRaytracingLighting.constants.invViewProj, m16, sizeof(float) * 16);
+
+	if (!glRaytracingInvertMatrix4x4(m16, g_glRaytracingLighting.constants.viewProj))
+		glRaytracingSetIdentity4x4(g_glRaytracingLighting.constants.viewProj);
+
 	glRaytracingLightingUpdateConstants();
 }
 
