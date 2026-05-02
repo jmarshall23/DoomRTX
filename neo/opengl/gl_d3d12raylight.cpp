@@ -2095,7 +2095,7 @@ struct glRaytracingLightingConstants_t
 	float denoisePhiColor;
 	float denoisePhiNormal;
 	float denoisePhiPosition;
-	float denoisePadding0;
+	float bumpStrength;
 };
 
 struct glRaytracingLightingState_t
@@ -2243,7 +2243,7 @@ cbuffer LightingCB : register(b0)
     float    gDenoisePhiColor;
     float    gDenoisePhiNormal;
     float    gDenoisePhiPosition;
-    float    gDenoisePadding0;
+    float    gBumpStrength;
 };
 
 StructuredBuffer<Light> gLights : register(t0);
@@ -2314,6 +2314,89 @@ float4 LoadSceneNormal(uint2 pixel)
 {
     float4 nSample = gNormalTex.Load(int3(pixel, 0));
     return nSample;
+}
+
+float SafeLengthSq(float3 v)
+{
+    return max(dot(v, v), 1e-8);
+}
+
+float3 SafeNormalizeLocal(float3 v, float3 fallback)
+{
+    float lenSq = dot(v, v);
+    return (lenSq > 1e-8) ? (v * rsqrt(lenSq)) : fallback;
+}
+
+float BumpLuminance(float3 c)
+{
+    return dot(c, float3(0.299, 0.587, 0.114));
+}
+
+float3 EnhanceBumpNormal(uint2 pixel, float3 worldPos, float3 baseAlbedo)
+{
+    float3 N = SafeNormalizeLocal(LoadSceneNormal(pixel).xyz, float3(0.0, 0.0, 1.0));
+
+    float strength = max(gBumpStrength, 0.0);
+    if (strength <= 0.001)
+        return N;
+
+    int2 p = int2(pixel);
+    int2 maxP = int2((int)gScreenSize.x - 1, (int)gScreenSize.y - 1);
+
+    int2 pxm = clamp(p + int2(-1,  0), int2(0, 0), maxP);
+    int2 pxp = clamp(p + int2( 1,  0), int2(0, 0), maxP);
+    int2 pym = clamp(p + int2( 0, -1), int2(0, 0), maxP);
+    int2 pyp = clamp(p + int2( 0,  1), int2(0, 0), maxP);
+
+    float3 posL = gPositionTex.Load(int3(pxm, 0)).xyz;
+    float3 posR = gPositionTex.Load(int3(pxp, 0)).xyz;
+    float3 posU = gPositionTex.Load(int3(pym, 0)).xyz;
+    float3 posD = gPositionTex.Load(int3(pyp, 0)).xyz;
+
+    float3 T = posR - posL;
+    float3 B = posD - posU;
+
+    // Fall back to a stable tangent basis when the position buffer is flat or invalid.
+    if (dot(T, T) <= 1e-8 || dot(B, B) <= 1e-8)
+    {
+        float3 up = (abs(N.z) < 0.999) ? float3(0.0, 0.0, 1.0) : float3(0.0, 1.0, 0.0);
+        T = SafeNormalizeLocal(cross(up, N), float3(1.0, 0.0, 0.0));
+        B = cross(N, T);
+    }
+    else
+    {
+        T = SafeNormalizeLocal(T - N * dot(N, T), float3(1.0, 0.0, 0.0));
+        B = SafeNormalizeLocal(B - N * dot(N, B), float3(0.0, 1.0, 0.0));
+    }
+
+    float hL = BumpLuminance(saturate(gAlbedoTex.Load(int3(pxm, 0)).rgb));
+    float hR = BumpLuminance(saturate(gAlbedoTex.Load(int3(pxp, 0)).rgb));
+    float hU = BumpLuminance(saturate(gAlbedoTex.Load(int3(pym, 0)).rgb));
+    float hD = BumpLuminance(saturate(gAlbedoTex.Load(int3(pyp, 0)).rgb));
+
+    // Height-gradient bump from the diffuse texture.  The scale is intentionally
+    // aggressive because the current renderer has no dedicated height/normal map
+    // slot here, and old idTech/Build textures need the fake relief to read.
+    float dhdx = (hR - hL);
+    float dhdy = (hD - hU);
+    float3 heightNormal = SafeNormalizeLocal(N - (T * dhdx + B * dhdy) * (strength * 4.25), N);
+
+    float3 nL = SafeNormalizeLocal(gNormalTex.Load(int3(pxm, 0)).xyz, N);
+    float3 nR = SafeNormalizeLocal(gNormalTex.Load(int3(pxp, 0)).xyz, N);
+    float3 nU = SafeNormalizeLocal(gNormalTex.Load(int3(pym, 0)).xyz, N);
+    float3 nD = SafeNormalizeLocal(gNormalTex.Load(int3(pyp, 0)).xyz, N);
+    float3 avgN = SafeNormalizeLocal((nL + nR + nU + nD) * 0.25, N);
+
+    // Amplify real G-buffer normal-map variation as well.
+    float3 detailN = SafeNormalizeLocal(N + (N - avgN) * (strength * 1.75), N);
+
+    float3 outN = SafeNormalizeLocal(lerp(detailN, heightNormal, 0.65), N);
+
+    // Avoid flipping normals so far that shadows/specular explode.
+    if (dot(outN, N) < 0.25)
+        outN = SafeNormalizeLocal(lerp(N, outN, 0.45), N);
+
+    return outN;
 }
 
 [shader("miss")]
@@ -2602,7 +2685,8 @@ float ComputePointLightAttenuation(float3 worldPos, Light Lgt)
 
     return projection * falloff;
 }
-
+)"
+R"(
 float ComputeSpotLightAttenuation(float3 worldPos, Light Lgt)
 {
     float3 lightToSurface = worldPos - Lgt.position;
@@ -3434,6 +3518,134 @@ float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 
     // applied later in RayGen just like direct lighting.
     return max(hitAlbedo * max(lighting, 0.0), 0.0);
 }
+
+)"
+R"(
+float3 EstimateReactiveScreenSpaceFinalGather(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, inout uint rng)
+{
+    // Cheap one-frame final gather / irradiance reuse.  This is intentionally not
+    // temporal: light and material changes show up immediately, while the costly
+    // DXR budget stays at one stochastic bounce ray.  The gather samples current
+    // G-buffer surfaces around the shaded pixel and shades them analytically as
+    // bounce emitters, so nearby lit/colorful visible surfaces push GI without
+    // adding more TraceRay() calls.
+    static const int2 kGatherTaps[6] =
+    {
+        int2(  7,   3),
+        int2( -9,   6),
+        int2(  5, -13),
+        int2( 17,  -8),
+        int2(-22, -15),
+        int2( 29,  18)
+    };
+
+    uint sampleBudget = 5u;
+
+    // Keep the pass cheap when many lights or high SPP are active.  This path
+    // has no DXR rays, but it still evaluates bounce lighting against the light
+    // list, so adapt the screen-space sample count instead of raising ray count.
+    if (gLightCount > 4u)
+        sampleBudget = 4u;
+    if (gLightCount > 10u)
+        sampleBudget = 3u;
+    if (gSamplesPerPixel >= 4u)
+        sampleBudget = min(sampleBudget, 3u);
+    if (gSamplesPerPixel >= 6u)
+        sampleBudget = min(sampleBudget, 2u);
+
+    int2 maxPixel = int2((int)gScreenSize.x - 1, (int)gScreenSize.y - 1);
+    float pixelScale = max(1.0, round(min(gScreenSize.x, gScreenSize.y) / 720.0));
+
+    // Doom/idTech-like unit scale: large enough to catch wall/floor color bleed,
+    // small enough to avoid room-to-room light leaking from unrelated screen hits.
+    const float MAX_GATHER_DISTANCE = 176.0;
+
+    float2 jitter = float2(
+        Hash12((float2)pixel + float2(13.7, 91.1)),
+        Hash12((float2)pixel + float2(47.3, 19.9))) - 0.5;
+
+    float3 accum = 0.0;
+    float weightSum = 0.0;
+
+    [loop]
+    for (uint i = 0u; i < 6u; ++i)
+    {
+        if (i >= sampleBudget)
+            break;
+
+        float2 tap = float2(kGatherTaps[i].x, kGatherTaps[i].y) * pixelScale;
+        int2 sp = int2(pixel) + int2(
+            (int)round(tap.x + jitter.x * pixelScale * 2.0),
+            (int)round(tap.y + jitter.y * pixelScale * 2.0));
+        sp = clamp(sp, int2(0, 0), maxPixel);
+
+        float sampleDepth = gDepthTex.Load(int3(sp, 0));
+        if (sampleDepth <= 0.0 || sampleDepth >= 1.0)
+            continue;
+
+        float4 samplePos4 = gPositionTex.Load(int3(sp, 0));
+        float3 samplePos = samplePos4.xyz;
+        uint sampleGeoFlag = DecodeGeometryFlag(samplePos4.w);
+        float3 sampleAlbedo = saturate(gAlbedoTex.Load(int3(sp, 0)).rgb);
+        float3 sampleNormal = SafeNormalizeOr(gNormalTex.Load(int3(sp, 0)).xyz, N);
+
+        float3 delta = samplePos - worldPos;
+        float distSq = dot(delta, delta);
+        if (distSq <= 1e-4)
+            continue;
+
+        float dist = sqrt(distSq);
+        if (dist >= MAX_GATHER_DISTANCE)
+            continue;
+
+        float3 dirToSample = delta / dist;
+        float receiverFacing = saturate(dot(N, dirToSample));
+        if (receiverFacing <= 0.02)
+            continue;
+
+        bool sampleIsUnlit = (sampleGeoFlag & GEOMETRY_FLAG_UNLIT) != 0u;
+        float emitterFacing = sampleIsUnlit ? 1.0 : saturate(dot(sampleNormal, -dirToSample));
+        if (emitterFacing <= 0.02)
+            continue;
+
+        float distanceFade = saturate(1.0 - dist / MAX_GATHER_DISTANCE);
+        distanceFade *= distanceFade;
+        float distanceWeight = 1.0 / (1.0 + distSq * 0.00018);
+
+        // Favor concave/near-facing exchange and suppress unrelated background
+        // samples that happen to be close in screen-space but far in world-space.
+        float normalAffinity = saturate(dot(N, sampleNormal) * 0.35 + 0.65);
+        float formWeight = receiverFacing * emitterFacing * distanceFade * distanceWeight * normalAffinity;
+
+        if (formWeight <= 1e-5)
+            continue;
+
+        float3 sampleView = SafeNormalizeOr(-dirToSample, V);
+        float3 outgoingRadiance = EstimateDirectLightingForBounceHit(
+            uint2(sp),
+            samplePos,
+            sampleNormal,
+            sampleView,
+            sampleAlbedo,
+            sampleGeoFlag,
+            rng);
+
+        accum += outgoingRadiance * formWeight;
+        weightSum += formWeight;
+    }
+
+    if (weightSum <= 1e-5)
+        return 0.0;
+
+    float3 gatheredRadiance = accum / weightSum;
+
+    // Coverage keeps one bright tap from flooding a pixel while still letting
+    // nearby high-confidence samples respond strongly to dynamic lights.
+    float coverage = saturate(weightSum * 1.65);
+
+    const float FINAL_GATHER_STRENGTH = 0.38;
+    return gatheredRadiance * coverage * FINAL_GATHER_STRENGTH;
+}
 )"
 R"(
 float3 TraceOneIndirectBouncePath(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, inout uint rng)
@@ -3551,29 +3763,13 @@ float3 EstimatePathTracedIndirectBounce(uint2 pixel, float3 worldPos, float3 N, 
     if (gMaxBounces <= 1u)
         return 0.0;
 
-    // The previous version forced up to four secondary rays per lighting sample,
-    // which made the pass scale badly with light count and SPP.  One indirect ray
-    // is enough in the common realtime mode because each secondary hit is now
-    // shaded against every active light.  Higher SPP can buy a little more GI
-    // coverage without tanking the default framerate.
-    uint indirectRayCount = 1u;
-    if (gSamplesPerPixel >= 6u && gLightCount > 2u)
-        indirectRayCount = 2u;
-    if (gSamplesPerPixel >= 8u && gLightCount > 5u)
-        indirectRayCount = 3u;
-    indirectRayCount = min(indirectRayCount, 3u);
+    // Keep the realtime GI ray budget flat: one stochastic DXR bounce path per
+    // lighting sample.  Extra GI coverage now comes from the reactive final
+    // gather in RayGen, which uses current-frame G-buffer reuse instead of more
+    // secondary TraceRay() calls.
+    float3 accum = TraceOneIndirectBouncePath(pixel, worldPos, N, V, baseAlbedo, rng);
 
-    float3 accum = 0.0;
-
-    [loop]
-    for (uint r = 0; r < indirectRayCount; ++r)
-    {
-        accum += TraceOneIndirectBouncePath(pixel, worldPos, N, V, baseAlbedo, rng);
-    }
-
-    accum /= (float)indirectRayCount;
-
-    const float INDIRECT_STRENGTH = 0.65;
+    const float INDIRECT_STRENGTH = 0.58;
     return accum * INDIRECT_STRENGTH;
 }
 
@@ -3668,7 +3864,7 @@ void RayGen()
     float4 positionSample = gPositionTex.Load(int3(pixel, 0));
     float3 worldPos       = positionSample.xyz;
     float4 normalSample   = LoadSceneNormal(pixel);
-    float3 N              = normalize(normalSample.xyz);
+    float3 N              = EnhanceBumpNormal(pixel, worldPos, baseAlbedo);
     float3 V              = normalize(gCameraPos.xyz - worldPos);
 
     uint geoFlag = DecodeGeometryFlag(positionSample.w);
@@ -3683,6 +3879,22 @@ void RayGen()
 
     uint spp = max(gSamplesPerPixel, 1u);
     spp = min(spp, 8u);
+
+    float3 reactiveFinalGather = 0.0;
+    if (gMaxBounces > 1u)
+    {
+        // Evaluate this deterministic screen-space irradiance reuse once per
+        // pixel, not once per SPP.  That makes the GI more responsive without
+        // multiplying the light-list work inside the stochastic sample loop.
+        uint gatherRng = InitRng(pixel, 0u, 1337u);
+        reactiveFinalGather = EstimateReactiveScreenSpaceFinalGather(
+            pixel,
+            worldPos,
+            N,
+            V,
+            baseAlbedo,
+            gatherRng);
+    }
 
     float3 colorAccum = 0.0;
 
@@ -3709,6 +3921,14 @@ void RayGen()
     }
 
     float3 finalColor = colorAccum / (float)spp;
+
+    if (gMaxBounces > 1u)
+    {
+        // reactiveFinalGather is incoming indirect radiance.  Apply the primary
+        // diffuse albedo here, matching the regular lighting path.
+        finalColor += baseAlbedo * reactiveFinalGather;
+    }
+
     gOutputTex[pixel] = float4(max(finalColor, 0.0), albedoSample.a);
 }
 )";
@@ -3737,7 +3957,7 @@ cbuffer LightingCB : register(b0)
     float    gDenoisePhiColor;
     float    gDenoisePhiNormal;
     float    gDenoisePhiPosition;
-    float    gDenoisePadding0;
+    float    gBumpStrength;
 };
 
 Texture2D<float4> gAlbedoTex      : register(t1);
@@ -4859,7 +5079,7 @@ bool glRaytracingLightingInit(void)
 	g_glRaytracingLighting.constants.denoisePhiColor = 8.0f;
 	g_glRaytracingLighting.constants.denoisePhiNormal = 64.0f;
 	g_glRaytracingLighting.constants.denoisePhiPosition = 0.045f;
-	g_glRaytracingLighting.constants.denoisePadding0 = 0.0f;
+	g_glRaytracingLighting.constants.bumpStrength = 2.35f;
 	glRaytracingLightingResetDenoiseHistory();
 
 	glRaytracingLightingUpdateConstants();
@@ -5013,6 +5233,18 @@ void glRaytracingLightingSetNormalReconstructSign(float signValue)
 		glRaytracingLightingResetDenoiseHistory();
 
 	g_glRaytracingLighting.constants.normalReconstructZ = signValue;
+	glRaytracingLightingUpdateConstants();
+}
+
+void glRaytracingLightingSetBumpStrength(float strength)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	strength = glRaytracingClamp<float>(strength, 0.0f, 8.0f);
+	if (g_glRaytracingLighting.constants.bumpStrength != strength)
+		glRaytracingLightingResetDenoiseHistory();
+
+	g_glRaytracingLighting.constants.bumpStrength = strength;
 	glRaytracingLightingUpdateConstants();
 }
 
