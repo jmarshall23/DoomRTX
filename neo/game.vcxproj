@@ -253,6 +253,7 @@
     </PreBuildEvent>
     <Link>
       <OutputFile>../gamex64.dll</OutputFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>

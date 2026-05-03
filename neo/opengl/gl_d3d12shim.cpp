@@ -9567,8 +9567,29 @@ static std::unordered_map<HPBUFFERARB, QD3D12Pbuffer*> g_qd3d12Pbuffers;
 
 static void QD3D12_RegisterWindowDC(QD3D12Window* w)
 {
-	if (w && w->hdc)
-		g_qd3d12DcToWindow[w->hdc] = w;
+	if (w == NULL) {
+		return;
+	}
+
+	const HDC hdc = w->hdc;
+	if (hdc == NULL) {
+		return;
+	}
+
+	// If the HDC is already registered, only update the pointer.
+	// This avoids insert/rehash for the common case.
+	std::unordered_map<HDC, QD3D12Window*>::iterator it = g_qd3d12DcToWindow.find(hdc);
+	if (it != g_qd3d12DcToWindow.end()) {
+		it->second = w;
+		return;
+	}
+
+	// Avoid tiny-map rehash behavior in release builds.
+	if (g_qd3d12DcToWindow.bucket_count() < 256) {
+		g_qd3d12DcToWindow.reserve(256);
+	}
+
+	g_qd3d12DcToWindow.emplace(hdc, w);
 }
 
 static void QD3D12_UnregisterWindowDC(HDC dc)

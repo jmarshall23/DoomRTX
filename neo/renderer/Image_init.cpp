@@ -1618,13 +1618,16 @@ idImage	*idImageManager::ImageFromFile( const char *_name, textureFilter_t filte
 	}
 
 
-	if (depth == TD_BUMP)
+	if (image->texnum != idImage::TEXTURE_NOT_LOADED)
 	{
-		glTextureNormalMap(image->texnum, true);
-	}
-	else
-	{
-		glTextureNormalMap(image->texnum, false);
+		if (depth == TD_BUMP)
+		{
+			glTextureNormalMap(image->texnum, true);
+		}
+		else
+		{
+			glTextureNormalMap(image->texnum, false);
+		}
 	}
 
 	return image;

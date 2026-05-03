@@ -42,5 +42,6 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArguments>+set r_fullscreen 0 +set r_mode 6</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>D:\projects\Doom3</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArgumentsHistory>+set r_fullscreen 0 +set r_mode 6|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
 </Project>
