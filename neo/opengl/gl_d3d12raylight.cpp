@@ -2695,7 +2695,9 @@ float ComputeSpotLightAttenuation(float3 worldPos, Light Lgt)
     float farClip  = max(Lgt.radius, nearClip + 1e-4);
 
     float3 spotDir = Doom3SafeNormalizeOr(Lgt.normal, float3(0.0, 0.0, 1.0));
+
     float depth = dot(lightToSurface, spotDir);
+
     if (depth <= nearClip || depth >= farClip)
         return 0.0;
 
@@ -2703,22 +2705,34 @@ float ComputeSpotLightAttenuation(float3 worldPos, Light Lgt)
     float3 axisV = Doom3SafeNormalizeOr(Lgt.axisV, float3(0.0, 1.0, 0.0));
 
     float invDepth = 1.0 / max(depth, 1e-4);
-    float projU = dot(lightToSurface, axisU) * invDepth;
-    float projV = dot(lightToSurface, axisV) * invDepth;
 
-    float halfU = max(abs(Lgt.halfWidth), 1e-4);
+    float halfU = max(abs(Lgt.halfWidth),  1e-4);
     float halfV = max(abs(Lgt.halfHeight), 1e-4);
 
-    float signedU = projU / halfU;
-    float signedV = projV / halfV;
+    float signedU = (dot(lightToSurface, axisU) * invDepth) / halfU;
+    float signedV = (dot(lightToSurface, axisV) * invDepth) / halfV;
 
     if (abs(signedU) >= 1.0 || abs(signedV) >= 1.0)
         return 0.0;
 
     float projection = Doom3ProjectionTexture2D(float2(signedU, signedV));
-    float falloff    = Doom3ProjectedDepthFalloff(depth, nearClip, farClip);
 
-    return projection * falloff;
+    float range = max(farClip - nearClip, 1e-4);
+    float t = saturate((depth - nearClip) / range);
+
+    /*
+        Stronger Doom 3-style projected-light behavior:
+        almost no depth attenuation, only a tiny fade at the very end.
+    */
+    float falloff = 1.0 - smoothstep(0.985, 1.0, t);
+
+    /*
+        Slight projected-light boost.
+        This helps match Doom 3's aggressive light volumes without changing shape.
+    */
+    float boost = 1.35;
+
+    return saturate(projection * falloff * boost);
 }
 
 float TraceSpotShadow(float3 worldPos, float3 N, float3 toLight, float dist)
