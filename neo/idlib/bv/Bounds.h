@@ -62,6 +62,8 @@ public:
 	void			Clear( void );									// inside out bounds
 	void			Zero( void );									// single point at origin
 
+	idVec3			Size(void) const;
+
 	idVec3			GetCenter( void ) const;						// returns center of bounds
 	float			GetRadius( void ) const;						// returns the radius relative to the bounds origin
 	float			GetRadius( const idVec3 &center ) const;		// returns the radius relative to the given center
@@ -331,6 +333,10 @@ ID_INLINE idBounds &idBounds::ExpandSelf( const float d ) {
 
 ID_INLINE idBounds idBounds::Translate( const idVec3 &translation ) const {
 	return idBounds( b[0] + translation, b[1] + translation );
+}
+
+ID_INLINE idVec3 idBounds::Size(void) const {
+	return(b[1] - b[0]);
 }
 
 ID_INLINE idBounds &idBounds::TranslateSelf( const idVec3 &translation ) {
