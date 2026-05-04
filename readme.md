@@ -1,4 +1,4 @@
-# Doom 3 IceBridge Direct3D 12 Path Tracing Demo
+# Doom 3 IceBridge Direct3D 12 with Path Tracing
 
 ![Doom 3 IceBridge Direct3D 12 Path Tracing](https://i.imgur.com/DRjYU5J.jpeg)
 
