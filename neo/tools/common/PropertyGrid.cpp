@@ -91,7 +91,7 @@ bool rvPropertyGrid::Create ( HWND parent, int id, int style )
 	dc = GetDC ( mWindow );
 	ZeroMemory ( &lf, sizeof(lf) );
 	lf.lfHeight = -MulDiv(8, GetDeviceCaps(dc, LOGPIXELSY), 72);
-	strcpy ( lf.lfFaceName, "MS Shell Dlg" );	
+	strcpy ( lf.lfFaceName, "Segoe UI" );	
 	SendMessage ( mWindow, WM_SETFONT, (WPARAM)CreateFontIndirect ( &lf ), 0 );		
 	SendMessage ( mEdit, WM_SETFONT, (WPARAM)CreateFontIndirect ( &lf ), 0 );		
 	ReleaseDC ( mWindow, dc );

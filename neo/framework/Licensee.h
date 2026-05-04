@@ -90,7 +90,7 @@ If you have questions concerning this license or the applicable additional terms
 // editor info
 #define EDITOR_DEFAULT_PROJECT			"doom.qe4"
 #define EDITOR_REGISTRY_KEY				"DOOMRadiant"
-#define EDITOR_WINDOWTEXT				"DOOMEdit"
+#define EDITOR_WINDOWTEXT				"IceEdit2"
 
 // win32 info
 #define WIN32_CONSOLE_CLASS				"DOOM 3 WinConsole"
