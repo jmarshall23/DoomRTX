@@ -51,7 +51,7 @@ public:
 	// these calls are forwarded from the renderer
 	void	SetColor( float r, float g, float b, float a );
 	void	DrawStretchPic( const idDrawVert *verts, const glIndex_t *indexes, int vertCount, int indexCount, const idMaterial *hShader,
-									bool clip = true, float min_x = 0.0f, float min_y = 0.0f, float max_x = 640.0f, float max_y = 480.0f );
+									bool clip = true, float min_x = 0.0f, float min_y = 0.0f, float max_x = SCREEN_WIDTH, float max_y = SCREEN_HEIGHT );
 	void	DrawStretchPic( float x, float y, float w, float h,
 									float s1, float t1, float s2, float t2, const idMaterial *hShader);
 	void	DrawStretchTri ( idVec2 p1, idVec2 p2, idVec2 p3, idVec2 t1, idVec2 t2, idVec2 t3, const idMaterial *material );

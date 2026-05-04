@@ -2399,18 +2399,12 @@ void idGameLocal::CalcFov( float base_fov, float &fov_x, float &fov_y ) const {
 	switch( r_aspectRatio.GetInteger() ) {
 	default :
 	case 0 :
-		// 4:3
-		fov_x = base_fov;
-		return;
-		break;
-
-	case 1 :
 		// 16:9
 		ratio_x = 16.0f;
 		ratio_y = 9.0f;
 		break;
 
-	case 2 :
+	case 1 :
 		// 16:10
 		ratio_x = 16.0f;
 		ratio_y = 10.0f;
@@ -4364,5 +4358,7 @@ void idGameLocal::SwitchTeam( int clientNum, int team ) {
 idGameLocal::GetMapLoadingGUI
 ===============
 */
-void idGameLocal::GetMapLoadingGUI( char gui[ MAX_STRING_CHARS ] ) { }
+void idGameLocal::GetMapLoadingGUI( char gui[ MAX_STRING_CHARS ] ) { 
+	sprintf(gui, "guis/loadscreenbeta.gui");
+}
 

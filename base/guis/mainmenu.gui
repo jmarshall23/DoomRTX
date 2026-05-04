@@ -1,0 +1,441 @@
+windowDef Desktop {
+	rect		0, 0, 1280, 720
+	backcolor 	0, 0, 0, 1
+	float Button 	"0"
+	float Menugui	"1"
+
+	onESC {
+		set "cmd" "close" ;
+	}
+
+
+	windowDef Background {
+		rect		0, 0, 1280, 720
+		background	"guis/assets/mainmenu/bg"
+		matcolor	1 ,1, 1, 1 
+		visible		1
+	}
+
+	windowDef Doom {
+		rect		162, 0, 972, 426
+		background	"guis/assets/schema/doom"
+		matcolor	1 ,1, 1, 1 
+		visible		1
+	}
+
+	windowDef DoomGlow {
+		rect		162, 0, 972, 426
+		background	"doomglow"
+		matcolor	1 ,1, 1, 1 
+		visible		1
+	}
+
+	windowDef Button1o {
+		rect		380, 405, 512, 48
+		background	"menu/button1"
+		matcolor	1 ,1, 1, 1
+		visible		0
+	}
+
+	windowDef Button2o {
+		rect		380, 465, 512, 48
+		background	"menu/button2"
+		matcolor	1 ,1, 1, 1
+		visible		0
+	}
+
+	windowDef Button3o {
+		rect		500, 525, 278, 48
+		background	"menu/button3"
+		matcolor	1 ,1, 1, 1
+		visible		0
+	}
+
+	windowDef Button4o {
+		rect		506, 585, 256, 48
+		background	"menu/button4"
+		matcolor	1 ,1, 1, 1
+		visible		0
+	}
+
+	windowDef Button5o {
+		rect		506, 645, 256, 48
+		background	"menu/button5"
+		matcolor	1 ,1, 1, 1
+		visible		0
+	}
+
+	windowDef PopUp {
+		rect		354, 660, 572, 60
+		background	"guis/assets/mainmenu/callout"
+		matcolor	1 ,1, 1, 0
+		visible		1
+	}
+
+	windowDef Button1 {
+		rect		380, 405, 512, 48
+		background	"guis/assets/mainmenu/1"
+		matcolor	1 ,1, 1, 0.9
+		visible		1
+
+		onMouseEnter {
+			set	"Button1o::visible" "1" ; 
+		} 
+		onMouseExit {
+			set	"Button1o::visible" "0" ; 
+		} 
+		onAction {
+			set	"cmd" "play guisounds_click" ; 
+			set "Desktop::Button" "1" ;
+			resetTime "Anim" "0" ;
+			resetTime "Click1" "0" ;
+			set	"Button1o::visible" "0" ; 
+				transition "Button2::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button3::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button4::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button5::matcolor" "1 1 1 0.9" "1 1 1 0" "200" ;
+		} 
+	}
+
+	windowDef Button2 {
+		rect		380, 465, 512, 48
+		background	"guis/assets/mainmenu/2"
+		matcolor	1 ,1, 1, 0.4
+		visible		1
+/*
+		onMouseEnter {
+			set	"Button2o::visible" "1" ; 
+		} 
+		onMouseExit {
+			set	"Button2o::visible" "0" ; 
+		} 
+		onAction {
+			set "Desktop::Button" "2" ;
+			resetTime "Anim" "0" ;
+			set	"Button2o::visible" "0" ; 
+				transition "Button1::matcolor" "1 1 1 0.9" "1 1 1 0" "200" ;
+				transition "Button3::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button4::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button5::matcolor" "1 1 1 0.9" "1 1 1 0" "200" ;
+		}
+*/
+	}
+
+	windowDef Button3 {
+		rect		500, 525, 278, 48
+		background	"guis/assets/mainmenu/3"
+		matcolor	1 ,1, 1, 0.4
+		visible		1
+	}
+
+	windowDef Button4 {
+		rect		506, 585, 256, 48
+		background	"guis/assets/mainmenu/4"
+		matcolor	1 ,1, 1, 0.4
+		visible		1
+	}
+
+	windowDef Button5 {
+		rect		506, 645, 256, 48
+		background	"guis/assets/mainmenu/5"
+		matcolor	1 ,1, 1, 0.9 
+		visible		1
+
+		onMouseEnter {
+			set	"Button5o::visible" "1" ; 
+		} 
+		onMouseExit {
+			set	"Button5o::visible" "0" ; 
+		} 
+		onAction {
+			set	"cmd" "play guisounds_click" ; 
+			set "Desktop::Button" "5" ;
+			resetTime "Anim" "0" ;
+			resetTime "Click5" "0" ;
+			set	"Button5o::visible" "0" ; 
+				transition "Button1::matcolor" "1 1 1 0.9" "1 1 1 0" "200" ;
+				transition "Button2::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button3::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+				transition "Button4::matcolor" "1 1 1 0.4" "1 1 1 0" "200" ;
+		} 
+	}
+
+	windowDef Text1a {
+		rect		354, 426, -572, 60
+		text		"New Game"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+		noevents	1
+
+		onMouseEnter {
+			set	"forecolor" "1 0.4 0 1" ;
+		} 
+		onMouseExit {
+			set	"forecolor" "1 0.1 0.1 1" ;
+		} 
+		onAction {
+			set	"cmd" "play guisounds_click" ; 
+			set 	"cmd" "startgame" ;
+			resetTime "Main1" "0" ;
+		} 
+	}
+	windowDef Text1b {
+		rect		354, 471, -572, 60
+		text		"Load Game"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+	}
+	windowDef Text1c {
+		rect		354, 516, -572, 60
+		text		"Cinematics"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+	}
+	windowDef Text1d {
+		rect		354, 561, -572, 60
+		text		"Demos"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+	}
+	windowDef Text1e {
+		rect		354, 606, -572, 60
+		text		"Main Menu"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+		noevents	1
+
+		onMouseEnter {
+			set	"forecolor" "1 0.4 0 1" ;
+		} 
+		onMouseExit {
+			set	"forecolor" "1 0.1 0.1 1" ;
+		} 
+		onAction {
+			set	"cmd" "play guisounds_close" ; 
+			resetTime "Main1" "0" ;
+		} 
+	}
+
+	windowDef Text5a {
+		rect		352, 450, -572, 120
+		text		"Are you sure you\nwant to exit?"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+	}
+
+	windowDef Text5b {
+		rect		420, 577.5, -200, 120
+		text		"Yes"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+		noevents	1
+
+		onMouseEnter {
+			set	"forecolor" "1 0.4 0 1" ;
+		} 
+		onMouseExit {
+			set	"forecolor" "1 0.1 0.1 1" ;
+		} 
+		onAction {
+			set	"cmd" "play guisounds_click" ; 
+			set 	"cmd" "quit" ;
+		} 
+	}
+
+	windowDef Text5c {
+		rect		660, 577.5, -200, 120
+		text		"No"
+		font		"fonts/chain"
+		textscale	0.75
+		textalign	1
+		forecolor	1, 0.1, 0.1, 0
+		noevents	1
+
+		onMouseEnter {
+			set	"forecolor" "1 0.4 0 1" ;
+		} 
+		onMouseExit {
+			set	"forecolor" "1 0.1 0.1 1" ;
+		} 
+		onAction {
+			set	"cmd" "play guisounds_close" ; 
+			resetTime "Main5" "0" ;
+		} 
+	}
+
+//////////////////////////
+//Animation
+/////////////////////////
+
+	windowDef Anim {
+		notime	1
+
+		onTime 0 {
+			set "Button1::noevents" "1" ;
+			set "Button2::noevents" "1" ;
+			set "Button3::noevents" "1" ;
+			set "Button4::noevents" "1" ;
+			set "Button5::noevents" "1" ;
+			transition "Button1::rect" "380 405 512 48" "380 675 512 48" "200" ;
+			transition "Button2::rect" "380 465 512 48" "380 675 512 48" "200" ;
+			transition "Button3::rect" "500 525 278 48" "500 675 278 48" "200" ;
+			transition "Button4::rect" "506 585 256 48" "506 675 256 48" "200" ;
+			transition "Button5::rect" "506 645 256 48" "506 675 256 48" "200" ;
+		}
+		onTime 0 {
+			transition "PopUp::matcolor" "1 1 1 0" "1 1 1 1" "100" ;
+			transition "PopUp::rect" "354 660 572 60" "354 406.5 572 313.5" "200" ;
+		}
+	}
+
+	windowDef Click1 {
+		notime	1
+
+		onTime 200 {
+			set "Text1a::rect" "354 426 572 60" ;
+			set "Text1a::noevents" "0" ;
+			transition "Text1a::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 1" "50" ;
+		}
+		onTime 250 {
+			set "Text1b::rect" "354 471 572 60" ;
+			transition "Text1b::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 0.5" "50" ;
+		}
+		onTime 300 {
+			set "Text1c::rect" "354 516 572 60" ;
+			transition "Text1c::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 0.5" "50" ;
+		}
+		onTime 350 {
+			set "Text1d::rect" "354 561 572 60" ;
+			transition "Text1d::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 0.5" "50" ;
+		}
+		onTime 400 {
+			set "Text1e::rect" "354 606 572 60" ;
+			set "Text1e::noevents" "0" ;
+			transition "Text1e::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 1" "50" ;
+		}
+	}
+
+	windowDef Main1 {
+		notime	1
+
+		onTime 0 {
+			set "Text1a::noevents" "1" ;
+			set "Text1e::noevents" "1" ;
+			transition "Text1a::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+			transition "Text1b::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+			transition "Text1c::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+			transition "Text1d::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+			transition "Text1e::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+		}
+		onTime 0 {
+			transition "Button1::rect" "380 675 512 48" "380 405 512 48" "300" ;
+			transition "Button2::rect" "380 675 512 48" "380 465 512 48" "300" ;
+			transition "Button3::rect" "500 675 278 48" "500 525 278 48" "300" ;
+			transition "Button4::rect" "506 675 256 48" "506 585 256 48" "300" ;
+			transition "Button5::rect" "506 675 256 48" "506 645 256 48" "300" ;
+			transition "PopUp::matcolor" "1 1 1 1" "1 1 1 0" "100" ;
+			transition "PopUp::rect" "354 406.5 572 313.5" "354 660 572 60" "200" ;
+		}
+		onTime 50 {
+			set "Text1a::rect" "354 426 -572 60" ;
+			set "Text1b::rect" "354 471 -572 60" ;
+			set "Text1c::rect" "354 516 -572 60" ;
+			set "Text1d::rect" "354 561 -572 60" ;
+			set "Text1e::rect" "354 606 -572 60" ;
+			transition "Button2::matcolor" "1 1 1 0" "1 1 1 0.4" "100" ;
+		}
+		onTime 125 {
+			transition "Button3::matcolor" "1 1 1 0" "1 1 1 0.4" "100" ;
+		}
+		onTime 200 {
+			transition "Button4::matcolor" "1 1 1 0" "1 1 1 0.4" "100" ;
+		}
+		onTime 275 {
+			transition "Button5::matcolor" "1 1 1 0" "1 1 1 0.9" "100" ;
+		}
+		onTime 300 {
+			set "Button1::noevents" "0" ;
+			set "Button2::noevents" "0" ;
+			set "Button3::noevents" "0" ;
+			set "Button4::noevents" "0" ;
+			set "Button5::noevents" "0" ;
+		}
+	}
+
+	windowDef Click5 {
+		notime	1
+
+		onTime 200 {
+			set "Text5a::rect" "352 450 572 120" ;
+			transition "Text5a::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 1" "50" ;
+		}
+		onTime 250 {
+			set "Text5b::rect" "420 577.5 200 120" ;
+			set "Text5b::noevents" "0" ;
+			transition "Text5b::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 1" "50" ;
+		}
+		onTime 300 {
+			set "Text5c::rect" "660 577.5 200 120" ;
+			set "Text5c::noevents" "0" ;
+			transition "Text5c::forecolor" "1 0.1 0.1 0" "1 0.1 0.1 1" "50" ;
+		}
+	}
+
+	windowDef Main5 {
+		notime	1
+
+		onTime 0 {
+			set "Text5b::noevents" "1" ;
+			set "Text5c::noevents" "1" ;
+			transition "Text5a::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+			transition "Text5b::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+			transition "Text5c::forecolor" "1 0.1 0.1 1" "1 0.1 0.1 0" "50" ;
+		}
+		onTime 0 {
+			transition "Button1::rect" "380 675 512 48" "380 405 512 48" "300" ;
+			transition "Button2::rect" "380 675 512 48" "380 465 512 48" "300" ;
+			transition "Button3::rect" "500 675 278 48" "500 525 278 48" "300" ;
+			transition "Button4::rect" "506 675 256 48" "506 585 256 48" "300" ;
+			transition "Button5::rect" "506 675 256 48" "506 645 256 48" "300" ;
+			transition "PopUp::matcolor" "1 1 1 1" "1 1 1 0" "100" ;
+			transition "PopUp::rect" "354 406.5 572 313.5" "354 660 572 60" "200" ;
+		}
+		onTime 50 {
+			set "Text5a::rect" "352 450 -572 120" ;
+			set "Text5b::rect" "420 577.5 -200 120" ;
+			set "Text5c::rect" "660 577.5 -200 120" ;
+			transition "Button1::matcolor" "1 1 1 0" "1 1 1 0.9" "100" ;
+		}
+		onTime 125 {
+			transition "Button2::matcolor" "1 1 1 0" "1 1 1 0.4" "100" ;
+		}
+		onTime 200 {
+			transition "Button3::matcolor" "1 1 1 0" "1 1 1 0.4" "100" ;
+		}
+		onTime 275 {
+			transition "Button4::matcolor" "1 1 1 0" "1 1 1 0.4" "100" ;
+		}
+		onTime 300 {
+			set "Button1::noevents" "0" ;
+			set "Button2::noevents" "0" ;
+			set "Button3::noevents" "0" ;
+			set "Button4::noevents" "0" ;
+			set "Button5::noevents" "0" ;
+		}
+	}
+
+}

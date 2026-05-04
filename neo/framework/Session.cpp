@@ -464,7 +464,7 @@ void idSessionLocal::StartWipe( const char *_wipeMaterial, bool hold ) {
 	console->Close();
 
 	// render the current screen into a texture for the wipe model
-	renderSystem->CropRenderSize( 640, 480, true );
+	renderSystem->CropRenderSize( SCREEN_WIDTH, SCREEN_HEIGHT, true );
 
 	Draw();
 
@@ -2230,7 +2230,7 @@ void	idSessionLocal::DrawWipeModel() {
 
 	float fade = ( float )( latchedTic - wipeStartTic ) / ( wipeStopTic - wipeStartTic );
 	renderSystem->SetColor4( 1, 1, 1, fade );
-	renderSystem->DrawStretchPic( 0, 0, 640, 480, 0, 0, 1, 1, wipeMaterial );
+	renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 1, 1, wipeMaterial );
 }
 
 /*
@@ -2383,7 +2383,7 @@ void idSessionLocal::Draw() {
 		// clear the background, in case the tested gui is transparent
 		// NOTE that you can't use this for aviGame recording, it will tick at real com_frameTime between screenshots..
 		renderSystem->SetColor( colorBlack );
-		renderSystem->DrawStretchPic( 0, 0, 640, 480, 0, 0, 1, 1, declManager->FindMaterial( "_white" ) );
+		renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 1, 1, declManager->FindMaterial( "_white" ) );
 		guiTest->Redraw( com_frameTime );
 	} else if ( guiActive && !guiActive->State().GetBool( "gameDraw" ) ) {
 		
@@ -2413,7 +2413,7 @@ void idSessionLocal::Draw() {
 		}
 		if ( !gameDraw ) {
 			renderSystem->SetColor( colorBlack );
-			renderSystem->DrawStretchPic( 0, 0, 640, 480, 0, 0, 1, 1, declManager->FindMaterial( "_white" ) );
+			renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 1, 1, declManager->FindMaterial( "_white" ) );
 		}
 
 		// save off the 2D drawing from the game

@@ -480,8 +480,8 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 	}
 
 	// make sure it is a power of 2
-	scaled_width = MakePowerOfTwo( width );
-	scaled_height = MakePowerOfTwo( height );
+	scaled_width = width;
+	scaled_height = height;
 
 	if ( scaled_width != width || scaled_height != height ) {
 		common->Error( "R_CreateImage: not a power of 2 image" );

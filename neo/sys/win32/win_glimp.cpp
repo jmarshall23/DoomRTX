@@ -271,8 +271,8 @@ static void GLW_GetWGLExtensionsWithFakeWindow( void ) {
     hWnd = CreateWindow(WIN32_FAKE_WINDOW_CLASS_NAME, GAME_NAME,
         WS_OVERLAPPEDWINDOW,
         40, 40,
-        640,
-        480,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
         NULL, NULL, win32.hInstance, NULL );
     if ( !hWnd ) {
         common->FatalError( "GLW_GetWGLExtensionsWithFakeWindow: Couldn't create fake window" );

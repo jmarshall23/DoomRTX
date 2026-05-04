@@ -258,7 +258,7 @@ bool rvGEWorkspace::NewFile ( void )
 		return false;
 	}
 	
-	empty = "windowDef Desktop { rect 0,0,640,480 }";
+	empty = "windowDef Desktop { rect 0,0,1280,720 }";
 	file->Write ( empty, empty.Length() );
 	fileSystem->CloseFile ( file );
 

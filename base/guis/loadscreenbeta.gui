@@ -1,0 +1,11 @@
+windowDef Desktop {
+	rect		0, 0, 1280, 720
+	backcolor 	0, 0, 0, 1
+
+	windowDef Background {
+		rect		0, 0, 1280, 720
+		background	"guis/assets/splash/launch"
+		matcolor	1 ,1, 1, 1 
+		visible		1
+	}
+}

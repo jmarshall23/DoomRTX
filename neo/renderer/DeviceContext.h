@@ -32,8 +32,8 @@ If you have questions concerning this license or the applicable additional terms
 // device context support for gui stuff
 //
 
-const int VIRTUAL_WIDTH = 640;
-const int VIRTUAL_HEIGHT = 480;
+const int VIRTUAL_WIDTH = SCREEN_WIDTH;
+const int VIRTUAL_HEIGHT = SCREEN_HEIGHT;
 const int BLINK_DIVISOR = 200;
 
 class idDeviceContext {

@@ -114,8 +114,8 @@ void idWindow::CommonInit() {
 	timeLine = -1;
 	xOffset = yOffset = 0.0;
 	cursor = 0;
-	forceAspectWidth = 640;
-	forceAspectHeight = 480;
+	forceAspectWidth = SCREEN_WIDTH;
+	forceAspectHeight = SCREEN_HEIGHT;
 	matScalex = 1;
 	matScaley = 1;
 	borderSize = 0;
@@ -2116,8 +2116,8 @@ void idWindow::SetInitialState(const char *_name) {
 	name = _name;
 	matScalex = 1.0;
 	matScaley = 1.0;
-	forceAspectWidth = 640.0;
-	forceAspectHeight = 480.0;
+	forceAspectWidth = SCREEN_WIDTH;
+	forceAspectHeight = SCREEN_HEIGHT;
 	noTime = false;
 	visible = true;
 	flags = 0;
@@ -4125,8 +4125,8 @@ default colors, etc..
 ================
 */
 void idWindow::SetDefaults ( void ) {
-	forceAspectWidth = 640.0f;
-	forceAspectHeight = 480.0f;
+	forceAspectWidth = SCREEN_WIDTH;
+	forceAspectHeight = SCREEN_HEIGHT;
 	matScalex = 1;
 	matScaley = 1;
 	borderSize = 0;

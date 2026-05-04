@@ -46,6 +46,784 @@ static char THIS_FILE[] = __FILE__;
 #endif
 extern void DrawPathLines();
 
+extern qertrace_t Test_Ray(const idVec3& origin, const idVec3& dir, int flags);
+extern void Select_ShiftTexture(float x, float y);
+extern void Select_ScaleTexture(float x, float y);
+extern void Select_RotateTexture(float amt, bool absolute);
+
+/*
+========================
+Camera navigation extension
+
+All settings are read from radiant.ini, section [3d navigation].  The default
+style is 1 so existing camera behavior is unchanged until style=2 is enabled.
+========================
+*/
+enum {
+	CAMERA_NAV_TIMER_ID = 713,
+	CAMERA_NAV_INFO_NONE = 0,
+	CAMERA_NAV_INFO_ENTITY = 1,
+	CAMERA_NAV_INFO_MATERIAL = 2,
+	CAMERA_NAV_MAX_INFO_LINES = 32
+};
+
+struct cameraNavConfig_t {
+	bool	loaded;
+	int		style;
+	int		forwardKey;
+	int		backKey;
+	int		upKey;
+	int		downKey;
+	int		leftKey;
+	int		rightKey;
+	int		modifier1Key;
+	int		modifier2Key;
+	bool	invertPitch;
+	bool	invertZTrans;
+	float	capsLockScale;
+	int		reticleMode;
+	float	reticleScale;
+	idVec3	reticleColor;
+	int		teleportKey;
+	int		infoDisplayKey;
+	int		lockTargetKey;
+	bool	invertLockPitch;
+	bool	invertLockYaw;
+	int		texPositionKey;
+	int		texScaleKey;
+	int		texRotateKey;
+};
+
+struct cameraNavState_t {
+	CCamWnd* cam;
+	bool	active;
+	bool	lockActive;
+	int		infoMode;
+	CPoint	cursorAnchor;
+	int		lastTime;
+	idVec3	lockTarget;
+	float	lockDistance;
+	float	lockPitch;
+	float	lockYaw;
+};
+
+static cameraNavConfig_t s_cameraNavConfig;
+static cameraNavState_t s_cameraNavState;
+
+static void CameraNav_GetIniPath(char* path, int pathSize) {
+	if (pathSize <= 0) {
+		return;
+	}
+
+	path[0] = '\0';
+	DWORD len = GetModuleFileName(NULL, path, pathSize);
+	if (len == 0 || len >= (DWORD)pathSize) {
+		strncpy(path, "radiant.ini", pathSize - 1);
+		path[pathSize - 1] = '\0';
+		return;
+	}
+
+	char* slash = strrchr(path, '\\');
+	char* slash2 = strrchr(path, '/');
+	if (slash2 && (!slash || slash2 > slash)) {
+		slash = slash2;
+	}
+	if (slash) {
+		strncpy(slash + 1, "radiant.ini", pathSize - (int)(slash + 1 - path) - 1);
+		path[pathSize - 1] = '\0';
+	}
+	else {
+		strncpy(path, "radiant.ini", pathSize - 1);
+		path[pathSize - 1] = '\0';
+	}
+}
+
+static void CameraNav_NormalizeKeyName(const char* in, char* out, int outSize) {
+	if (outSize <= 0) {
+		return;
+	}
+
+	out[0] = '\0';
+	if (!in) {
+		return;
+	}
+
+	int outPos = 0;
+	while (*in && outPos < outSize - 1) {
+		unsigned char c = (unsigned char)*in++;
+		if (c == ' ' || c == '\t' || c == '_' || c == '-') {
+			continue;
+		}
+		out[outPos++] = (char)tolower(c);
+	}
+	out[outPos] = '\0';
+}
+
+static int CameraNav_ParseKeyName(const char* text) {
+	char keyName[64];
+	CameraNav_NormalizeKeyName(text, keyName, sizeof(keyName));
+
+	if (keyName[0] == '\0' || !stricmp(keyName, "none") || !stricmp(keyName, "0")) {
+		return 0;
+	}
+
+	if (keyName[1] == '\0') {
+		char c = keyName[0];
+		if (c >= 'a' && c <= 'z') {
+			return c - 'a' + 'A';
+		}
+		if (c >= '0' && c <= '9') {
+			return c;
+		}
+	}
+
+	if (!stricmp(keyName, "space")) return VK_SPACE;
+	if (!stricmp(keyName, "backspace")) return VK_BACK;
+	if (!stricmp(keyName, "escape") || !stricmp(keyName, "esc")) return VK_ESCAPE;
+	if (!stricmp(keyName, "end")) return VK_END;
+	if (!stricmp(keyName, "insert") || !stricmp(keyName, "ins")) return VK_INSERT;
+	if (!stricmp(keyName, "delete") || !stricmp(keyName, "del")) return VK_DELETE;
+	if (!stricmp(keyName, "pageup") || !stricmp(keyName, "pgup")) return VK_PRIOR;
+	if (!stricmp(keyName, "pagedown") || !stricmp(keyName, "pgdn")) return VK_NEXT;
+	if (!stricmp(keyName, "up")) return VK_UP;
+	if (!stricmp(keyName, "down")) return VK_DOWN;
+	if (!stricmp(keyName, "left")) return VK_LEFT;
+	if (!stricmp(keyName, "right")) return VK_RIGHT;
+	if (!stricmp(keyName, "tab")) return VK_TAB;
+	if (!stricmp(keyName, "return") || !stricmp(keyName, "enter")) return VK_RETURN;
+	if (!stricmp(keyName, "comma")) return VK_OEM_COMMA;
+	if (!stricmp(keyName, "period")) return VK_OEM_PERIOD;
+	if (!stricmp(keyName, "plus")) return VK_ADD;
+	if (!stricmp(keyName, "multiply")) return VK_MULTIPLY;
+	if (!stricmp(keyName, "subtract") || !stricmp(keyName, "minus")) return VK_SUBTRACT;
+	if (!stricmp(keyName, "shift")) return VK_SHIFT;
+	if (!stricmp(keyName, "ctrl") || !stricmp(keyName, "control")) return VK_CONTROL;
+	if (!stricmp(keyName, "alt")) return VK_MENU;
+	if (!stricmp(keyName, "capslock")) return VK_CAPITAL;
+
+	if (keyName[0] == 'f') {
+		int n = atoi(keyName + 1);
+		if (n >= 1 && n <= 12) {
+			return VK_F1 + n - 1;
+		}
+	}
+	if (!strnicmp(keyName, "numpad", 6)) {
+		int n = atoi(keyName + 6);
+		if (n >= 0 && n <= 9) {
+			return VK_NUMPAD0 + n;
+		}
+	}
+
+	return 0;
+}
+
+static int CameraNav_ReadKey(const char* iniPath, const char* keyName, const char* defaultValue) {
+	char value[64];
+	GetPrivateProfileString("3d navigation", keyName, defaultValue ? defaultValue : "", value, sizeof(value), iniPath);
+	return CameraNav_ParseKeyName(value);
+}
+
+static float CameraNav_ReadFloat(const char* iniPath, const char* keyName, const char* defaultValue) {
+	char value[64];
+	GetPrivateProfileString("3d navigation", keyName, defaultValue, value, sizeof(value), iniPath);
+	return (float)atof(value);
+}
+
+static void CameraNav_ReadColor(const char* iniPath, const char* keyName, const char* defaultValue, idVec3& color) {
+	char value[128];
+	float r = 50.0f;
+	float g = 230.0f;
+	float b = 50.0f;
+
+	GetPrivateProfileString("3d navigation", keyName, defaultValue, value, sizeof(value), iniPath);
+	if (sscanf(value, "%f%*[ ,]%f%*[ ,]%f", &r, &g, &b) != 3) {
+		r = 50.0f;
+		g = 230.0f;
+		b = 50.0f;
+	}
+
+	color[0] = (r > 1.0f) ? r / 255.0f : r;
+	color[1] = (g > 1.0f) ? g / 255.0f : g;
+	color[2] = (b > 1.0f) ? b / 255.0f : b;
+}
+
+static cameraNavConfig_t& CameraNav_Config() {
+	cameraNavConfig_t& cfg = s_cameraNavConfig;
+	if (cfg.loaded) {
+		return cfg;
+	}
+
+	char iniPath[MAX_PATH];
+	CameraNav_GetIniPath(iniPath, sizeof(iniPath));
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.loaded = true;
+	cfg.style = GetPrivateProfileInt("3d navigation", "style", 1, iniPath);
+	cfg.forwardKey = CameraNav_ReadKey(iniPath, "forward", "w");
+	cfg.backKey = CameraNav_ReadKey(iniPath, "back", "s");
+	cfg.upKey = CameraNav_ReadKey(iniPath, "up", "space");
+	cfg.downKey = CameraNav_ReadKey(iniPath, "down", "shift");
+	cfg.leftKey = CameraNav_ReadKey(iniPath, "left", "a");
+	cfg.rightKey = CameraNav_ReadKey(iniPath, "right", "d");
+	cfg.modifier1Key = CameraNav_ReadKey(iniPath, "modifier1", "q");
+	cfg.modifier2Key = CameraNav_ReadKey(iniPath, "modifier2", "e");
+	cfg.invertPitch = GetPrivateProfileInt("3d navigation", "invertpitch", 0, iniPath) != 0;
+	cfg.invertZTrans = GetPrivateProfileInt("3d navigation", "invertztrans", 0, iniPath) != 0;
+	cfg.capsLockScale = CameraNav_ReadFloat(iniPath, "capslockscale", "1");
+	if (cfg.capsLockScale <= 0.0f) {
+		cfg.capsLockScale = 1.0f;
+	}
+	cfg.reticleMode = GetPrivateProfileInt("3d navigation", "reticlemode", 0, iniPath);
+	cfg.reticleScale = CameraNav_ReadFloat(iniPath, "reticlescale", "1");
+	if (cfg.reticleScale <= 0.0f) {
+		cfg.reticleScale = 1.0f;
+	}
+	CameraNav_ReadColor(iniPath, "reticlecolor", "50 230 50", cfg.reticleColor);
+
+	// Extra navigation features are opt-in.  They only bind when a key is present
+	// in radiant.ini, which avoids stealing existing editor shortcuts by default.
+	cfg.teleportKey = CameraNav_ReadKey(iniPath, "teleport", "");
+	cfg.infoDisplayKey = CameraNav_ReadKey(iniPath, "infodisplay", "");
+	cfg.lockTargetKey = CameraNav_ReadKey(iniPath, "locktarget", "");
+	cfg.invertLockPitch = GetPrivateProfileInt("3d navigation", "invertlockpitch", 0, iniPath) != 0;
+	cfg.invertLockYaw = GetPrivateProfileInt("3d navigation", "invertlockyaw", 0, iniPath) != 0;
+	cfg.texPositionKey = CameraNav_ReadKey(iniPath, "texposition", "");
+	cfg.texScaleKey = CameraNav_ReadKey(iniPath, "texscale", "");
+	cfg.texRotateKey = CameraNav_ReadKey(iniPath, "texrotate", "");
+
+	return cfg;
+}
+
+static bool CameraNav_KeyIsDown(int key) {
+	return key != 0 && (GetAsyncKeyState(key) & 0x8000) != 0;
+}
+
+static float CameraNav_CapsScale() {
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	return (GetKeyState(VK_CAPITAL) & 1) ? cfg.capsLockScale : 1.0f;
+}
+
+static float CameraNav_MoveSpeed() {
+	float speed = (float)g_PrefsDlg.m_nMoveSpeed;
+	if (speed <= 0.0f) {
+		speed = 64.0f;
+	}
+	return speed * CameraNav_CapsScale();
+}
+
+static void CameraNav_GetAxes(const camera_t& camera, idVec3& forward, idVec3& right, idVec3& up) {
+	float yaw = camera.angles[YAW] * idMath::M_DEG2RAD;
+	float pitch = -camera.angles[PITCH] * idMath::M_DEG2RAD;
+	float sy = sin(yaw);
+	float cy = cos(yaw);
+	float sp = sin(pitch);
+	float cp = cos(pitch);
+
+	forward[0] = cp * cy;
+	forward[1] = cp * sy;
+	forward[2] = -sp;
+	forward.Normalize();
+
+	right[0] = sy;
+	right[1] = -cy;
+	right[2] = 0.0f;
+	right.Normalize();
+
+	up[0] = right[1] * forward[2] - right[2] * forward[1];
+	up[1] = right[2] * forward[0] - right[0] * forward[2];
+	up[2] = right[0] * forward[1] - right[1] * forward[0];
+	up.Normalize();
+}
+
+static idVec3 CameraNav_ForwardFromAngles(float pitchDegrees, float yawDegrees) {
+	camera_t temp;
+	memset(&temp, 0, sizeof(temp));
+	temp.angles[PITCH] = pitchDegrees;
+	temp.angles[YAW] = yawDegrees;
+	idVec3 forward, right, up;
+	CameraNav_GetAxes(temp, forward, right, up);
+	return forward;
+}
+
+static void CameraNav_UpdateViews() {
+	int nUpdate = (g_PrefsDlg.m_bCamXYUpdate) ? (W_CAMERA | W_XY) : W_CAMERA;
+	Sys_UpdateWindows(nUpdate);
+	if (g_pParentWnd) {
+		g_pParentWnd->PostMessage(WM_TIMER, 0, 0);
+	}
+}
+
+static bool CameraNav_IsActive(CCamWnd* cam) {
+	return s_cameraNavState.active && s_cameraNavState.cam == cam;
+}
+
+static bool CameraNav_TraceCenter(CCamWnd* cam, qertrace_t& trace, idVec3* hitPoint = NULL, idVec3* outDir = NULL) {
+	camera_t& camera = cam->Camera();
+	idVec3 forward, right, up;
+	CameraNav_GetAxes(camera, forward, right, up);
+	trace = Test_Ray(camera.origin, forward, 0);
+
+	if (outDir) {
+		*outDir = forward;
+	}
+	if (!trace.brush || trace.dist <= 0.0f || trace.dist >= HUGE_DISTANCE) {
+		return false;
+	}
+	if (hitPoint) {
+		*hitPoint = camera.origin + forward * trace.dist;
+	}
+	return true;
+}
+
+static void CameraNav_Stop(CCamWnd* cam) {
+	if (!CameraNav_IsActive(cam)) {
+		return;
+	}
+
+	cam->KillTimer(CAMERA_NAV_TIMER_ID);
+	if (::GetCapture() == cam->GetSafeHwnd()) {
+		::ReleaseCapture();
+	}
+	s_cameraNavState.active = false;
+	s_cameraNavState.lockActive = false;
+	Sys_UpdateWindows(W_CAMERA);
+}
+
+static bool CameraNav_Begin(CCamWnd* cam) {
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	if (cfg.style != 2) {
+		return false;
+	}
+
+	if (s_cameraNavState.active && s_cameraNavState.cam != cam) {
+		CameraNav_Stop(s_cameraNavState.cam);
+	}
+
+	memset(&s_cameraNavState, 0, sizeof(s_cameraNavState));
+	s_cameraNavState.cam = cam;
+	s_cameraNavState.active = true;
+	s_cameraNavState.lastTime = Sys_Milliseconds();
+	GetCursorPos(&s_cameraNavState.cursorAnchor);
+
+	cam->SetFocus();
+	cam->SetCapture();
+	cam->SetTimer(CAMERA_NAV_TIMER_ID, 10, NULL);
+	Sys_UpdateWindows(W_CAMERA);
+	return true;
+}
+
+static void CameraNav_ClampPitch(float& pitch) {
+	if (pitch > 89.0f) {
+		pitch = 89.0f;
+	}
+	else if (pitch < -89.0f) {
+		pitch = -89.0f;
+	}
+}
+
+static bool CameraNav_StartLock(CCamWnd* cam) {
+	qertrace_t trace;
+	idVec3 hit;
+	if (!CameraNav_TraceCenter(cam, trace, &hit)) {
+		return false;
+	}
+
+	camera_t& camera = cam->Camera();
+	s_cameraNavState.lockActive = true;
+	s_cameraNavState.lockTarget = hit;
+	s_cameraNavState.lockDistance = trace.dist;
+	if (s_cameraNavState.lockDistance < 16.0f) {
+		s_cameraNavState.lockDistance = 16.0f;
+	}
+	s_cameraNavState.lockPitch = camera.angles[PITCH];
+	s_cameraNavState.lockYaw = camera.angles[YAW];
+	return true;
+}
+
+static void CameraNav_ApplyLock(CCamWnd* cam) {
+	camera_t& camera = cam->Camera();
+	CameraNav_ClampPitch(s_cameraNavState.lockPitch);
+
+	idVec3 forward = CameraNav_ForwardFromAngles(s_cameraNavState.lockPitch, s_cameraNavState.lockYaw);
+	camera.origin = s_cameraNavState.lockTarget - forward * s_cameraNavState.lockDistance;
+	camera.angles[PITCH] = s_cameraNavState.lockPitch;
+	camera.angles[YAW] = s_cameraNavState.lockYaw;
+	camera.angles[ROLL] = 0.0f;
+}
+
+static void CameraNav_Teleport(CCamWnd* cam) {
+	qertrace_t trace;
+	idVec3 hit;
+	idVec3 dir;
+	if (!CameraNav_TraceCenter(cam, trace, &hit, &dir)) {
+		return;
+	}
+
+	camera_t& camera = cam->Camera();
+	float moveDist = trace.dist - 64.0f;
+	if (moveDist < 0.0f) {
+		moveDist = trace.dist * 0.5f;
+	}
+	camera.origin += dir * moveDist;
+	CameraNav_UpdateViews();
+}
+
+static bool CameraNav_IsMovementOrModifierKey(int key) {
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	return key == cfg.forwardKey || key == cfg.backKey || key == cfg.upKey || key == cfg.downKey ||
+		key == cfg.leftKey || key == cfg.rightKey || key == cfg.modifier1Key || key == cfg.modifier2Key ||
+		key == cfg.texPositionKey || key == cfg.texScaleKey || key == cfg.texRotateKey;
+}
+
+static bool CameraNav_HandleKeyDown(CCamWnd* cam, UINT key) {
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	if (cfg.style != 2 || !CameraNav_IsActive(cam)) {
+		return false;
+	}
+
+	if (cfg.infoDisplayKey && key == (UINT)cfg.infoDisplayKey) {
+		s_cameraNavState.infoMode = (s_cameraNavState.infoMode + 1) % 3;
+		Sys_UpdateWindows(W_CAMERA);
+		return true;
+	}
+	if (cfg.teleportKey && key == (UINT)cfg.teleportKey) {
+		CameraNav_Teleport(cam);
+		return true;
+	}
+	if (cfg.lockTargetKey && key == (UINT)cfg.lockTargetKey) {
+		CameraNav_StartLock(cam);
+		return true;
+	}
+	if (CameraNav_IsMovementOrModifierKey((int)key)) {
+		return true;
+	}
+
+	return false;
+}
+
+static bool CameraNav_HandleKeyUp(CCamWnd* cam, UINT key) {
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	if (cfg.style != 2 || !CameraNav_IsActive(cam)) {
+		return false;
+	}
+
+	if (cfg.lockTargetKey && key == (UINT)cfg.lockTargetKey) {
+		s_cameraNavState.lockActive = false;
+		return true;
+	}
+	if (CameraNav_IsMovementOrModifierKey((int)key)) {
+		return true;
+	}
+	return false;
+}
+
+static bool CameraNav_Update(CCamWnd* cam) {
+	if (!CameraNav_IsActive(cam)) {
+		return false;
+	}
+
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	int now = Sys_Milliseconds();
+	float dtime = (now - s_cameraNavState.lastTime) * 0.001f;
+	if (dtime <= 0.0f) {
+		dtime = 0.01f;
+	}
+	else if (dtime > 0.1f) {
+		dtime = 0.1f;
+	}
+	s_cameraNavState.lastTime = now;
+
+	if (cfg.lockTargetKey) {
+		if (CameraNav_KeyIsDown(cfg.lockTargetKey)) {
+			if (!s_cameraNavState.lockActive) {
+				CameraNav_StartLock(cam);
+			}
+		}
+		else if (s_cameraNavState.lockActive) {
+			s_cameraNavState.lockActive = false;
+		}
+	}
+
+	camera_t& camera = cam->Camera();
+	idVec3 forward, right, up;
+	CameraNav_GetAxes(camera, forward, right, up);
+
+	if (s_cameraNavState.lockActive) {
+		float zoom = 0.0f;
+		if (CameraNav_KeyIsDown(cfg.forwardKey)) {
+			zoom -= CameraNav_MoveSpeed() * dtime;
+		}
+		if (CameraNav_KeyIsDown(cfg.backKey)) {
+			zoom += CameraNav_MoveSpeed() * dtime;
+		}
+		if (zoom != 0.0f) {
+			s_cameraNavState.lockDistance += zoom;
+			if (s_cameraNavState.lockDistance < 16.0f) {
+				s_cameraNavState.lockDistance = 16.0f;
+			}
+			CameraNav_ApplyLock(cam);
+			CameraNav_UpdateViews();
+		}
+		return true;
+	}
+
+	idVec3 move;
+	move[0] = move[1] = move[2] = 0.0f;
+	if (CameraNav_KeyIsDown(cfg.forwardKey)) {
+		move += forward;
+	}
+	if (CameraNav_KeyIsDown(cfg.backKey)) {
+		move -= forward;
+	}
+	if (CameraNav_KeyIsDown(cfg.leftKey)) {
+		move -= right;
+	}
+	if (CameraNav_KeyIsDown(cfg.rightKey)) {
+		move += right;
+	}
+	if (CameraNav_KeyIsDown(cfg.upKey)) {
+		move[2] += 1.0f;
+	}
+	if (CameraNav_KeyIsDown(cfg.downKey)) {
+		move[2] -= 1.0f;
+	}
+
+	if (move.LengthSqr() > 0.0f) {
+		move.Normalize();
+		camera.origin += move * (CameraNav_MoveSpeed() * dtime);
+		CameraNav_UpdateViews();
+	}
+
+	return true;
+}
+
+static bool CameraNav_MouseMove(CCamWnd* cam) {
+	if (!CameraNav_IsActive(cam)) {
+		return false;
+	}
+
+	CPoint current;
+	GetCursorPos(&current);
+	int dx = current.x - s_cameraNavState.cursorAnchor.x;
+	int dy = current.y - s_cameraNavState.cursorAnchor.y;
+	if (dx == 0 && dy == 0) {
+		return true;
+	}
+
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	camera_t& camera = cam->Camera();
+	bool textureAdjusted = false;
+
+	if (cfg.texPositionKey && CameraNav_KeyIsDown(cfg.texPositionKey)) {
+		Select_ShiftTexture((float)dx, (float)-dy, false);
+		textureAdjusted = true;
+	}
+	else if (cfg.texScaleKey && CameraNav_KeyIsDown(cfg.texScaleKey)) {
+		Select_ScaleTexture((float)dx, (float)-dy, false);
+		textureAdjusted = true;
+	}
+	else if (cfg.texRotateKey && CameraNav_KeyIsDown(cfg.texRotateKey)) {
+		Select_RotateTexture((float)dy, false);
+		textureAdjusted = true;
+	}
+
+	if (textureAdjusted) {
+		SetCursorPos(s_cameraNavState.cursorAnchor.x, s_cameraNavState.cursorAnchor.y);
+		Sys_UpdateWindows(W_ALL);
+		return true;
+	}
+
+	if (s_cameraNavState.lockActive) {
+		float yawSign = cfg.invertLockYaw ? 1.0f : -1.0f;
+		float pitchSign = cfg.invertLockPitch ? 1.0f : -1.0f;
+		s_cameraNavState.lockYaw += dx * 0.25f * yawSign;
+		s_cameraNavState.lockPitch += dy * 0.25f * pitchSign;
+		CameraNav_ApplyLock(cam);
+	}
+	else if (CameraNav_KeyIsDown(cfg.modifier1Key)) {
+		idVec3 forward, right, up;
+		CameraNav_GetAxes(camera, forward, right, up);
+		float scale = CameraNav_CapsScale();
+		float zMove = cfg.invertZTrans ? (float)dy : (float)-dy;
+		camera.origin += right * ((float)dx * scale);
+		camera.origin[2] += zMove * scale;
+	}
+	else if (CameraNav_KeyIsDown(cfg.modifier2Key)) {
+		idVec3 forward, right, up;
+		CameraNav_GetAxes(camera, forward, right, up);
+		float scale = CameraNav_CapsScale();
+		camera.origin += forward * ((float)-dy * scale);
+		camera.angles[YAW] -= (float)dx * 0.25f;
+	}
+	else {
+		float pitchSign = cfg.invertPitch ? 1.0f : -1.0f;
+		camera.angles[PITCH] += (float)dy * 0.25f * pitchSign;
+		camera.angles[YAW] -= (float)dx * 0.25f;
+		CameraNav_ClampPitch(camera.angles[PITCH]);
+	}
+
+	SetCursorPos(s_cameraNavState.cursorAnchor.x, s_cameraNavState.cursorAnchor.y);
+	CameraNav_UpdateViews();
+	return true;
+}
+
+static bool CameraNav_HandleMouseWheel(HWND hWnd, WPARAM wParam) {
+	CWnd* wnd = CWnd::FromHandlePermanent(hWnd);
+	CCamWnd* cam = DYNAMIC_DOWNCAST(CCamWnd, wnd);
+	if (!cam) {
+		return false;
+	}
+
+	short wheelDelta = (short)HIWORD(wParam);
+	if (wheelDelta == 0) {
+		return false;
+	}
+
+	camera_t& camera = cam->Camera();
+	idVec3 forward, right, up;
+	CameraNav_GetAxes(camera, forward, right, up);
+
+	float notches = (float)wheelDelta / 120.0f;
+	camera.origin += forward * (notches * CameraNav_MoveSpeed());
+	CameraNav_UpdateViews();
+	return true;
+}
+
+static const char* CameraNav_SurfaceTypeName(surfTypes_t type) {
+	switch (type)
+	{
+	case SURFTYPE_METAL: return "metal";
+	case SURFTYPE_STONE: return "stone";
+	case SURFTYPE_FLESH: return "flesh";
+	case SURFTYPE_WOOD: return "wood";
+	case SURFTYPE_CARDBOARD: return "cardboard";
+	case SURFTYPE_LIQUID: return "liquid";
+	case SURFTYPE_GLASS: return "glass";
+	case SURFTYPE_PLASTIC: return "plastic";
+	case SURFTYPE_RICOCHET: return "ricochet";
+	default: return "none";
+	}
+}
+
+static void CameraNav_AddLine(idStr* lines, int& numLines, const char* text) {
+	if (numLines >= CAMERA_NAV_MAX_INFO_LINES) {
+		return;
+	}
+	lines[numLines++] = text;
+}
+
+static void CameraNav_BuildEntityInfo(CCamWnd* cam, idStr* lines, int& numLines) {
+	qertrace_t trace;
+	if (!CameraNav_TraceCenter(cam, trace)) {
+		CameraNav_AddLine(lines, numLines, "Entity: <none>");
+		return;
+	}
+
+	entity_t* ent = trace.brush->owner;
+	CameraNav_AddLine(lines, numLines, "Entity");
+	CameraNav_AddLine(lines, numLines, va("class: %s", ValueForKey(ent, "classname")));
+	CameraNav_AddLine(lines, numLines, va("name: %s", ValueForKey(ent, "name")));
+
+	for (int i = 0; i < ent->epairs.GetNumKeyVals() && numLines < CAMERA_NAV_MAX_INFO_LINES; i++) {
+		const idKeyValue* kv = ent->epairs.GetKeyVal(i);
+		if (!kv) {
+			continue;
+		}
+		CameraNav_AddLine(lines, numLines, va("%s = %s", kv->GetKey().c_str(), kv->GetValue().c_str()));
+	}
+}
+
+static void CameraNav_BuildMaterialInfo(CCamWnd* cam, idStr* lines, int& numLines) {
+	qertrace_t trace;
+	if (!CameraNav_TraceCenter(cam, trace) || !trace.face || !trace.face->d_texture) {
+		CameraNav_AddLine(lines, numLines, "Material: <none>");
+		return;
+	}
+
+	const idMaterial* material = trace.face->d_texture;
+	CameraNav_AddLine(lines, numLines, "Material");
+	CameraNav_AddLine(lines, numLines, material->GetName());
+	CameraNav_AddLine(lines, numLines, va("size: %d x %d", material->GetImageWidth(), material->GetImageHeight()));
+	CameraNav_AddLine(lines, numLines, va("surface: %s", CameraNav_SurfaceTypeName(material->GetSurfaceType())));
+	CameraNav_AddLine(lines, numLines, va("content flags: 0x%08x", material->GetContentFlags()));
+	CameraNav_AddLine(lines, numLines, va("surface flags: 0x%08x", material->GetSurfaceFlags()));
+	CameraNav_AddLine(lines, numLines, va("stages: %d", material->GetNumStages()));
+	CameraNav_AddLine(lines, numLines, va("decl: %s:%d", material->GetFileName(), material->GetLineNum()));
+	if (material->GetDescription() && material->GetDescription()[0]) {
+		CameraNav_AddLine(lines, numLines, va("desc: %s", material->GetDescription()));
+	}
+}
+
+static void CameraNav_DrawOverlay(CCamWnd* cam) {
+	cameraNavConfig_t& cfg = CameraNav_Config();
+	camera_t& camera = cam->Camera();
+
+	bool drawReticle = (cfg.reticleMode == 2) || (cfg.reticleMode == 1 && CameraNav_IsActive(cam));
+	bool drawInfo = (s_cameraNavState.infoMode != CAMERA_NAV_INFO_NONE);
+	if (!drawReticle && !drawInfo) {
+		return;
+	}
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glOrtho(0, camera.width, 0, camera.height, -1, 1);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LIGHTING);
+	glDisable(GL_BLEND);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	globalImages->BindNull();
+
+	if (drawReticle) {
+		float cx = camera.width * 0.5f;
+		float cy = camera.height * 0.5f;
+		float size = 8.0f * cfg.reticleScale;
+		float gap = 3.0f * cfg.reticleScale;
+		glColor3fv(cfg.reticleColor.ToFloatPtr());
+		glBegin(GL_LINES);
+		glVertex2f(cx - size, cy);
+		glVertex2f(cx - gap, cy);
+		glVertex2f(cx + gap, cy);
+		glVertex2f(cx + size, cy);
+		glVertex2f(cx, cy - size);
+		glVertex2f(cx, cy - gap);
+		glVertex2f(cx, cy + gap);
+		glVertex2f(cx, cy + size);
+		glEnd();
+	}
+
+	if (drawInfo && g_qeglobals.d_font_list) {
+		idStr lines[CAMERA_NAV_MAX_INFO_LINES];
+		int numLines = 0;
+		if (s_cameraNavState.infoMode == CAMERA_NAV_INFO_ENTITY) {
+			CameraNav_BuildEntityInfo(cam, lines, numLines);
+		}
+		else if (s_cameraNavState.infoMode == CAMERA_NAV_INFO_MATERIAL) {
+			CameraNav_BuildMaterialInfo(cam, lines, numLines);
+		}
+
+		//glColor3f(1.0f, 1.0f, 1.0f);
+		//glListBase(g_qeglobals.d_font_list);
+		//int y = camera.height - 18;
+		//for (int i = 0; i < numLines && y > 8; i++, y -= 14) {
+		//	const char* text = lines[i].c_str();
+		//	glRasterPos2i(8, y);
+		//	glCallLists(strlen(text), GL_UNSIGNED_BYTE, text);
+		//}
+	}
+
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+}
+
+
 int g_axialAnchor = -1;
 int g_axialDest = -1;
 bool g_bAxialMode = false;
@@ -133,9 +911,25 @@ INT_PTR WINAPI CamWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg)
 	{
 	case WM_KILLFOCUS:
-	case WM_SETFOCUS:
-		SendMessage(hWnd, WM_NCACTIVATE, uMsg == WM_SETFOCUS, 0);
+	{
+		CWnd* wnd = CWnd::FromHandlePermanent(hWnd);
+		CCamWnd* cam = DYNAMIC_DOWNCAST(CCamWnd, wnd);
+		if (cam) {
+			CameraNav_Stop(cam);
+		}
+		SendMessage(hWnd, WM_NCACTIVATE, FALSE, 0);
 		return 0;
+	}
+
+	case WM_SETFOCUS:
+		SendMessage(hWnd, WM_NCACTIVATE, TRUE, 0);
+		return 0;
+
+	case WM_MOUSEWHEEL:
+		if (CameraNav_HandleMouseWheel(hWnd, wParam)) {
+			return 0;
+		}
+		break;
 
 	case WM_NCCALCSIZE: // don't let windows copy pixels
 		DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -187,6 +981,9 @@ BOOL CCamWnd::PreCreateWindow(CREATESTRUCT& cs) {
  =======================================================================================================================
  */
 void CCamWnd::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
+	if (CameraNav_HandleKeyDown(this, nChar)) {
+		return;
+	}
 	g_pParentWnd->HandleKey(nChar, nRepCnt, nFlags);
 }
 
@@ -247,15 +1044,24 @@ extern void Select_RotateTexture(float amt, bool absolute);
 void CCamWnd::OnMouseMove(UINT nFlags, CPoint point) {
 	CRect	r;
 	GetClientRect(r);
-	if (GetCapture() == this && (GetAsyncKeyState(VK_MENU) & 0x8000) && !((GetAsyncKeyState(VK_SHIFT) & 0x8000) || (GetAsyncKeyState(VK_CONTROL) & 0x8000))) {
+
+	if (CameraNav_MouseMove(this)) {
+		m_ptLastCursor = point;
+		return;
+	}
+
+	if (GetCapture() == this && (GetAsyncKeyState(VK_MENU) & 0x8000)) {
+		// Alt-drag texture manipulation.  The old condition excluded shift/control
+		// before checking them, so alt+shift and alt+control never reached the
+		// scale/rotate paths and could interrupt normal shift-select drags.
 		if (GetAsyncKeyState(VK_CONTROL) & 0x8000) {
 			Select_RotateTexture((float)point.y - m_ptLastCursor.y);
 		}
 		else if (GetAsyncKeyState(VK_SHIFT) & 0x8000) {
-			Select_ScaleTexture((float)point.x - m_ptLastCursor.x, (float)m_ptLastCursor.y - point.y);
+			Select_ScaleTexture((float)point.x - m_ptLastCursor.x, (float)m_ptLastCursor.y - point.y, false);
 		}
 		else {
-			Select_ShiftTexture((float)point.x - m_ptLastCursor.x, (float)m_ptLastCursor.y - point.y);
+			Select_ShiftTexture((float)point.x - m_ptLastCursor.x, (float)m_ptLastCursor.y - point.y, false);
 		}
 	}
 	else {
@@ -271,6 +1077,16 @@ void CCamWnd::OnMouseMove(UINT nFlags, CPoint point) {
  */
 void CCamWnd::OnLButtonDown(UINT nFlags, CPoint point) {
 	m_ptLastCursor = point;
+	if (CameraNav_IsActive(this)) {
+		CRect r;
+		GetClientRect(r);
+		int x = r.Width() / 2;
+		int y = r.Height() / 2;
+		Cam_MouseDown(x, y, MK_LBUTTON);
+		Cam_MouseUp(x, y, 0);
+		Sys_UpdateWindows(W_ALL);
+		return;
+	}
 	OriginalMouseDown(nFlags, point);
 }
 
@@ -303,6 +1119,10 @@ void CCamWnd::OnMButtonUp(UINT nFlags, CPoint point) {
  =======================================================================================================================
  */
 void CCamWnd::OnRButtonDown(UINT nFlags, CPoint point) {
+	m_ptLastCursor = point;
+	if (!(nFlags & (MK_SHIFT | MK_CONTROL)) && CameraNav_Begin(this)) {
+		return;
+	}
 	OriginalMouseDown(nFlags, point);
 }
 
@@ -311,6 +1131,10 @@ void CCamWnd::OnRButtonDown(UINT nFlags, CPoint point) {
  =======================================================================================================================
  */
 void CCamWnd::OnRButtonUp(UINT nFlags, CPoint point) {
+	if (CameraNav_IsActive(this)) {
+		CameraNav_Stop(this);
+		return;
+	}
 	OriginalMouseUp(nFlags, point);
 }
 
@@ -1136,6 +1960,8 @@ void CCamWnd::Cam_Draw() {
 	//
 	globalImages->BindNull();
 
+	CameraNav_DrawOverlay(this);
+
 	glFinish();
 	QE_CheckOpenGLForErrors();
 
@@ -1165,6 +1991,9 @@ void CCamWnd::OnSize(UINT nType, int cx, int cy) {
  =======================================================================================================================
  */
 void CCamWnd::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags) {
+	if (CameraNav_HandleKeyUp(this, nChar)) {
+		return;
+	}
 	g_pParentWnd->HandleKey(nChar, nRepCnt, nFlags, false);
 }
 
@@ -2350,7 +3179,7 @@ void CCamWnd::FreeRendererState() {
 			ent->lightDef = -1;
 		}
 	}
-	
+
 
 	for (int i = s_editorBModelStates.Num() - 1; i >= 0; i--) {
 		EditorFreeBModelState(i);
@@ -2630,6 +3459,11 @@ void CCamWnd::Cam_Render() {
 
 void CCamWnd::OnTimer(UINT_PTR nIDEvent)
 {
+	if (nIDEvent == CAMERA_NAV_TIMER_ID) {
+		CameraNav_Update(this);
+		return;
+	}
+
 	if (animationMode || nIDEvent == 1) {
 		Sys_UpdateWindows(W_CAMERA);
 	}

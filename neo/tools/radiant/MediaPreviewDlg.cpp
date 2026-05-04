@@ -172,8 +172,8 @@ void CMediaPreviewDlg::OnMouseMove(UINT nFlags, CPoint point)
 			sysEvent_t  ev;
 			memset( &ev, 0, sizeof( ev ) );
 			ev.evType = SE_MOUSE;
-			ev.evValue = (point.x / rct.Width()) * 640.0f;
-			ev.evValue2 = (point.y / rct.Height()) * 480.0f;
+			ev.evValue = (point.x / rct.Width()) * SCREEN_WIDTH;
+			ev.evValue2 = (point.y / rct.Height()) * SCREEN_HEIGHT;
 			gui->HandleEvent(&ev, 0);
 		}
 	}
