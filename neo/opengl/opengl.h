@@ -1662,7 +1662,16 @@ typedef struct glRaytracingLight_s
 	// point/spot: 0 disables shadows, non-zero enables them
 	uint32_t           twoSided;      // rect: 0/1, ignored for point / spot
 	float              persistant;
-	float              pad1;
+	union
+    {
+        // Backward-compatible name.  Kept so existing code that zeroes/uses pad1
+        // still has the same ABI and StructuredBuffer stride.
+        float pad1;
+
+        // Point/spot volumetric light scattering strength.  <= 0 disables it.
+        // Useful Doom 3-range values are generally 0.25f..1.0f.
+        float volumetricScattering;
+    };
 
 	glRaytracingVec3_t pointRadius;   // point: XYZ attenuation radii
 	// spot: x = near clip, y/z unused
@@ -2244,3 +2253,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+void glRaytracingLightingSetVolumetricScattering(glRaytracingLight_t* light, float strength);

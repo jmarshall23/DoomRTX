@@ -190,11 +190,25 @@ void APIENTRY glRaytracingMaterialFlagQD3D12(GLuint flag, GLboolean enable);
 // whenever an external denoiser such as DLSS Ray Reconstruction will consume it.
 void glRaytracingLightingSetExternalDenoiser(int enable);
 void glRaytracingLightingSetPathTracingOptions(uint32_t samplesPerPixel, uint32_t maxBounces, int enableDenoiser, float denoiseStrength);
+void glRaytracingLightingSetVolumetricScattering(glRaytracingLight_t* light, float strength);
 void glRaytracingSetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle, uint32_t materialFlags);
 void glRaytracingSetMeshGlass(glRaytracingMeshHandle_t meshHandle, int isGlass);
 uint32_t glRaytracingGetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle);
 void QD3D12_SetPathTracingQuality(uint32_t samplesPerPixel, uint32_t maxBounces);
 void QD3D12_SetPathTracingFallbackSamples(uint32_t samplesPerPixel);
+void QD3D12_SetCameraInfo(
+	const float* viewToClip,
+	const float* clipToView,
+	const float* clipToPrevClip,
+	const float* prevClipToClip,
+	const float* cameraPos,
+	const float* cameraRight,
+	const float* cameraUp,
+	const float* cameraForward,
+	float nearPlane,
+	float farPlane,
+	float verticalFovRadians,
+	float aspectRatio);
 
 static void QD3D12_CreateUploadRingForWindow(struct QD3D12Window& w);
 static void QD3D12_DestroyUploadRingForWindow(struct QD3D12Window& w);
@@ -303,6 +317,7 @@ enum QD3D12RTVSlotGroup
 };
 
 static const DXGI_FORMAT QD3D12_SceneColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+static const DXGI_FORMAT QD3D12_StreamlineOutputFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 static const DXGI_FORMAT QD3D12_VelocityFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 static const DXGI_FORMAT QD3D12_DepthFormat = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
 static const DXGI_FORMAT QD3D12_DepthResourceFormat = DXGI_FORMAT_R32G8X24_TYPELESS;
@@ -487,7 +502,7 @@ struct GLBufferObject
 const char* vendor = "Justin Marshall";
 const char* renderer = "Quake D3D12 Wrapper";
 const char* version = "1.1-quake-d3d12";
-const char* extensions = "GL_SGIS_multitexture GL_ARB_multitexture GL_EXT_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_compression GL_EXT_texture_compression_s3tc GL_ARB_vertex_program GL_ARB_fragment_program GL_EXT_texture_cube_map GL_EXT_depth_bounds_test GL_EXT_stencil_two_side GL_ATI_separate_stencil GL_QD3D12_normal_map GL_QD3D12_glass_material";
+const char* extensions = "GL_SGIS_multitexture GL_ARB_multitexture GL_EXT_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_compression GL_EXT_texture_compression_s3tc GL_ARB_vertex_program GL_ARB_fragment_program GL_EXT_texture_cube_map GL_EXT_depth_bounds_test GL_EXT_stencil_two_side GL_ATI_separate_stencil GL_QD3D12_normal_map GL_QD3D12_glass_material GL_QD3D12_volumetric_light";
 
 enum TexEnvModeShader
 {
@@ -758,6 +773,12 @@ struct QD3D12Window
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> backBuffers;
 	D3D12_RESOURCE_STATES backBufferState[QD3D12_FrameCount] = {};
 
+	// Streamline/DLSS/DLSS-RR writes through UAV, so do not tag the swap-chain
+	// backbuffer as kBufferTypeScalingOutputColor. Streamline writes here first;
+	// the shim then samples this texture and copies into the swap-chain RTV.
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> slOutputBuffers;
+	D3D12_RESOURCE_STATES slOutputState[QD3D12_FrameCount] = {};
+
 	ComPtr<ID3D12DescriptorHeap> dsvHeap;
 	ComPtr<ID3D12Resource> depthBuffer;
 	D3D12_RESOURCE_STATES depthState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
@@ -781,6 +802,10 @@ struct QD3D12Window
 	UINT velocitySrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
 	D3D12_CPU_DESCRIPTOR_HANDLE velocitySrvCpu[QD3D12_FrameCount]{};
 	D3D12_GPU_DESCRIPTOR_HANDLE velocitySrvGpu[QD3D12_FrameCount]{};
+
+	UINT slOutputSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
+	D3D12_CPU_DESCRIPTOR_HANDLE slOutputSrvCpu[QD3D12_FrameCount]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE slOutputSrvGpu[QD3D12_FrameCount]{};
 
 	UINT depthSrvIndex = UINT_MAX;
 	D3D12_CPU_DESCRIPTOR_HANDLE depthSrvCpu{};
@@ -1158,6 +1183,354 @@ static std::unordered_map<HWND, QD3D12Window> g_windows;
 QD3D12Window* g_currentWindow = nullptr;
 
 static std::unordered_map<uint32_t, uint32_t> g_qd3d12RaytracingMeshMaterialFlags;
+
+struct QD3D12AutoCameraHistory
+{
+	bool haveLastCamera = false;
+	bool haveFramePrevious = false;
+	uint64_t frameSerial = UINT64_MAX;
+	float lastViewToClip[16] = {};
+	float lastWorldToView[16] = {};
+	float framePreviousViewToClip[16] = {};
+	float framePreviousWorldToView[16] = {};
+};
+
+static QD3D12AutoCameraHistory g_qd3d12AutoCamera;
+
+static void QD3D12_MatrixIdentity(float* m)
+{
+	memset(m, 0, sizeof(float) * 16);
+	m[0] = 1.0f;
+	m[5] = 1.0f;
+	m[10] = 1.0f;
+	m[15] = 1.0f;
+}
+
+static bool QD3D12_MatrixFinite(const float* m)
+{
+	if (!m)
+		return false;
+
+	for (int i = 0; i < 16; ++i)
+	{
+		if (!std::isfinite(m[i]))
+			return false;
+	}
+
+	return true;
+}
+
+static void QD3D12_MatrixCopy(float* dst, const float* src)
+{
+	memcpy(dst, src, sizeof(float) * 16);
+}
+
+static void QD3D12_MatrixMultiplyCM(const float* a, const float* b, float* out)
+{
+	float r[16];
+
+	for (int col = 0; col < 4; ++col)
+	{
+		for (int row = 0; row < 4; ++row)
+		{
+			float v = 0.0f;
+			for (int k = 0; k < 4; ++k)
+				v += a[k * 4 + row] * b[col * 4 + k];
+			r[col * 4 + row] = v;
+		}
+	}
+
+	memcpy(out, r, sizeof(r));
+}
+
+static bool QD3D12_MatrixInvertCM(const float* m, float* out)
+{
+	if (!QD3D12_MatrixFinite(m) || !out)
+		return false;
+
+	float a[4][8];
+
+	for (int r = 0; r < 4; ++r)
+	{
+		for (int c = 0; c < 4; ++c)
+			a[r][c] = m[c * 4 + r];
+
+		for (int c = 0; c < 4; ++c)
+			a[r][4 + c] = (r == c) ? 1.0f : 0.0f;
+	}
+
+	for (int col = 0; col < 4; ++col)
+	{
+		int pivot = col;
+		float best = fabsf(a[col][col]);
+
+		for (int r = col + 1; r < 4; ++r)
+		{
+			const float v = fabsf(a[r][col]);
+			if (v > best)
+			{
+				best = v;
+				pivot = r;
+			}
+		}
+
+		if (best <= 1.0e-8f)
+			return false;
+
+		if (pivot != col)
+		{
+			for (int c = 0; c < 8; ++c)
+			{
+				const float tmp = a[col][c];
+				a[col][c] = a[pivot][c];
+				a[pivot][c] = tmp;
+			}
+		}
+
+		const float invPivot = 1.0f / a[col][col];
+		for (int c = 0; c < 8; ++c)
+			a[col][c] *= invPivot;
+
+		for (int r = 0; r < 4; ++r)
+		{
+			if (r == col)
+				continue;
+
+			const float f = a[r][col];
+			if (f == 0.0f)
+				continue;
+
+			for (int c = 0; c < 8; ++c)
+				a[r][c] -= f * a[col][c];
+		}
+	}
+
+	for (int r = 0; r < 4; ++r)
+	{
+		for (int c = 0; c < 4; ++c)
+			out[c * 4 + r] = a[r][4 + c];
+	}
+
+	return QD3D12_MatrixFinite(out);
+}
+
+static bool QD3D12_IsPerspectiveProjectionCM(const float* projection)
+{
+	if (!QD3D12_MatrixFinite(projection))
+		return false;
+
+	// OpenGL perspective matrices have m[11] = -1 and m[15] = 0 in column-major
+	// storage.  Orthographic/UI passes must not replace the real game camera used
+	// by DLSS Ray Reconstruction.
+	return fabsf(projection[11]) > 0.5f && fabsf(projection[15]) < 1.0e-4f;
+}
+
+static void QD3D12_ConvertGLProjectionToD3DClipCM(const float* glProjection, float* d3dProjection)
+{
+	QD3D12_MatrixCopy(d3dProjection, glProjection);
+
+	// The raster shader does: clip.z = 0.5 * (clip.z + clip.w).  Bake that same
+	// GL [-w,+w] to D3D [0,+w] depth remap into the matrix given to Streamline.
+	for (int col = 0; col < 4; ++col)
+	{
+		const int z = col * 4 + 2;
+		const int w = col * 4 + 3;
+		d3dProjection[z] = 0.5f * (glProjection[z] + glProjection[w]);
+	}
+}
+
+static void QD3D12_Normalize3(float* v, const float* fallback)
+{
+	float lenSq = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+	if (lenSq <= 1.0e-8f || !std::isfinite(lenSq))
+	{
+		v[0] = fallback[0];
+		v[1] = fallback[1];
+		v[2] = fallback[2];
+		return;
+	}
+
+	const float invLen = 1.0f / sqrtf(lenSq);
+	v[0] *= invLen;
+	v[1] *= invLen;
+	v[2] *= invLen;
+}
+
+static void QD3D12_DeriveProjectionScalars(
+	const float* glProjection,
+	float fallbackAspect,
+	float* outNearPlane,
+	float* outFarPlane,
+	float* outVerticalFovRadians,
+	float* outAspectRatio)
+{
+	float nearPlane = 0.01f;
+	float farPlane = 4096.0f;
+	float verticalFov = 1.0471975512f;
+	float aspectRatio = (fallbackAspect > 0.0f) ? fallbackAspect : 1.0f;
+
+	const float xScale = fabsf(glProjection[0]);
+	const float yScale = fabsf(glProjection[5]);
+	if (yScale > 1.0e-6f)
+		verticalFov = 2.0f * atanf(1.0f / yScale);
+	if (xScale > 1.0e-6f && yScale > 1.0e-6f)
+		aspectRatio = yScale / xScale;
+
+	const float A = glProjection[10];
+	const float B = glProjection[14];
+	const float nDenom = A - 1.0f;
+	const float fDenom = A + 1.0f;
+	if (fabsf(nDenom) > 1.0e-6f && fabsf(fDenom) > 1.0e-6f)
+	{
+		const float n = B / nDenom;
+		const float f = B / fDenom;
+		if (std::isfinite(n) && std::isfinite(f) && n > 0.0f && f > n)
+		{
+			nearPlane = n;
+			farPlane = f;
+		}
+	}
+
+	*outNearPlane = nearPlane;
+	*outFarPlane = farPlane;
+	*outVerticalFovRadians = verticalFov;
+	*outAspectRatio = aspectRatio;
+}
+
+static void QD3D12_ResetAutoCameraHistory()
+{
+	g_qd3d12AutoCamera = QD3D12AutoCameraHistory{};
+	g_gl.cameraState.valid = false;
+}
+
+static bool QD3D12_UpdateCameraInfoFromCurrentMatrices()
+{
+	if (g_gl.projStack.empty() || g_gl.modelStack.empty())
+		return false;
+
+	const float* glProjection = g_gl.projStack.back().m;
+	const float* modelView = g_gl.modelStack.back().m;
+	const float* modelToWorld = g_gl.modelMatrix.m;
+
+	if (!QD3D12_IsPerspectiveProjectionCM(glProjection) ||
+		!QD3D12_MatrixFinite(modelView) ||
+		!QD3D12_MatrixFinite(modelToWorld))
+	{
+		return false;
+	}
+
+	float worldToModel[16];
+	if (!QD3D12_MatrixInvertCM(modelToWorld, worldToModel))
+		return false;
+
+	float worldToView[16];
+	QD3D12_MatrixMultiplyCM(modelView, worldToModel, worldToView);
+
+	float viewToClip[16];
+	QD3D12_ConvertGLProjectionToD3DClipCM(glProjection, viewToClip);
+
+	float clipToView[16];
+	if (!QD3D12_MatrixInvertCM(viewToClip, clipToView))
+		return false;
+
+	float viewToWorld[16];
+	if (!QD3D12_MatrixInvertCM(worldToView, viewToWorld))
+		return false;
+
+	if (!g_qd3d12AutoCamera.haveFramePrevious ||
+		g_qd3d12AutoCamera.frameSerial != g_gl.frameSerial)
+	{
+		if (!g_qd3d12AutoCamera.haveLastCamera || g_gl.motionHistoryReset)
+		{
+			QD3D12_MatrixCopy(g_qd3d12AutoCamera.framePreviousViewToClip, viewToClip);
+			QD3D12_MatrixCopy(g_qd3d12AutoCamera.framePreviousWorldToView, worldToView);
+		}
+		else
+		{
+			QD3D12_MatrixCopy(g_qd3d12AutoCamera.framePreviousViewToClip, g_qd3d12AutoCamera.lastViewToClip);
+			QD3D12_MatrixCopy(g_qd3d12AutoCamera.framePreviousWorldToView, g_qd3d12AutoCamera.lastWorldToView);
+		}
+
+		g_qd3d12AutoCamera.frameSerial = g_gl.frameSerial;
+		g_qd3d12AutoCamera.haveFramePrevious = true;
+	}
+
+	float currentClipToWorld[16];
+	QD3D12_MatrixMultiplyCM(viewToWorld, clipToView, currentClipToWorld);
+
+	float previousClipToView[16];
+	float previousViewToWorld[16];
+	if (!QD3D12_MatrixInvertCM(g_qd3d12AutoCamera.framePreviousViewToClip, previousClipToView) ||
+		!QD3D12_MatrixInvertCM(g_qd3d12AutoCamera.framePreviousWorldToView, previousViewToWorld))
+	{
+		QD3D12_MatrixIdentity(previousClipToView);
+		QD3D12_MatrixCopy(previousViewToWorld, viewToWorld);
+	}
+
+	float previousClipToWorld[16];
+	QD3D12_MatrixMultiplyCM(previousViewToWorld, previousClipToView, previousClipToWorld);
+
+	float worldToCurrentClip[16];
+	QD3D12_MatrixMultiplyCM(viewToClip, worldToView, worldToCurrentClip);
+
+	float worldToPreviousClip[16];
+	QD3D12_MatrixMultiplyCM(
+		g_qd3d12AutoCamera.framePreviousViewToClip,
+		g_qd3d12AutoCamera.framePreviousWorldToView,
+		worldToPreviousClip);
+
+	float clipToPrevClip[16];
+	float prevClipToClip[16];
+	QD3D12_MatrixMultiplyCM(worldToPreviousClip, currentClipToWorld, clipToPrevClip);
+	QD3D12_MatrixMultiplyCM(worldToCurrentClip, previousClipToWorld, prevClipToClip);
+
+	float cameraPos[3] = { viewToWorld[12], viewToWorld[13], viewToWorld[14] };
+	float cameraRight[3] = { viewToWorld[0], viewToWorld[1], viewToWorld[2] };
+	float cameraUp[3] = { viewToWorld[4], viewToWorld[5], viewToWorld[6] };
+	float cameraForward[3] = { -viewToWorld[8], -viewToWorld[9], -viewToWorld[10] };
+	const float rightFallback[3] = { 1.0f, 0.0f, 0.0f };
+	const float upFallback[3] = { 0.0f, 1.0f, 0.0f };
+	const float forwardFallback[3] = { 0.0f, 0.0f, -1.0f };
+	QD3D12_Normalize3(cameraRight, rightFallback);
+	QD3D12_Normalize3(cameraUp, upFallback);
+	QD3D12_Normalize3(cameraForward, forwardFallback);
+
+	float fallbackAspect = 1.0f;
+	if (g_currentWindow && g_currentWindow->renderHeight > 0)
+		fallbackAspect = (float)g_currentWindow->renderWidth / (float)g_currentWindow->renderHeight;
+
+	float nearPlane = 0.01f;
+	float farPlane = 4096.0f;
+	float verticalFovRadians = 1.0471975512f;
+	float aspectRatio = fallbackAspect;
+	QD3D12_DeriveProjectionScalars(
+		glProjection,
+		fallbackAspect,
+		&nearPlane,
+		&farPlane,
+		&verticalFovRadians,
+		&aspectRatio);
+
+	QD3D12_SetCameraInfo(
+		viewToClip,
+		clipToView,
+		clipToPrevClip,
+		prevClipToClip,
+		cameraPos,
+		cameraRight,
+		cameraUp,
+		cameraForward,
+		nearPlane,
+		farPlane,
+		verticalFovRadians,
+		aspectRatio);
+
+	QD3D12_MatrixCopy(g_qd3d12AutoCamera.lastViewToClip, viewToClip);
+	QD3D12_MatrixCopy(g_qd3d12AutoCamera.lastWorldToView, worldToView);
+	g_qd3d12AutoCamera.haveLastCamera = true;
+	return true;
+}
+
 
 static inline uint32_t QD3D12_ClampRayMaterialFlags(uint32_t flags)
 {
@@ -2630,6 +3003,7 @@ static BatchKey BuildCurrentBatchKey(GLenum originalMode, const TextureResource*
 	key.motionObjectId = g_gl.currentMotionObjectId;
 	key.prevMvp = QD3D12_GetPreviousMVPForObject(key.motionObjectId, key.mvp);
 	key.modelMatrix = CurrentModelMatrix();
+	QD3D12_UpdateCameraInfoFromCurrentMatrices();
 	key.geometryFlag = QD3D12_CurrentEffectiveGeometryFlag();
 	key.roughness = g_gl.currentSurfaceRoughness;
 	key.materialType = QD3D12_CurrentEffectiveMaterialType();
@@ -3338,9 +3712,75 @@ struct QD3D12StreamlineState
 {
 	bool initialized = false;
 	bool deviceBound = false;
+	bool dlssSupported = false;
+	bool dlssRrSupported = false;
 	sl::ViewportHandle viewport = { 1 };
 };
 static QD3D12StreamlineState g_qd3d12Sl;
+
+typedef HRESULT(WINAPI* QD3D12_PFN_CreateDXGIFactory1)(REFIID riid, void** ppFactory);
+typedef HRESULT(WINAPI* QD3D12_PFN_D3D12CreateDevice)(IUnknown* pAdapter, D3D_FEATURE_LEVEL minimumFeatureLevel, REFIID riid, void** ppDevice);
+
+struct QD3D12StreamlineInterposerState
+{
+	HMODULE module = nullptr;
+	QD3D12_PFN_CreateDXGIFactory1 createDXGIFactory1 = nullptr;
+	QD3D12_PFN_D3D12CreateDevice d3d12CreateDevice = nullptr;
+};
+static QD3D12StreamlineInterposerState g_qd3d12SlInterposer;
+
+static void QD3D12_LoadStreamlineInterposer()
+{
+	if (g_qd3d12SlInterposer.module)
+		return;
+
+	HMODULE module = GetModuleHandleA("sl.interposer.dll");
+	if (!module)
+		module = LoadLibraryA("sl.interposer.dll");
+
+	if (!module)
+	{
+		QD3D12_Log("sl.interposer.dll not found; using raw D3D12/DXGI entry points.");
+		return;
+	}
+
+	g_qd3d12SlInterposer.module = module;
+	g_qd3d12SlInterposer.createDXGIFactory1 =
+		reinterpret_cast<QD3D12_PFN_CreateDXGIFactory1>(GetProcAddress(module, "CreateDXGIFactory1"));
+	g_qd3d12SlInterposer.d3d12CreateDevice =
+		reinterpret_cast<QD3D12_PFN_D3D12CreateDevice>(GetProcAddress(module, "D3D12CreateDevice"));
+
+	if (!g_qd3d12SlInterposer.createDXGIFactory1 || !g_qd3d12SlInterposer.d3d12CreateDevice)
+	{
+		QD3D12_Log("sl.interposer.dll is loaded but required D3D12/DXGI exports are missing; using raw entry points.");
+		g_qd3d12SlInterposer.createDXGIFactory1 = nullptr;
+		g_qd3d12SlInterposer.d3d12CreateDevice = nullptr;
+	}
+}
+
+static HRESULT QD3D12_CreateDXGIFactory1ForStreamline(REFIID riid, void** ppFactory)
+{
+	if (g_qd3d12Sl.initialized)
+	{
+		QD3D12_LoadStreamlineInterposer();
+		if (g_qd3d12SlInterposer.createDXGIFactory1)
+			return g_qd3d12SlInterposer.createDXGIFactory1(riid, ppFactory);
+	}
+
+	return CreateDXGIFactory1(riid, ppFactory);
+}
+
+static HRESULT QD3D12_D3D12CreateDeviceForStreamline(IUnknown* adapter, D3D_FEATURE_LEVEL featureLevel, REFIID riid, void** ppDevice)
+{
+	if (g_qd3d12Sl.initialized)
+	{
+		QD3D12_LoadStreamlineInterposer();
+		if (g_qd3d12SlInterposer.d3d12CreateDevice)
+			return g_qd3d12SlInterposer.d3d12CreateDevice(adapter, featureLevel, riid, ppDevice);
+	}
+
+	return D3D12CreateDevice(adapter, featureLevel, riid, ppDevice);
+}
 
 static sl::DLSSMode QD3D12_MapDLSSMode(QD3D12UpscalerQuality quality)
 {
@@ -3366,7 +3806,6 @@ static void QD3D12_InitStreamlineEarly()
 	pref.engine = sl::EngineType::eCustom;
 	pref.engineVersion = "IceBridge 1.0";
 	pref.flags |= sl::PreferenceFlags::eUseFrameBasedResourceTagging;
-	pref.flags |= sl::PreferenceFlags::eAllowOTA | sl::PreferenceFlags::eLoadDownloadedPlugins;
 
 	sl::Feature features[] =
 	{
@@ -3387,6 +3826,33 @@ static void QD3D12_InitStreamlineEarly()
 	g_qd3d12Sl.initialized = true;
 }
 
+static void QD3D12_CheckStreamlineFeatureSupport()
+{
+	g_qd3d12Sl.dlssSupported = false;
+	g_qd3d12Sl.dlssRrSupported = false;
+
+	if (!g_qd3d12Sl.initialized || !g_gl.device)
+		return;
+
+	LUID luid = g_gl.device->GetAdapterLuid();
+	sl::AdapterInfo adapterInfo{};
+	adapterInfo.deviceLUID = reinterpret_cast<uint8_t*>(&luid);
+	adapterInfo.deviceLUIDSizeInBytes = sizeof(luid);
+
+	const sl::Result dlssSupport = slIsFeatureSupported(sl::kFeatureDLSS, adapterInfo);
+	g_qd3d12Sl.dlssSupported = (dlssSupport == sl::Result::eOk);
+	if (!g_qd3d12Sl.dlssSupported)
+		QD3D12_Log("slIsFeatureSupported(DLSS) failed (%d).", int(dlssSupport));
+
+	const sl::Result rrSupport = slIsFeatureSupported(sl::kFeatureDLSS_RR, adapterInfo);
+	g_qd3d12Sl.dlssRrSupported = (rrSupport == sl::Result::eOk);
+	if (!g_qd3d12Sl.dlssRrSupported)
+	{
+		QD3D12_Log("slIsFeatureSupported(DLSS_RR) failed (%d); disabling Ray Reconstruction.", int(rrSupport));
+		g_gl.enableDLSSRayReconstruction = false;
+	}
+}
+
 static void QD3D12_StreamlineOnDeviceCreated()
 {
 	if (!g_qd3d12Sl.initialized || g_qd3d12Sl.deviceBound || !g_gl.device)
@@ -3400,6 +3866,7 @@ static void QD3D12_StreamlineOnDeviceCreated()
 	}
 
 	g_qd3d12Sl.deviceBound = true;
+	QD3D12_CheckStreamlineFeatureSupport();
 }
 
 static bool QD3D12_WantsDLSSRayReconstruction()
@@ -3451,6 +3918,16 @@ static sl::Result QD3D12_SetStreamlineCommonConstants(sl::FrameToken& frameToken
 	return slSetConstants(consts, frameToken, g_qd3d12Sl.viewport);
 }
 #else
+static HRESULT QD3D12_CreateDXGIFactory1ForStreamline(REFIID riid, void** ppFactory)
+{
+	return CreateDXGIFactory1(riid, ppFactory);
+}
+
+static HRESULT QD3D12_D3D12CreateDeviceForStreamline(IUnknown* adapter, D3D_FEATURE_LEVEL featureLevel, REFIID riid, void** ppDevice)
+{
+	return D3D12CreateDevice(adapter, featureLevel, riid, ppDevice);
+}
+
 static void QD3D12_InitStreamlineEarly() {}
 static void QD3D12_StreamlineOnDeviceCreated() {}
 static bool QD3D12_WantsDLSSRayReconstruction() { return false; }
@@ -3607,6 +4084,63 @@ static void QD3D12_PostFullscreenPass(ID3D12GraphicsCommandList* cl,
 	cl->DrawInstanced(3, 1, 0, 0);
 }
 
+static ID3D12Resource* QD3D12_PrepareStreamlineOutputForWrite(QD3D12Window& w)
+{
+	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
+	if (!cl)
+		return nullptr;
+
+	ID3D12Resource* output = w.slOutputBuffers[w.frameIndex].Get();
+	if (!output)
+	{
+		QD3D12_Log("Streamline output texture is missing for frame %u.", w.frameIndex);
+		return nullptr;
+	}
+
+	QD3D12_TransitionResource(
+		cl,
+		output,
+		w.slOutputState[w.frameIndex],
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+	return output;
+}
+
+static bool QD3D12_CopyStreamlineOutputToBackBuffer(
+	QD3D12Window& w,
+	const D3D12_VIEWPORT& outputViewport,
+	const D3D12_RECT& outputScissor)
+{
+	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
+	if (!cl || !w.slOutputBuffers[w.frameIndex] || !g_gl.postCopyPSO)
+		return false;
+
+	QD3D12_TransitionResource(
+		cl,
+		w.slOutputBuffers[w.frameIndex].Get(),
+		w.slOutputState[w.frameIndex],
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	QD3D12_TransitionResource(
+		cl,
+		w.backBuffers[w.frameIndex].Get(),
+		w.backBufferState[w.frameIndex],
+		D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	cl->ClearRenderTargetView(CurrentBackBufferRTV(), clearColor, 0, nullptr);
+
+	QD3D12_PostFullscreenPass(
+		cl,
+		g_gl.postCopyPSO.Get(),
+		w.slOutputSrvGpu[w.frameIndex],
+		CurrentBackBufferRTV(),
+		outputViewport,
+		outputScissor);
+
+	return true;
+}
+
 static void QD3D12_ExecuteMainCommandListAndWait(QD3D12Window& w)
 {
 	QD3D12_CHECK(g_gl.cmdList->Close());
@@ -3654,6 +4188,8 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 	if (!cl)
 		return;
 
+	QD3D12_UpdateCameraInfoFromCurrentMatrices();
+
 	const bool haveTemporalCameraInputs = (!w.isPbuffer) && g_gl.cameraState.valid;
 	const bool useLightingUpscaleInput = (!w.isPbuffer) && QD3D12_UseLightingTextureAsUpscaleInput(w);
 
@@ -3681,7 +4217,7 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 	outputScissor.bottom = (LONG)w.height;
 
 #if defined(QD3D12_ENABLE_STREAMLINE)
-	if (haveTemporalCameraInputs && useLightingUpscaleInput && g_gl.upscalerBackend == QD3D12_UPSCALER_DLSS && g_qd3d12Sl.deviceBound)
+	if (haveTemporalCameraInputs && useLightingUpscaleInput && g_gl.upscalerBackend == QD3D12_UPSCALER_DLSS && g_qd3d12Sl.deviceBound && w.slOutputBuffers[w.frameIndex])
 	{
 		sl::FrameToken* frameToken = nullptr;
 		uint32_t frameIndex = (uint32_t)g_gl.frameSerial;
@@ -3700,8 +4236,10 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 			outputExtent.width = w.width;
 			outputExtent.height = w.height;
 
+			ID3D12Resource* streamlineOutputResource = QD3D12_PrepareStreamlineOutputForWrite(w);
+
 			sl::Resource colorIn = { sl::ResourceType::eTex2d, upscaleInputResource, nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
-			sl::Resource colorOut = { sl::ResourceType::eTex2d, w.backBuffers[w.frameIndex].Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_RENDER_TARGET) };
+			sl::Resource colorOut = { sl::ResourceType::eTex2d, streamlineOutputResource, nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_UNORDERED_ACCESS) };
 			sl::Resource depth = { sl::ResourceType::eTex2d, w.depthBuffer.Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
 			sl::Resource mvec = { sl::ResourceType::eTex2d, w.velocityBuffers[w.frameIndex].Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
 			sl::Resource specularMvec = { sl::ResourceType::eTex2d, w.velocityBuffers[w.frameIndex].Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
@@ -3772,10 +4310,15 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 						const sl::Result evalResult = slEvaluateFeature(sl::kFeatureDLSS_RR, *frameToken, inputs, _countof(inputs), cl);
 						if (evalResult == sl::Result::eOk)
 						{
-							return;
-						}
+							if (QD3D12_CopyStreamlineOutputToBackBuffer(w, outputViewport, outputScissor))
+								return;
 
-						QD3D12_Log("slEvaluateFeature(DLSS_RR) failed (%d), falling back.", int(evalResult));
+							QD3D12_Log("DLSS_RR succeeded but copying Streamline output to backbuffer failed; falling back.");
+						}
+						else
+						{
+							QD3D12_Log("slEvaluateFeature(DLSS_RR) failed (%d), falling back.", int(evalResult));
+						}
 					}
 				}
 			}
@@ -3786,7 +4329,7 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 		}
 	}
 
-	if (haveTemporalCameraInputs && g_gl.upscalerBackend == QD3D12_UPSCALER_DLSS && g_qd3d12Sl.deviceBound)
+	if (haveTemporalCameraInputs && g_gl.upscalerBackend == QD3D12_UPSCALER_DLSS && g_qd3d12Sl.deviceBound && w.slOutputBuffers[w.frameIndex])
 	{
 		sl::FrameToken* frameToken = nullptr;
 		uint32_t frameIndex = (uint32_t)g_gl.frameSerial;
@@ -3805,8 +4348,10 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 			outputExtent.width = w.width;
 			outputExtent.height = w.height;
 
+			ID3D12Resource* streamlineOutputResource = QD3D12_PrepareStreamlineOutputForWrite(w);
+
 			sl::Resource colorIn = { sl::ResourceType::eTex2d, upscaleInputResource, nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
-			sl::Resource colorOut = { sl::ResourceType::eTex2d, w.backBuffers[w.frameIndex].Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_RENDER_TARGET) };
+			sl::Resource colorOut = { sl::ResourceType::eTex2d, streamlineOutputResource, nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_UNORDERED_ACCESS) };
 			sl::Resource depth = { sl::ResourceType::eTex2d, w.depthBuffer.Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
 			sl::Resource mvec = { sl::ResourceType::eTex2d, w.velocityBuffers[w.frameIndex].Get(), nullptr, nullptr, uint32_t(D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) };
 
@@ -3841,10 +4386,15 @@ static void QD3D12_RunUpscalerOrBlit(QD3D12Window& w)
 				const sl::Result evalResult = slEvaluateFeature(sl::kFeatureDLSS, *frameToken, inputs, _countof(inputs), cl);
 				if (evalResult == sl::Result::eOk)
 				{
-					return;
-				}
+					if (QD3D12_CopyStreamlineOutputToBackBuffer(w, outputViewport, outputScissor))
+						return;
 
-				QD3D12_Log("slEvaluateFeature(DLSS) failed (%d), falling back.", int(evalResult));
+					QD3D12_Log("DLSS succeeded but copying Streamline output to backbuffer failed; falling back.");
+				}
+				else
+				{
+					QD3D12_Log("slEvaluateFeature(DLSS) failed (%d), falling back.", int(evalResult));
+				}
 			}
 		}
 	}
@@ -3983,8 +4533,8 @@ static void QD3D12_CreateDevice()
 	//}
 #endif
 
-	QD3D12_CHECK(CreateDXGIFactory1(IID_PPV_ARGS(&g_gl.factory)));
-	QD3D12_CHECK(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&g_gl.device)));
+	QD3D12_CHECK(QD3D12_CreateDXGIFactory1ForStreamline(IID_PPV_ARGS(&g_gl.factory)));
+	QD3D12_CHECK(QD3D12_D3D12CreateDeviceForStreamline(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&g_gl.device)));
 	QD3D12_SelectGBufferSampleCount();
 
 	D3D12_COMMAND_QUEUE_DESC qd{};
@@ -4221,6 +4771,23 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 		}
 	}
 
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+	{
+		CreateTexture2D(
+			w.slOutputBuffers[i],
+			w.slOutputState[i],
+			QD3D12_StreamlineOutputFormat,
+			colorClear,
+			false,
+			w.width,
+			w.height,
+			1,
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+			{},
+			false);
+	}
+
 	auto CreateTextureSrv = [&](ID3D12Resource* res, DXGI_FORMAT format, UINT& srvIndex,
 		D3D12_CPU_DESCRIPTOR_HANDLE& cpu, D3D12_GPU_DESCRIPTOR_HANDLE& gpu)
 		{
@@ -4273,6 +4840,9 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 
 	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 		CreateTextureSrv(w.velocityBuffers[i].Get(), QD3D12_VelocityFormat, w.velocitySrvIndex[i], w.velocitySrvCpu[i], w.velocitySrvGpu[i]);
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+		CreateTextureSrv(w.slOutputBuffers[i].Get(), QD3D12_StreamlineOutputFormat, w.slOutputSrvIndex[i], w.slOutputSrvCpu[i], w.slOutputSrvGpu[i]);
 
 	if (useMsaa)
 	{
@@ -5375,6 +5945,7 @@ void QD3D12_ShutdownForQuake()
 	if (g_qd3d12Sl.initialized)
 	{
 		slShutdown();
+		g_qd3d12Sl = QD3D12StreamlineState{};
 	}
 #endif
 
@@ -5382,6 +5953,7 @@ void QD3D12_ShutdownForQuake()
 		CloseHandle(g_gl.fenceEvent);
 
 	QD3D12ARB_Shutdown();
+	QD3D12_ResetAutoCameraHistory();
 	g_arbPsoCache.clear();
 	g_qd3d12RaytracingMeshMaterialFlags.clear();
 
@@ -8748,6 +9320,7 @@ void QD3D12_ReleaseWindowSizeResources(QD3D12Window& w)
 		w.normalMsaaBuffers[i].Reset();
 		w.positionMsaaBuffers[i].Reset();
 		w.velocityMsaaBuffers[i].Reset();
+		w.slOutputBuffers[i].Reset();
 
 		w.sceneColorState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.backBufferState[i] = D3D12_RESOURCE_STATE_COMMON;
@@ -8758,6 +9331,7 @@ void QD3D12_ReleaseWindowSizeResources(QD3D12Window& w)
 		w.normalMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.positionMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
 		w.velocityMsaaState[i] = D3D12_RESOURCE_STATE_COMMON;
+		w.slOutputState[i] = D3D12_RESOURCE_STATE_COMMON;
 	}
 
 	w.depthBuffer.Reset();
@@ -10306,6 +10880,7 @@ PROC WINAPI qd3d12_wglGetProcAddress(LPCSTR name) {
 		{ "QD3D12_ResolveGBufferNow",    (PROC)QD3D12_ResolveGBufferNow },
 		{ "QD3D12_SetPathTracingQuality", (PROC)QD3D12_SetPathTracingQuality },
 		{ "QD3D12_SetPathTracingFallbackSamples", (PROC)QD3D12_SetPathTracingFallbackSamples },
+		{ "glRaytracingLightingSetVolumetricScattering", (PROC)glRaytracingLightingSetVolumetricScattering },
 		{ "glGenProgramsARB",           (PROC)glGenProgramsARB },
 		{ "glDeleteProgramsARB",        (PROC)glDeleteProgramsARB },
 		{ "glBindProgramARB",           (PROC)glBindProgramARB },
@@ -10904,17 +11479,22 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 	QD3D12_ExecuteMainCommandListAndWait(*window);
 	cl = g_gl.cmdList.Get();
 
+	QD3D12_UpdateCameraInfoFromCurrentMatrices();
+
 	const bool useDLSSRayReconstruction = QD3D12_CanUseDLSSRayReconstructionForLighting(*window);
+	const uint32_t activeMaxBounces = std::max<uint32_t>(1u, g_gl.pathTracingMaxBounces);
 	const uint32_t raySpp = useDLSSRayReconstruction
 		? std::max<uint32_t>(1u, g_gl.pathTracingSamplesPerPixel)
 		: std::max<uint32_t>(1u, g_gl.pathTracingFallbackSamplesPerPixel);
 
-	// DLSS RR consumes raw/noisy radiance as the proper external denoiser.
-	// Without RR, keep the ray module's new non-temporal a-trous fallback enabled.
+	// Keep Streamline/DLSS RR on the raw lighting path. The noise fix is now in
+	// the DXR sampling itself: stable GI seeds, deterministic area-light samples,
+	// and non-jittered volume slices. Feeding RR a prefiltered image can make the
+	// temporal reconstruction amplify blur/speckles.
 	glRaytracingLightingSetExternalDenoiser(useDLSSRayReconstruction ? 1 : 0);
 	glRaytracingLightingSetPathTracingOptions(
 		raySpp,
-		std::max<uint32_t>(1u, g_gl.pathTracingMaxBounces),
+		activeMaxBounces,
 		useDLSSRayReconstruction ? 0 : 1,
 		useDLSSRayReconstruction ? 0.0f : 1.0f);
 
@@ -11163,6 +11743,7 @@ void QD3D12_ResetTemporalHistory(void)
 	g_gl.currObjectMVPs.clear();
 	g_gl.prevJitterX = 0.0f;
 	g_gl.prevJitterY = 0.0f;
+	QD3D12_ResetAutoCameraHistory();
 }
 
 void QD3D12_SetProjectionJitterPixels(float jitterX, float jitterY)

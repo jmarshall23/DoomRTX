@@ -2197,7 +2197,12 @@ struct Light
     uint   samples;
     uint   twoSided;
     float  persistant;
-    float  pad1;
+
+    // Reuses the old pad1 slot in glRaytracingLight_t.  Keeping this in the
+    // same 16-byte lane preserves the CPU StructuredBuffer stride while giving
+    // point/spot lights an explicit volumetric scattering control.
+    // <= 0 disables the effect.  Values around 0.25-1.0 are useful in Doom 3 units.
+    float  volumetricScattering;
 
     // For point lights, this is the axis-aligned XYZ attenuation radius.
     // For spot lights, pointRadius.x stores the near clip plane.
@@ -3342,7 +3347,7 @@ float3 EstimatePathTracedSky(float3 worldPos, float3 N, inout uint rng)
     return accum * 0.55;
 }
 
-float3 PathTraceDirectPointLight(float3 worldPos, float3 N, float3 V, float3 baseAlbedo, Light Lgt, inout uint rng, out float3 specularOut)
+float3 PathTraceDirectPointLight(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, Light Lgt, inout uint rng, out float3 specularOut)
 {
     specularOut = 0.0;
 
@@ -3355,29 +3360,53 @@ float3 PathTraceDirectPointLight(float3 worldPos, float3 N, float3 V, float3 bas
     float3 tangent, bitangent;
     BuildOrthonormalBasis(centerDir, tangent, bitangent);
 
-    float areaRadius = (Lgt.samples != 0u) ? max(GetPointLightMaxRadius(Lgt) * 0.03, 0.12) : 0.0;
-    float2 disk = ConcentricSampleDisk(Rand2(rng)) * areaRadius;
-
-    float3 sampleLightPos = Lgt.position + tangent * disk.x + bitangent * disk.y;
-    float3 toLight = sampleLightPos - worldPos;
-    float dist = length(toLight);
-    if (dist <= 0.01)
+    float atten = ComputePointLightAttenuation(worldPos, Lgt);
+    if (atten <= 0.0)
         return 0.0;
 
-    float3 L = toLight / dist;
-    float atten = ComputePointLightAttenuation(worldPos, Lgt);
+    uint sampleCount = max(Lgt.samples, 1u);
+    sampleCount = min(sampleCount, 4u);
 
-    float wrap = 0.28;
-    float NdotLWrap = saturate((dot(N, L) + wrap) / (1.0 + wrap));
+    // One random area-light sample per frame was one of the visible noise sources.
+    // Use a deterministic low-discrepancy pattern instead. With a single sample,
+    // use the light center so default point lights are hard-shadowed and stable.
+    float areaRadius = (Lgt.samples > 1u) ? max(GetPointLightMaxRadius(Lgt) * 0.03, 0.12) : 0.0;
+    float rand = Hash12((float2)pixel + worldPos.xy + float2(worldPos.z, centerDist));
 
-    float shadow = 1.0;
-    if (Lgt.samples != 0u && NdotLWrap > 0.0001 && atten > 0.0)
-        shadow = TraceVisibilityBiased(worldPos, N, L, dist);
+    float3 diffuseAccum = 0.0;
+    float3 specAccum = 0.0;
 
-    if (Lgt.pointRadiusPad <= 0.5)
-        specularOut = ComputeSpecular(N, V, L, Lgt.color, Lgt.intensity, atten, shadow, baseAlbedo);
+    [loop]
+    for (uint s = 0u; s < sampleCount; ++s)
+    {
+        float2 disk = float2(0.0, 0.0);
+        if (areaRadius > 0.0)
+            disk = ConcentricSampleDisk(Hammersley2D(s, sampleCount, rand)) * areaRadius;
 
-    return Lgt.color * (Lgt.intensity * atten * NdotLWrap * shadow);
+        float3 sampleLightPos = Lgt.position + tangent * disk.x + bitangent * disk.y;
+        float3 toLight = sampleLightPos - worldPos;
+        float dist = length(toLight);
+        if (dist <= 0.01)
+            continue;
+
+        float3 L = toLight / dist;
+
+        float wrap = 0.28;
+        float NdotLWrap = saturate((dot(N, L) + wrap) / (1.0 + wrap));
+
+        float shadow = 1.0;
+        if (Lgt.samples != 0u && NdotLWrap > 0.0001)
+            shadow = TraceVisibilityBiased(worldPos, N, L, dist);
+
+        if (Lgt.pointRadiusPad <= 0.5)
+            specAccum += ComputeSpecular(N, V, L, Lgt.color, Lgt.intensity, atten, shadow, baseAlbedo);
+
+        diffuseAccum += Lgt.color * (Lgt.intensity * atten * NdotLWrap * shadow);
+    }
+
+    float invSamples = 1.0 / (float)sampleCount;
+    specularOut = specAccum * invSamples;
+    return diffuseAccum * invSamples;
 }
 
 float3 PathTraceDirectSpotLight(float3 worldPos, float3 N, float3 V, float3 baseAlbedo, Light Lgt, inout uint rng, out float3 specularOut)
@@ -3405,7 +3434,7 @@ float3 PathTraceDirectSpotLight(float3 worldPos, float3 N, float3 V, float3 base
     return Lgt.color * (Lgt.intensity * atten * NdotLWrap * shadow);
 }
 
-float3 PathTraceDirectRectLight(float3 worldPos, float3 N, float3 V, float3 baseAlbedo, Light Lgt, inout uint rng, out float3 specularOut)
+float3 PathTraceDirectRectLight(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, Light Lgt, inout uint rng, out float3 specularOut)
 {
     specularOut = 0.0;
 
@@ -3421,49 +3450,180 @@ float3 PathTraceDirectRectLight(float3 worldPos, float3 N, float3 V, float3 base
     if (atten <= 0.0)
         return 0.0;
 
-    float2 uv = Rand2(rng) * 2.0 - 1.0;
-    float3 sampleLightPos =
-        Lgt.position +
-        Lgt.axisU * (uv.x * Lgt.halfWidth) +
-        Lgt.axisV * (uv.y * Lgt.halfHeight);
+    uint sampleCount = max(Lgt.samples, 1u);
+    sampleCount = min(sampleCount, 8u);
+    float rand = Hash12((float2)pixel + worldPos.xy + float2(centerDist, worldPos.z));
 
-    float3 sampleVec = sampleLightPos - worldPos;
-    float sampleDist = length(sampleVec);
-    if (sampleDist <= 0.01)
-        return 0.0;
+    float3 diffuseAccum = 0.0;
+    float3 specAccum = 0.0;
 
-    float3 L = sampleVec / sampleDist;
-    float NdotL = saturate(dot(N, L));
-    if (NdotL <= 0.0)
-        return 0.0;
-
-    float faceTerm = (Lgt.twoSided != 0)
-        ? abs(dot(-L, Lgt.normal))
-        : saturate(dot(-L, Lgt.normal));
-
-    if (faceTerm <= 0.0)
-        return 0.0;
-
-    float shadow = 1.0;
-    if (Lgt.samples != 0u)
-        shadow = TraceVisibilityBiased(worldPos, N, L, sampleDist);
-
-    if (Lgt.pointRadiusPad <= 0.5)
+    [loop]
+    for (uint s = 0u; s < sampleCount; ++s)
     {
-        specularOut = ComputeSpecular(
-            N,
-            V,
-            L,
-            Lgt.color,
-            Lgt.intensity * faceTerm,
-            1.0,
-            shadow,
-            baseAlbedo) * atten;
+        float2 uv = (sampleCount == 1u)
+            ? float2(0.0, 0.0)
+            : (Hammersley2D(s, sampleCount, rand) * 2.0 - 1.0);
+
+        float3 sampleLightPos =
+            Lgt.position +
+            Lgt.axisU * (uv.x * Lgt.halfWidth) +
+            Lgt.axisV * (uv.y * Lgt.halfHeight);
+
+        float3 sampleVec = sampleLightPos - worldPos;
+        float sampleDist = length(sampleVec);
+        if (sampleDist <= 0.01)
+            continue;
+
+        float3 L = sampleVec / sampleDist;
+        float NdotL = saturate(dot(N, L));
+        if (NdotL <= 0.0)
+            continue;
+
+        float faceTerm = (Lgt.twoSided != 0)
+            ? abs(dot(-L, Lgt.normal))
+            : saturate(dot(-L, Lgt.normal));
+
+        if (faceTerm <= 0.0)
+            continue;
+
+        float shadow = 1.0;
+        if (Lgt.samples != 0u)
+            shadow = TraceVisibilityBiased(worldPos, N, L, sampleDist);
+
+        if (Lgt.pointRadiusPad <= 0.5)
+        {
+            specAccum += ComputeSpecular(
+                N,
+                V,
+                L,
+                Lgt.color,
+                Lgt.intensity * faceTerm,
+                1.0,
+                shadow,
+                baseAlbedo) * atten;
+        }
+
+        diffuseAccum += clamp(Lgt.color * (Lgt.intensity * NdotL * faceTerm * atten * shadow), 0.0, 4.0);
     }
 
-    return clamp(Lgt.color * (Lgt.intensity * NdotL * faceTerm * atten * shadow), 0.0, 4.0);
+    float invSamples = 1.0 / (float)sampleCount;
+    specularOut = specAccum * invSamples;
+    return diffuseAccum * invSamples;
 }
 
+float HenyeyGreensteinPhase(float cosTheta, float g)
+{
+    g = clamp(g, -0.85, 0.85);
+    float g2 = g * g;
+    float denom = max(1.0 + g2 - 2.0 * g * cosTheta, 1e-3);
+    return (1.0 - g2) / max(4.0 * 3.14159265 * pow(denom, 1.5), 1e-3);
+}
+
+float ComputeLightVolumeAttenuation(float3 samplePos, Light Lgt)
+{
+    if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
+        return ComputePointLightAttenuation(samplePos, Lgt);
+
+    if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
+        return ComputeSpotLightAttenuation(samplePos, Lgt);
+
+    return 0.0;
+}
+
+float EstimateVolumeDensityFromLight(Light Lgt)
+{
+    // Doom 3 world units are large. Tie the default participating-medium density
+    // to light range so the caller only needs one artist-facing attribute.
+    float range = (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
+        ? GetPointLightMaxRadius(Lgt)
+        : max(Lgt.radius, 1.0);
+
+    return clamp(2.25 / max(range, 32.0), 0.0015, 0.035);
+}
+
+float3 EstimateSingleLightVolumetricScattering(uint2 pixel, float3 cameraPos, float3 worldPos, Light Lgt, inout uint rng)
+{
+    if (Lgt.volumetricScattering <= 0.0)
+        return 0.0;
+
+    if (Lgt.type != GL_RAYTRACING_LIGHT_TYPE_POINT && Lgt.type != GL_RAYTRACING_LIGHT_TYPE_SPOT)
+        return 0.0;
+
+    float3 cameraToSurface = worldPos - cameraPos;
+    float viewDist = length(cameraToSurface);
+    if (viewDist <= 0.01)
+        return 0.0;
+
+    float3 viewDir = cameraToSurface / viewDist;
+
+    uint stepCount = min(max(Lgt.samples, 4u), 12u);
+    float stepLen = viewDist / (float)stepCount;
+
+    // Do not frame-jitter the march. This renderer has no temporal GI history,
+    // so varying the volume sample positions every frame creates visible sparkle.
+    // A centered deterministic slice is stable and the spatial denoiser can smooth it.
+    float jitter = 0.5;
+
+    float density = EstimateVolumeDensityFromLight(Lgt);
+    float anisotropy = (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT) ? 0.55 : 0.35;
+
+    float3 accum = 0.0;
+
+    [loop]
+    for (uint s = 0u; s < stepCount; ++s)
+    {
+        float t = ((float)s + jitter) * stepLen;
+        t = min(t, viewDist - 0.001);
+
+        float3 samplePos = cameraPos + viewDir * t;
+        float atten = ComputeLightVolumeAttenuation(samplePos, Lgt);
+        if (atten <= 0.0)
+            continue;
+
+        float3 toLight = Lgt.position - samplePos;
+        float lightDist = length(toLight);
+        if (lightDist <= 0.01)
+            continue;
+
+        float3 L = toLight / lightDist;
+
+        float3 shadowOrigin = samplePos + L * (gShadowBias * 0.75) + viewDir * (gShadowBias * 0.15);
+        float visibility = TraceShadow(shadowOrigin, L, max(lightDist - gShadowBias, 0.001));
+        if (visibility <= 0.0)
+            continue;
+
+        float phase = HenyeyGreensteinPhase(dot(L, -viewDir), anisotropy);
+        float transmittance = exp(-density * t);
+        float slice = density * stepLen;
+
+        accum += Lgt.color * (Lgt.intensity * atten * visibility * phase * transmittance * slice);
+    }
+
+    // Scale from normalized phase-function energy into a game-facing glow term.
+    // The user-facing light attribute still controls the final strength.
+    const float DOOM3_VOLUME_SCALE = 7.5;
+    return clamp(accum * max(Lgt.volumetricScattering, 0.0) * DOOM3_VOLUME_SCALE, 0.0, 12.0);
+}
+
+float3 EstimatePathTracedVolumetricScattering(uint2 pixel, float3 worldPos, inout uint rng)
+{
+    float3 volume = 0.0;
+
+    [loop]
+    for (uint i = 0; i < gLightCount; ++i)
+    {
+        Light Lgt = gLights[i];
+        if (Lgt.volumetricScattering <= 0.0)
+            continue;
+
+        if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT || Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
+            volume += EstimateSingleLightVolumetricScattering(pixel, gCameraPos.xyz, worldPos, Lgt, rng);
+    }
+
+    return volume;
+}
+)"
+R"(
 float3 EstimateFastBounceLight(float3 hitPos, float3 hitN, Light Lgt)
 {
     // Secondary-bounce lighting needs to be cheap.  The primary pass already casts
@@ -3868,7 +4028,7 @@ float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V,
 
         if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
         {
-            diffuse = PathTraceDirectPointLight(worldPos, N, V, baseAlbedo, Lgt, rng, spec);
+            diffuse = PathTraceDirectPointLight(pixel, worldPos, N, V, baseAlbedo, Lgt, rng, spec);
         }
         else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
         {
@@ -3876,7 +4036,7 @@ float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V,
         }
         else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_RECT)
         {
-            diffuse = PathTraceDirectRectLight(worldPos, N, V, baseAlbedo, Lgt, rng, spec);
+            diffuse = PathTraceDirectRectLight(pixel, worldPos, N, V, baseAlbedo, Lgt, rng, spec);
         }
 
         lightingAccum += diffuse;
@@ -3954,7 +4114,10 @@ void RayGen()
     [loop]
     for (uint s = 0; s < spp; ++s)
     {
-        uint rng = InitRng(pixel, gFrameIndex, s);
+        // The current denoiser is spatial, not temporal. Do not use gFrameIndex
+        // for the primary GI seed or the same pixel flickers forever instead of
+        // presenting a stable signal for the a-trous pass.
+        uint rng = InitRng(pixel, 0u, s);
 
         float3 specularAccum = 0.0;
         float3 lightingAccum = PathTraceLightingSample(
@@ -3981,6 +4144,13 @@ void RayGen()
         // diffuse albedo here, matching the regular lighting path.
         finalColor += baseAlbedo * reactiveFinalGather;
     }
+
+    // Volumetric light scattering is radiance in the camera ray, not surface
+    // reflectance, so add it after surface albedo/specular composition.  Because
+    // it is written into the same path-trace target, the internal a-trous pass
+    // denoises the stochastic volume/GI signal together with the rest of the ray result.
+    uint volumeRng = InitRng(pixel, 0u, 0x51u);
+    finalColor += EstimatePathTracedVolumetricScattering(pixel, worldPos, volumeRng);
 
     gOutputTex[pixel] = float4(max(finalColor, 0.0), albedoSample.a);
 }
@@ -4121,6 +4291,10 @@ float GeometryAwareWeight(
     float sampleLum = Luminance(sampleLighting);
     float illumDiff = abs(sampleLum - centerLum);
     float relativeIllumDiff = illumDiff / max(max(abs(centerLum), abs(sampleLum)), 0.05);
+
+    // Keep this gate conservative. The noise fix is to stabilize and stratify the
+    // ray samples; over-loosening this filter smears direct lighting and makes the
+    // scene look noisier/blotchier.
     float illuminationWeight = exp(-relativeIllumDiff * max(gDenoisePhiColor * 0.035, 0.10));
 
     float normalWeight = pow(saturate(dot(centerNormal, sampleNormal)), max(gDenoisePhiNormal, 1.0));
@@ -4235,6 +4409,8 @@ void DenoiseCS(uint3 dispatchThreadId : SV_DispatchThreadID)
             }
         }
 
+        // Keep the clamp tight. A wide clamp lets bright stochastic GI/volume
+        // outliers survive and was the main reason the previous patch looked worse.
         filtered = clamp(filtered, minRaw - 0.15, maxRaw + 0.15);
     }
 
@@ -5382,6 +5558,17 @@ void glRaytracingLightingSetDenoiseTuning(float phiColor, float phiNormal, float
 	glRaytracingLightingUpdateConstants();
 }
 
+void glRaytracingLightingSetVolumetricScattering(glRaytracingLight_t* light, float strength)
+{
+	if (!light)
+		return;
+
+	// This uses glRaytracingLight_t::pad1, which is renamed to
+	// Light::volumetricScattering in HLSL.  Keeping the existing pad slot avoids
+	// changing the StructuredBuffer stride for already-integrated callers.
+	light->pad1 = glRaytracingClamp<float>(strength, 0.0f, 16.0f);
+}
+
 void glRaytracingLightingSetExternalDenoiser(int enabled)
 {
 	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
@@ -5463,7 +5650,7 @@ glRaytracingLight_t glRaytracingLightingMakePointLight(
 	l.samples = 1;
 	l.twoSided = 0;
 	l.persistant = 0.0f;
-	l.pad1 = 0.0f;
+	l.pad1 = 0.0f; // volumetric scattering disabled by default.
 	return l;
 }
 
@@ -5576,7 +5763,7 @@ glRaytracingLight_t glRaytracingLightingMakeSpotLight(
 	l.samples = samples ? samples : 1u;
 	l.twoSided = 0;
 	l.persistant = 0.0f;
-	l.pad1 = 0.0f;
+	l.pad1 = 0.0f; // volumetric scattering disabled by default.
 
 	return l;
 }
@@ -5640,7 +5827,7 @@ glRaytracingLight_t glRaytracingLightingMakeRectLight(
 	l.samples = samples ? samples : 4u;
 	l.twoSided = twoSided ? 1u : 0u;
 	l.persistant = 0.0f;
-	l.pad1 = 0.0f;
+	l.pad1 = 0.0f; // volumetric scattering disabled by default.
 
 	return l;
 }
