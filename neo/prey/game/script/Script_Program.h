@@ -346,6 +346,7 @@ typedef union varEval_s {
 	int						argSize;
 	varEval_s				*evalPtr;
 	int						ptrOffset;
+	INT_PTR					highPtr;
 } varEval_t;
 
 class idVarDef {

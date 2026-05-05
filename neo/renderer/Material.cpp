@@ -122,6 +122,11 @@ void idMaterial::CommonInit() {
 	decalInfo.end[1] = 0;
 	decalInfo.end[2] = 0;
 	decalInfo.end[3] = 0;
+
+#ifdef PREY
+	subviewClass = SC_MIRROR;
+	directPortalDistance = 0;
+#endif
 }
 
 /*
@@ -279,20 +284,20 @@ static infoParm_t infoParms[] = {
 	{"nosteps",					0,	SURF_NOSTEPS,			0 },							// no footsteps
 
 	// material types for particle, sound, footstep feedback
-	{"metal",					0,	SURFTYPE_METAL,			0 },							// metal
-	{"stone",					0,	SURFTYPE_STONE,			0 },							// stone
-	{"flesh",					0,	SURFTYPE_FLESH,			0 },							// flesh
-	{"wood",					0,	SURFTYPE_WOOD,			0 },							// wood
-	{"cardboard",				0,	SURFTYPE_CARDBOARD,		0 },							// cardboard
-	{"liquid",					0,	SURFTYPE_LIQUID,		0 },							// liquid
-	{"glass",					0,	SURFTYPE_GLASS,			0 },							// glass
-	{"tile",					0,	SURFTYPE_TILE,			0 },							// tile
+	{"matter_metal",					0,	SURFTYPE_METAL,			0 },							// metal
+	{"matter_stone",					0,	SURFTYPE_STONE,			0 },							// stone
+	{"matter_flesh",					0,	SURFTYPE_FLESH,			0 },							// flesh
+	{"matter_wood",					0,	SURFTYPE_WOOD,			0 },							// wood
+	{"matter_cardboard",				0,	SURFTYPE_CARDBOARD,		0 },							// cardboard
+	{"matter_liquid",					0,	SURFTYPE_LIQUID,		0 },							// liquid
+	{"matter_glass",					0,	SURFTYPE_GLASS,			0 },							// glass
+	{"matter_tile",					0,	SURFTYPE_TILE,			0 },							// tile
 	{"wallwalk",				0,	SURFTYPE_WALLWALK,		0 },							// wallwalk surface
-	{"altmetal",				0,	SURFTYPE_ALTMETAL,		0 },							// alternate metal
+	{"matter_altmetal",			0,	SURFTYPE_ALTMETAL,		0 },							// alternate metal
 	{"forcefield",				0,	SURFTYPE_FORCEFIELD,		0 },							// forcefield material
-	{"pipe",					0,	SURFTYPE_PIPE,			0 },							// pipe
-	{"spirit",					0,	SURFTYPE_SPIRIT,		0 },							// spirit material
-	{"chaff",					0,	SURFTYPE_CHAFF,			0 },							// chaff material
+	{"matter_pipe",					0,	SURFTYPE_PIPE,			0 },							// pipe
+	{"matter_spirit",					0,	SURFTYPE_SPIRIT,		0 },							// spirit material
+	{"matter_chaff",					0,	SURFTYPE_CHAFF,			0 },							// chaff material
 };
 #else
 static infoParm_t	infoParms[] = {
@@ -1847,11 +1852,11 @@ Parse it into the global material variable. Later functions will optimize it.
 If there is any error during parsing, defaultShader will be set.
 =================
 */
-void idMaterial::ParseMaterial( idLexer &src ) {
+void idMaterial::ParseMaterial(idLexer& src) {
 	idToken		token;
 	int			s;
 	char		buffer[1024];
-	const char	*str;
+	const char* str;
 	idLexer		newSrc;
 	int			i;
 
@@ -1859,7 +1864,7 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 
 	numOps = 0;
 	numRegisters = EXP_REG_NUM_PREDEFINED;	// leave space for the parms to be copied in
-	for ( i = 0 ; i < numRegisters ; i++ ) {
+	for (i = 0; i < numRegisters; i++) {
 		pd->registerIsTemporary[i] = true;		// they aren't constants that can be folded
 	}
 
@@ -1867,41 +1872,41 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 
 	textureRepeat_t	trpDefault = TR_REPEAT;		// allow a global setting for repeat
 
-	while ( 1 ) {
-		if ( TestMaterialFlag( MF_DEFAULTED ) ) {	// we have a parse error
+	while (1) {
+		if (TestMaterialFlag(MF_DEFAULTED)) {	// we have a parse error
 			return;
 		}
-		if ( !src.ExpectAnyToken( &token ) ) {
-			SetMaterialFlag( MF_DEFAULTED );
+		if (!src.ExpectAnyToken(&token)) {
+			SetMaterialFlag(MF_DEFAULTED);
 			return;
 		}
 
 		// end of material definition
-		if ( token == "}" ) {
+		if (token == "}") {
 			break;
 		}
-		else if ( !token.Icmp( "qer_editorimage") ) {
-			src.ReadTokenOnLine( &token );
+		else if (!token.Icmp("qer_editorimage")) {
+			src.ReadTokenOnLine(&token);
 			editorImageName = token.c_str();
 			src.SkipRestOfLine();
 			continue;
 		}
 		// description
-		else if ( !token.Icmp( "description") ) {
-			src.ReadTokenOnLine( &token );
+		else if (!token.Icmp("description")) {
+			src.ReadTokenOnLine(&token);
 			desc = token.c_str();
 			continue;
 		}
 		// check for the surface / content bit flags
-		else if ( CheckSurfaceParm( &token ) ) {
+		else if (CheckSurfaceParm(&token)) {
 			continue;
 		}
 
 
 		// polygonOffset
-		else if ( !token.Icmp( "polygonOffset" ) ) {
-			SetMaterialFlag( MF_POLYGONOFFSET );
-			if ( !src.ReadTokenOnLine( &token ) ) {
+		else if (!token.Icmp("polygonOffset")) {
+			SetMaterialFlag(MF_POLYGONOFFSET);
+			if (!src.ReadTokenOnLine(&token)) {
 				polygonOffset = 1;
 				continue;
 			}
@@ -1910,223 +1915,333 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 			continue;
 		}
 		// noshadow
-		else if ( !token.Icmp( "noShadows" ) ) {
-			SetMaterialFlag( MF_NOSHADOWS );
+		else if (!token.Icmp("noShadows")) {
+			SetMaterialFlag(MF_NOSHADOWS);
 			continue;
 		}
-		else if ( !token.Icmp( "suppressInSubview" ) ) {
+		else if (!token.Icmp("suppressInSubview")) {
 			suppressInSubview = true;
 			continue;
 		}
-		else if ( !token.Icmp( "portalSky" ) ) {
+		else if (!token.Icmp("portalSky")) {
 			portalSky = true;
 			continue;
 		}
 		// noSelfShadow
-		else if ( !token.Icmp( "noSelfShadow" ) ) {
-			SetMaterialFlag( MF_NOSELFSHADOW );
+		else if (!token.Icmp("noSelfShadow")) {
+			SetMaterialFlag(MF_NOSELFSHADOW);
 			continue;
 		}
 		// noPortalFog
-		else if ( !token.Icmp( "noPortalFog" ) ) {
-			SetMaterialFlag( MF_NOPORTALFOG );
+		else if (!token.Icmp("noPortalFog")) {
+			SetMaterialFlag(MF_NOPORTALFOG);
 			continue;
 		}
 		// forceShadows allows nodraw surfaces to cast shadows
-		else if ( !token.Icmp( "forceShadows" ) ) {
-			SetMaterialFlag( MF_FORCESHADOWS );
+		else if (!token.Icmp("forceShadows")) {
+			SetMaterialFlag(MF_FORCESHADOWS);
 			continue;
 		}
+#ifdef PREY
+		// HUMANHEAD PCF: explicitly skip collision clip for alpha-coverage surfaces.
+		else if (!token.Icmp("skipClip")) {
+			SetMaterialFlag(MF_SKIPCLIP);
+			continue;
+		}
+		// HUMANHEAD bjk: don't cull tris with the light bounds.
+		else if (!token.Icmp("lightWholeMesh")) {
+			SetMaterialFlag(MF_LIGHT_WHOLE_MESH);
+			continue;
+		}
+#endif
 		// overlay / decal suppression
-		else if ( !token.Icmp( "noOverlays" ) ) {
+		else if (!token.Icmp("noOverlays")) {
 			allowOverlays = false;
 			continue;
 		}
 		// moster blood overlay forcing for alpha tested or translucent surfaces
-		else if ( !token.Icmp( "forceOverlays" ) ) {
+		else if (!token.Icmp("forceOverlays")) {
 			pd->forceOverlays = true;
 			continue;
 		}
 		// translucent
-		else if ( !token.Icmp( "translucent" ) ) {
+		else if (!token.Icmp("translucent")) {
 			coverage = MC_TRANSLUCENT;
 			continue;
 		}
 		// global zero clamp
-		else if ( !token.Icmp( "zeroclamp" ) ) {
+		else if (!token.Icmp("zeroclamp")) {
 			trpDefault = TR_CLAMP_TO_ZERO;
 			continue;
 		}
 		// global clamp
-		else if ( !token.Icmp( "clamp" ) ) {
+		else if (!token.Icmp("clamp")) {
 			trpDefault = TR_CLAMP;
 			continue;
 		}
 		// global clamp
-		else if ( !token.Icmp( "alphazeroclamp" ) ) {
+		else if (!token.Icmp("alphazeroclamp")) {
 			trpDefault = TR_CLAMP_TO_ZERO;
 			continue;
 		}
 		// forceOpaque is used for skies-behind-windows
-		else if ( !token.Icmp( "forceOpaque" ) ) {
+		else if (!token.Icmp("forceOpaque")) {
 			coverage = MC_OPAQUE;
 			continue;
 		}
 		// twoSided
-		else if ( !token.Icmp( "twoSided" ) ) {
+		else if (!token.Icmp("twoSided")) {
 			cullType = CT_TWO_SIDED;
 			// twoSided implies no-shadows, because the shadow
 			// volume would be coplanar with the surface, giving depth fighting
 			// we could make this no-self-shadows, but it may be more important
 			// to receive shadows from no-self-shadow monsters
-			SetMaterialFlag( MF_NOSHADOWS );
+			SetMaterialFlag(MF_NOSHADOWS);
 		}
 		// backSided
-		else if ( !token.Icmp( "backSided" ) ) {
+		else if (!token.Icmp("backSided")) {
 			cullType = CT_BACK_SIDED;
 			// the shadow code doesn't handle this, so just disable shadows.
 			// We could fix this in the future if there was a need.
-			SetMaterialFlag( MF_NOSHADOWS );
+			SetMaterialFlag(MF_NOSHADOWS);
 		}
 		// foglight
-		else if ( !token.Icmp( "fogLight" ) ) {
+		else if (!token.Icmp("fogLight")) {
 			fogLight = true;
 			continue;
 		}
 		// blendlight
-		else if ( !token.Icmp( "blendLight" ) ) {
+		else if (!token.Icmp("blendLight")) {
 			blendLight = true;
 			continue;
 		}
 		// ambientLight
-		else if ( !token.Icmp( "ambientLight" ) ) {
+		else if (!token.Icmp("ambientLight")) {
 			ambientLight = true;
 			continue;
 		}
 		// mirror
-		else if ( !token.Icmp( "mirror" ) ) {
+		else if (!token.Icmp("mirror")) {
 			sort = SS_SUBVIEW;
 			coverage = MC_OPAQUE;
 			continue;
 		}
 		// noFog
-		else if ( !token.Icmp( "noFog" ) ) {
+		else if (!token.Icmp("noFog")) {
 			noFog = true;
 			continue;
 		}
 		// unsmoothedTangents
-		else if ( !token.Icmp( "unsmoothedTangents" ) ) {
+		else if (!token.Icmp("unsmoothedTangents")) {
 			unsmoothedTangents = true;
 			continue;
 		}
 		// lightFallofImage <imageprogram>
 		// specifies the image to use for the third axis of projected
 		// light volumes
-		else if ( !token.Icmp( "lightFalloffImage" ) ) {
-			str = R_ParsePastImageProgram( src );
+		else if (!token.Icmp("lightFalloffImage")) {
+			str = R_ParsePastImageProgram(src);
 			idStr	copy;
 
 			copy = str;	// so other things don't step on it
-			lightFalloffImage = globalImages->ImageFromFile( copy, TF_DEFAULT, false, TR_CLAMP /* TR_CLAMP_TO_ZERO */, TD_DEFAULT );
+			lightFalloffImage = globalImages->ImageFromFile(copy, TF_DEFAULT, false, TR_CLAMP /* TR_CLAMP_TO_ZERO */, TD_DEFAULT);
 			continue;
 		}
 		// guisurf <guifile> | guisurf entity
 		// an entity guisurf must have an idUserInterface
 		// specified in the renderEntity
-		else if ( !token.Icmp( "guisurf" ) ) {
-			src.ReadTokenOnLine( &token );
-			if ( !token.Icmp( "entity" ) ) {
+		else if (!token.Icmp("guisurf")) {
+			src.ReadTokenOnLine(&token);
+			if (!token.Icmp("entity")) {
 				entityGui = 1;
-			} else if ( !token.Icmp( "entity2" ) ) {
+			}
+			else if (!token.Icmp("entity2")) {
 				entityGui = 2;
-			} else if ( !token.Icmp( "entity3" ) ) {
+			}
+			else if (!token.Icmp("entity3")) {
 				entityGui = 3;
-			} else {
-				gui = uiManager->FindGui( token.c_str(), true );
+			}
+			else {
+				gui = uiManager->FindGui(token.c_str(), true);
 			}
 			continue;
 		}
 		// sort
-		else if ( !token.Icmp( "sort" ) ) {
-			ParseSort( src );
+		else if (!token.Icmp("sort")) {
+			ParseSort(src);
 			continue;
 		}
 		// spectrum <integer>
-		else if ( !token.Icmp( "spectrum" ) ) {
-			src.ReadTokenOnLine( &token );
-			spectrum = atoi( token.c_str() );
+		else if (!token.Icmp("spectrum")) {
+			src.ReadTokenOnLine(&token);
+			spectrum = atoi(token.c_str());
 			continue;
 		}
 		// deform < sprite | tube | flare >
-		else if ( !token.Icmp( "deform" ) ) {
-			ParseDeform( src );
+		else if (!token.Icmp("deform")) {
+			ParseDeform(src);
 			continue;
 		}
 		// decalInfo <staySeconds> <fadeSeconds> ( <start rgb> ) ( <end rgb> )
-		else if ( !token.Icmp( "decalInfo" ) ) {
-			ParseDecalInfo( src );
+		else if (!token.Icmp("decalInfo")) {
+			ParseDecalInfo(src);
 			continue;
 		}
 		// renderbump <args...>
-		else if ( !token.Icmp( "renderbump") ) {
-			src.ParseRestOfLine( renderBump );
+		else if (!token.Icmp("renderbump")) {
+			src.ParseRestOfLine(renderBump);
 			continue;
 		}
+#ifdef PREY
+		else if (!token.Icmp("glowmap")) {
+			src.ReadTokenOnLine(&token);
+			continue;
+		}
+
+		else if (!token.Icmp("highres")) {
+			continue;
+		}
+#endif
+
 		// diffusemap for stage shortcut
-		else if ( !token.Icmp( "diffusemap" ) ) {
-			str = R_ParsePastImageProgram( src );
-			idStr::snPrintf( buffer, sizeof( buffer ), "blend diffusemap\nmap %s\n}\n", str );
-			newSrc.LoadMemory( buffer, strlen(buffer), "diffusemap" );
-			newSrc.SetFlags( LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES );
-			ParseStage( newSrc, trpDefault );
+		else if (!token.Icmp("diffusemap")) {
+			str = R_ParsePastImageProgram(src);
+			idStr::snPrintf(buffer, sizeof(buffer), "blend diffusemap\nmap %s\n}\n", str);
+			newSrc.LoadMemory(buffer, strlen(buffer), "diffusemap");
+			newSrc.SetFlags(LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES);
+			ParseStage(newSrc, trpDefault);
 			newSrc.FreeSource();
 			continue;
 		}
 		// specularmap for stage shortcut
-		else if ( !token.Icmp( "specularmap" ) ) {
-			str = R_ParsePastImageProgram( src );
-			idStr::snPrintf( buffer, sizeof( buffer ), "blend specularmap\nmap %s\n}\n", str );
-			newSrc.LoadMemory( buffer, strlen(buffer), "specularmap" );
-			newSrc.SetFlags( LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES );
-			ParseStage( newSrc, trpDefault );
+		else if (!token.Icmp("specularmap")) {
+			str = R_ParsePastImageProgram(src);
+			idStr::snPrintf(buffer, sizeof(buffer), "blend specularmap\nmap %s\n}\n", str);
+			newSrc.LoadMemory(buffer, strlen(buffer), "specularmap");
+			newSrc.SetFlags(LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES);
+			ParseStage(newSrc, trpDefault);
 			newSrc.FreeSource();
 			continue;
 		}
 		// normalmap for stage shortcut
-		else if ( !token.Icmp( "bumpmap" ) ) {
-			str = R_ParsePastImageProgram( src );
-			idStr::snPrintf( buffer, sizeof( buffer ), "blend bumpmap\nmap %s\n}\n", str );
-			newSrc.LoadMemory( buffer, strlen(buffer), "bumpmap" );
-			newSrc.SetFlags( LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES );
-			ParseStage( newSrc, trpDefault );
+		else if (!token.Icmp("bumpmap")) {
+			str = R_ParsePastImageProgram(src);
+			idStr::snPrintf(buffer, sizeof(buffer), "blend bumpmap\nmap %s\n}\n", str);
+			newSrc.LoadMemory(buffer, strlen(buffer), "bumpmap");
+			newSrc.SetFlags(LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES);
+			ParseStage(newSrc, trpDefault);
 			newSrc.FreeSource();
 			continue;
 		}
 		// DECAL_MACRO for backwards compatibility with the preprocessor macros
-		else if ( !token.Icmp( "DECAL_MACRO" ) ) {
+		else if (!token.Icmp("DECAL_MACRO")) {
 			// polygonOffset
-			SetMaterialFlag( MF_POLYGONOFFSET );
+			SetMaterialFlag(MF_POLYGONOFFSET);
 			polygonOffset = 1;
 
 			// discrete
 			surfaceFlags |= SURF_DISCRETE;
+#ifdef PREY
+			surfaceFlags |= SURF_NOIMPACT;
+#endif
 			contentFlags &= ~CONTENTS_SOLID;
 
 			// sort decal
 			sort = SS_DECAL;
 
 			// noShadows
-			SetMaterialFlag( MF_NOSHADOWS );
+			SetMaterialFlag(MF_NOSHADOWS);
+#ifdef PREY
+			coverage = MC_TRANSLUCENT;
+			allowOverlays = false;
+#endif
 			continue;
 		}
-		else if ( token == "{" ) {
+#ifdef PREY
+		// HUMANHEAD tmj: render this subview as a skybox portal.
+		else if (!token.Icmp("skyboxPortal")) {
+			sort = SS_SUBVIEW;
+			coverage = MC_OPAQUE;
+			subviewClass = SC_PORTAL_SKYBOX;
+			continue;
+		}
+		// HUMANHEAD CJR: render this subview as a direct portal, with distance-cull expression.
+		else if (!token.Icmp("directPortal")) {
+			sort = SS_SUBVIEW;
+			coverage = MC_OPAQUE;
+			subviewClass = SC_PORTAL;
+			directPortalDistance = ParseExpressionPriority(src, 4);
+			continue;
+		}
+		else if (!token.Icmp("DECAL_ALPHATEST_MACRO")) {
+			surfaceFlags |= SURF_NOIMPACT | SURF_DISCRETE;
+			contentFlags &= ~CONTENTS_SOLID;
+			sort = SS_DECAL;
+			SetMaterialFlag(MF_NOSHADOWS);
+			coverage = MC_TRANSLUCENT;
+			allowOverlays = false;
+			continue;
+		}
+		else if (!token.Icmp("SCORCH_MACRO") || !token.Icmp("OVERLAY_MACRO")) {
+			SetMaterialFlag(MF_POLYGONOFFSET);
+			polygonOffset = 1;
+			surfaceFlags |= SURF_NOIMPACT | SURF_DISCRETE;
+			contentFlags &= ~CONTENTS_SOLID;
+			sort = SS_DECAL;
+			SetMaterialFlag(MF_NOSHADOWS);
+			coverage = MC_TRANSLUCENT;
+			allowOverlays = false;
+			continue;
+		}
+		else if (!token.Icmp("GLASS_MACRO")) {
+			coverage = MC_TRANSLUCENT;
+			SetMaterialFlag(MF_NOSHADOWS);
+			pd->forceOverlays = true;
+			contentFlags &= ~CONTENTS_OPAQUE;
+			surfaceFlags = (surfaceFlags & ~SURF_TYPE_MASK) | SURFTYPE_GLASS;
+			sort = SS_MEDIUM;
+			continue;
+		}
+		else if (!token.Icmp("ALPHA_MACRO")) {
+			coverage = MC_TRANSLUCENT;
+			SetMaterialFlag(MF_NOSHADOWS);
+			surfaceFlags |= SURF_NOIMPACT;
+			cullType = CT_TWO_SIDED;
+			continue;
+		}
+		else if (!token.Icmp("EFFECT_MACRO")) {
+			coverage = MC_TRANSLUCENT;
+			SetMaterialFlag(MF_NOSHADOWS);
+			contentFlags &= ~CONTENTS_SOLID;
+			surfaceFlags |= SURF_NOIMPACT;
+			cullType = CT_TWO_SIDED;
+			continue;
+		}
+		else if (!token.Icmp("SPRITE_MACRO")) {
+			surfaceFlags |= SURF_DISCRETE;
+			contentFlags &= ~CONTENTS_SOLID;
+			SetMaterialFlag(MF_NOSHADOWS);
+			coverage = MC_TRANSLUCENT;
+			deform = DFRM_SPRITE;
+			cullType = CT_TWO_SIDED;
+			continue;
+		}
+		else if (!token.Icmp("SKYBOX_MACRO")) {
+			SetMaterialFlag(MF_NOSHADOWS | MF_NOSELFSHADOW);
+			allowOverlays = false;
+			coverage = MC_OPAQUE;
+			surfaceFlags |= SURF_NOIMPACT | SURF_NOFRAGMENT;
+			continue;
+		}
+#endif
+		else if (token == "{") {
 			// create the new stage
-			ParseStage( src, trpDefault );
+			ParseStage(src, trpDefault);
 			continue;
 		}
 		else {
-			common->Warning( "unknown general material parameter '%s' in '%s'", token.c_str(), GetName() );
-			SetMaterialFlag( MF_DEFAULTED );
+			common->Warning("unknown general material parameter '%s' in '%s'", token.c_str(), GetName());
+			SetMaterialFlag(MF_DEFAULTED);
 			return;
 		}
 	}
@@ -2144,10 +2259,10 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 
 	// we can't just call ReceivesLighting(), because the stages are still
 	// in temporary form
-	if ( cullType == CT_TWO_SIDED ) {
-		for ( i = 0 ; i < numStages ; i++ ) {
-			if ( pd->parseStages[i].lighting != SL_AMBIENT || pd->parseStages[i].texture.texgen != TG_EXPLICIT ) {
-				if ( cullType == CT_TWO_SIDED ) {
+	if (cullType == CT_TWO_SIDED) {
+		for (i = 0; i < numStages; i++) {
+			if (pd->parseStages[i].lighting != SL_AMBIENT || pd->parseStages[i].texture.texgen != TG_EXPLICIT) {
+				if (cullType == CT_TWO_SIDED) {
 					cullType = CT_FRONT_SIDED;
 					shouldCreateBackSides = true;
 				}
@@ -2158,12 +2273,13 @@ void idMaterial::ParseMaterial( idLexer &src ) {
 
 	// currently a surface can only have one unique texgen for all the stages on old hardware
 	texgen_t firstGen = TG_EXPLICIT;
-	for ( i = 0; i < numStages; i++ ) {
-		if ( pd->parseStages[i].texture.texgen != TG_EXPLICIT ) {
-			if ( firstGen == TG_EXPLICIT ) {
+	for (i = 0; i < numStages; i++) {
+		if (pd->parseStages[i].texture.texgen != TG_EXPLICIT) {
+			if (firstGen == TG_EXPLICIT) {
 				firstGen = pd->parseStages[i].texture.texgen;
-			} else if ( firstGen != pd->parseStages[i].texture.texgen ) {
-				common->Warning( "material '%s' has multiple stages with a texgen", GetName() );
+			}
+			else if (firstGen != pd->parseStages[i].texture.texgen) {
+				common->Warning("material '%s' has multiple stages with a texgen", GetName());
 				break;
 			}
 		}

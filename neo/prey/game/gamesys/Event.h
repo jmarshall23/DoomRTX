@@ -22,6 +22,9 @@ Event are used for scheduling tasks and for linking script commands.
 
 #define MAX_EVENTS					4096
 
+// stack size of idVec3, aligned to native pointer size
+#define E_EVENT_SIZEOF_VEC			((sizeof(idVec3) + (sizeof(intptr_t) - 1)) & ~(sizeof(intptr_t) - 1))
+
 //HUMANHEAD: aob - needed for networking to send the least amount of bits
 extern const int MAX_EVENTS_NUM_BITS;
 //HUMANHEAD END
@@ -50,7 +53,7 @@ public:
 	const char					*GetName( void ) const;
 	const char					*GetArgFormat( void ) const;
 	unsigned int				GetFormatspecIndex( void ) const;
-	char						GetReturnType( void ) const;
+	int							GetReturnType( void ) const;
 	int							GetEventNum( void ) const;
 	int							GetNumArgs( void ) const;
 	size_t						GetArgSize( void ) const;
@@ -87,7 +90,7 @@ public:
 								~idEvent();
 
 	static idEvent				*Alloc( const idEventDef *evdef, int numargs, va_list args );
-	static void					CopyArgs( const idEventDef *evdef, int numargs, va_list args, int data[ D_EVENT_MAXARGS ]  );
+	static void					CopyArgs( const idEventDef *evdef, int numargs, va_list args, intptr_t data[ D_EVENT_MAXARGS ]  );
 	
 	void						Free( void );
 	void						Schedule( idClass *object, const idTypeInfo *cls, int time );
@@ -152,7 +155,7 @@ ID_INLINE unsigned int idEventDef::GetFormatspecIndex( void ) const {
 idEventDef::GetReturnType
 ================
 */
-ID_INLINE char idEventDef::GetReturnType( void ) const {
+ID_INLINE int idEventDef::GetReturnType( void ) const {
 	return returnType;
 }
 

@@ -70,33 +70,43 @@ idEventDef::idEventDef( const char *command, const char *formatspec, char return
 	for( i = 0; i < numargs; i++ ) {
 		argOffset[ i ] = argsize;
 		switch( formatspec[ i ] ) {
-		case D_EVENT_FLOAT :
+		case D_EVENT_FLOAT:
 			bits |= 1 << i;
-			argsize += sizeof( float );
+			// RB: 64 bit fix, changed sizeof( float ) to sizeof( intptr_t )
+			argsize += sizeof(intptr_t);
+			// RB end
 			break;
 
-		case D_EVENT_INTEGER :
-			argsize += sizeof( int );
+		case D_EVENT_INTEGER:
+			// RB: 64 bit fix, changed sizeof( int ) to sizeof( intptr_t )
+			argsize += sizeof(intptr_t);
+			// RB end
 			break;
 
-		case D_EVENT_VECTOR :
-			argsize += sizeof( idVec3 );
+		case D_EVENT_VECTOR:
+			// RB: 64 bit fix, changed sizeof( idVec3 ) to E_EVENT_SIZEOF_VEC
+			argsize += E_EVENT_SIZEOF_VEC;
+			// RB end
 			break;
 
-		case D_EVENT_STRING :
+		case D_EVENT_STRING:
 			argsize += MAX_STRING_LEN;
 			break;
 
-		case D_EVENT_ENTITY :
-			argsize += sizeof( idEntityPtr<idEntity> );
+		case D_EVENT_ENTITY:
+			// RB: 64 bit fix, sizeof( idEntityPtr<idEntity> ) to sizeof( intptr_t )
+			argsize += sizeof(intptr_t);
+			// RB end
 			break;
 
-		case D_EVENT_ENTITY_NULL :
-			argsize += sizeof( idEntityPtr<idEntity> );
+		case D_EVENT_ENTITY_NULL:
+			// RB: 64 bit fix, sizeof( idEntityPtr<idEntity> ) to sizeof( intptr_t )
+			argsize += sizeof(intptr_t);
+			// RB end
 			break;
 
-		case D_EVENT_TRACE :
-			argsize += sizeof( trace_t ) + MAX_STRING_LEN + sizeof( bool );
+		case D_EVENT_TRACE:
+			argsize += sizeof(trace_t) + MAX_STRING_LEN + sizeof(bool);
 			break;
 
 		default :
@@ -326,7 +336,7 @@ idEvent *idEvent::Alloc( const idEventDef *evdef, int numargs, va_list args ) {
 idEvent::CopyArgs
 ================
 */
-void idEvent::CopyArgs( const idEventDef *evdef, int numargs, va_list args, int data[ D_EVENT_MAXARGS ] ) {
+void idEvent::CopyArgs( const idEventDef *evdef, int numargs, va_list args, intptr_t data[ D_EVENT_MAXARGS ] ) {
 	int			i;
 	const char	*format;
 	idEventArg	*arg;
@@ -455,7 +465,7 @@ idEvent::ServiceEvents
 void idEvent::ServiceEvents( void ) {
 	idEvent		*event;
 	int			num;
-	int			args[ D_EVENT_MAXARGS ];
+	intptr_t	args[ D_EVENT_MAXARGS ];
 	int			offset;
 	int			i;
 	int			numargs;
@@ -628,68 +638,91 @@ int idEvent::NumQueuedEvents( const idClass *obj, const idEventDef *evdef ) {
 idEvent::Save
 ================
 */
-void idEvent::Save( idSaveGame *savefile ) {
-	char *str;
+void idEvent::Save(idSaveGame* savefile) {
+	char* str;
 	int i, size;
-	idEvent	*event;
-	byte *dataPtr;
+	idEvent* event;
+	byte* dataPtr;
 	bool validTrace;
-	const char	*format;
+	const char* format;
+	// RB: for missing D_EVENT_STRING
+	idStr s;
+	// RB end
 
-	savefile->WriteInt( EventQueue.Num() );
+	savefile->WriteInt(EventQueue.Num());
 
 	event = EventQueue.Next();
-	while( event != NULL ) {
-		savefile->WriteInt( event->time );
-		savefile->WriteString( event->eventdef->GetName() );
-		savefile->WriteString( event->typeinfo->classname );
-		savefile->WriteObject( event->object );
-		savefile->WriteInt( event->eventdef->GetArgSize() );
+	while (event != NULL)
+	{
+		savefile->WriteInt(event->time);
+		savefile->WriteString(event->eventdef->GetName());
+		savefile->WriteString(event->typeinfo->classname);
+		savefile->WriteObject(event->object);
+		savefile->WriteInt(event->eventdef->GetArgSize());
 		format = event->eventdef->GetArgFormat();
-		for ( i = 0, size = 0; i < event->eventdef->GetNumArgs(); ++i) {
-			dataPtr = &event->data[ event->eventdef->GetArgOffset( i ) ];
-			switch( format[ i ] ) {
-				case D_EVENT_FLOAT :
-					savefile->WriteFloat( *reinterpret_cast<float *>( dataPtr ) );
-					size += sizeof( float );
-					break;
-				case D_EVENT_INTEGER :
-				case D_EVENT_ENTITY :
-				case D_EVENT_ENTITY_NULL :
-					savefile->WriteInt( *reinterpret_cast<int *>( dataPtr ) );
-					size += sizeof( int );
-					break;
-				case D_EVENT_VECTOR :
-					savefile->WriteVec3( *reinterpret_cast<idVec3 *>( dataPtr ) );
-					size += sizeof( idVec3 );
-					break;
-				case D_EVENT_TRACE :
-					validTrace = *reinterpret_cast<bool *>( dataPtr );
-					savefile->WriteBool( validTrace );
-					size += sizeof( bool );
-					if ( validTrace ) {
-						size += sizeof( trace_t );
-						const trace_t &t = *reinterpret_cast<trace_t *>( dataPtr + sizeof( bool ) );
-						SaveTrace( savefile, t );
-						if ( t.c.material ) {
-							size += MAX_STRING_LEN;
-							str = reinterpret_cast<char *>( dataPtr + sizeof( bool ) + sizeof( trace_t ) );
-							savefile->Write( str, MAX_STRING_LEN );
-						}
+		for (i = 0, size = 0; i < event->eventdef->GetNumArgs(); ++i)
+		{
+			dataPtr = &event->data[event->eventdef->GetArgOffset(i)];
+			switch (format[i])
+			{
+			case D_EVENT_FLOAT:
+				savefile->WriteFloat(*reinterpret_cast<float*>(dataPtr));
+				// RB: 64 bit fix, changed sizeof( float ) to sizeof( intptr_t )
+				size += sizeof(intptr_t);
+				// RB end
+				break;
+			case D_EVENT_INTEGER:
+				// RB: 64 bit fix, changed sizeof( int ) to sizeof( intptr_t )
+				savefile->WriteInt(*reinterpret_cast<int*>(dataPtr));
+				size += sizeof(intptr_t);
+				break;
+				// RB end
+			case D_EVENT_ENTITY:
+			case D_EVENT_ENTITY_NULL:
+				// RB: 64 bit fix, changed alignment to sizeof( intptr_t )
+				reinterpret_cast<idEntityPtr<idEntity>*>(dataPtr)->Save(savefile);
+				size += sizeof(intptr_t);
+				// RB end
+				break;
+			case D_EVENT_VECTOR:
+				savefile->WriteVec3(*reinterpret_cast<idVec3*>(dataPtr));
+				// RB: 64 bit fix, changed sizeof( int ) to E_EVENT_SIZEOF_VEC
+				size += E_EVENT_SIZEOF_VEC;
+				// RB end
+				break;
+#if 1
+				// RB: added missing D_EVENT_STRING case
+			case D_EVENT_STRING:
+				s.Clear();
+				s.Append(reinterpret_cast<char*>(dataPtr));
+				savefile->WriteString(s);
+				//size += s.Length();
+				size += MAX_STRING_LEN;
+				break;
+				// RB end
+#endif
+			case D_EVENT_TRACE:
+				validTrace = *reinterpret_cast<bool*>(dataPtr);
+				savefile->WriteBool(validTrace);
+				size += sizeof(bool);
+				if (validTrace)
+				{
+					size += sizeof(trace_t);
+					const trace_t& t = *reinterpret_cast<trace_t*>(dataPtr + sizeof(bool));
+					SaveTrace(savefile, t);
+					if (t.c.material)
+					{
+						size += MAX_STRING_LEN;
+						str = reinterpret_cast<char*>(dataPtr + sizeof(bool) + sizeof(trace_t));
+						savefile->Write(str, MAX_STRING_LEN);
 					}
-					break;
-				// HUMANHEAD mdl:  Added support for saving strings passed in events
-				case D_EVENT_STRING:
-					str = reinterpret_cast<char *>( dataPtr );
-					savefile->Write( str, MAX_STRING_LEN );
-					size += MAX_STRING_LEN;
-					break;
-				// HUMANHEAD END
-				default:
-					break;
+				}
+				break;
+			default:
+				break;
 			}
 		}
-		assert( size == event->eventdef->GetArgSize() );
+		assert(size == (int)event->eventdef->GetArgSize());
 		event = event->eventNode.Next();
 	}
 }
@@ -699,96 +732,130 @@ void idEvent::Save( idSaveGame *savefile ) {
 idEvent::Restore
 ================
 */
-void idEvent::Restore( idRestoreGame *savefile ) {
-	char    *str;
+void idEvent::Restore(idRestoreGame* savefile) {
+	char* str;
 	int		num, argsize, i, j, size;
 	idStr	name;
-	byte *dataPtr;
-	idEvent	*event;
-	const char	*format;
+	byte* dataPtr;
+	idEvent* event;
+	const char* format;
+	// RB: for missing D_EVENT_STRING
+	idStr s;
+	// RB end
 
-	savefile->ReadInt( num );
+	savefile->ReadInt(num);
 
-	for ( i = 0; i < num; i++ ) {
-		if ( FreeEvents.IsListEmpty() ) {
-			gameLocal.Error( "idEvent::Restore : No more free events" );
+	for (i = 0; i < num; i++)
+	{
+		if (FreeEvents.IsListEmpty())
+		{
+			gameLocal.Error("idEvent::Restore : No more free events");
 		}
 
 		event = FreeEvents.Next();
 		event->eventNode.Remove();
-		event->eventNode.AddToEnd( EventQueue );
+		event->eventNode.AddToEnd(EventQueue);
 
-		savefile->ReadInt( event->time );
+		savefile->ReadInt(event->time);
 
 		// read the event name
-		savefile->ReadString( name );
-		event->eventdef = idEventDef::FindEvent( name );
-		if ( !event->eventdef ) {
-			savefile->Error( "idEvent::Restore: unknown event '%s'", name.c_str() );
+		savefile->ReadString(name);
+		event->eventdef = idEventDef::FindEvent(name);
+		if (event->eventdef == NULL)
+		{
+			savefile->Error("idEvent::Restore: unknown event '%s'", name.c_str());
+			return;
 		}
 
 		// read the classtype
-		savefile->ReadString( name );
-		event->typeinfo = idClass::GetClass( name );
-		if ( !event->typeinfo ) {
-			savefile->Error( "idEvent::Restore: unknown class '%s' on event '%s'", name.c_str(), event->eventdef->GetName() );
+		savefile->ReadString(name);
+		event->typeinfo = idClass::GetClass(name);
+		if (event->typeinfo == NULL)
+		{
+			savefile->Error("idEvent::Restore: unknown class '%s' on event '%s'", name.c_str(), event->eventdef->GetName());
+			return;
 		}
 
-		savefile->ReadObject( event->object );
+		savefile->ReadObject(event->object);
 
 		// read the args
-		savefile->ReadInt( argsize );
-		if ( argsize != event->eventdef->GetArgSize() ) {
-			savefile->Error( "idEvent::Restore: arg size (%d) doesn't match saved arg size(%d) on event '%s'", event->eventdef->GetArgSize(), argsize, event->eventdef->GetName() );
+		savefile->ReadInt(argsize);
+		if (argsize != (int)event->eventdef->GetArgSize())
+		{
+			// RB: fixed wrong formatting
+			savefile->Error("idEvent::Restore: arg size (%zd) doesn't match saved arg size(%zd) on event '%s'", event->eventdef->GetArgSize(), argsize, event->eventdef->GetName());
+			// RB end
 		}
-		if ( argsize ) {
-			event->data = eventDataAllocator.Alloc( argsize );
+		if (argsize)
+		{
+			event->data = eventDataAllocator.Alloc(argsize);
 			format = event->eventdef->GetArgFormat();
-			assert( format );
-			for ( j = 0, size = 0; j < event->eventdef->GetNumArgs(); ++j) {
-				dataPtr = &event->data[ event->eventdef->GetArgOffset( j ) ];
-				switch( format[ j ] ) {
-					case D_EVENT_FLOAT :
-						savefile->ReadFloat( *reinterpret_cast<float *>( dataPtr ) );
-						size += sizeof( float );
-						break;
-					case D_EVENT_INTEGER :
-					case D_EVENT_ENTITY :
-					case D_EVENT_ENTITY_NULL :
-						savefile->ReadInt( *reinterpret_cast<int *>( dataPtr ) );
-						size += sizeof( int );
-						break;
-					case D_EVENT_VECTOR :
-						savefile->ReadVec3( *reinterpret_cast<idVec3 *>( dataPtr ) );
-						size += sizeof( idVec3 );
-						break;
-					case D_EVENT_TRACE :
-						savefile->ReadBool( *reinterpret_cast<bool *>( dataPtr ) );
-						size += sizeof( bool );
-						if ( *reinterpret_cast<bool *>( dataPtr ) ) {
-							size += sizeof( trace_t );
-							trace_t &t = *reinterpret_cast<trace_t *>( dataPtr + sizeof( bool ) );
-							RestoreTrace( savefile,  t) ;
-							if ( t.c.material ) {
-								size += MAX_STRING_LEN;
-								str = reinterpret_cast<char *>( dataPtr + sizeof( bool ) + sizeof( trace_t ) );
-								savefile->Read( str, MAX_STRING_LEN );
-							}
+			assert(format);
+			for (j = 0, size = 0; j < event->eventdef->GetNumArgs(); ++j)
+			{
+				dataPtr = &event->data[event->eventdef->GetArgOffset(j)];
+				switch (format[j])
+				{
+				case D_EVENT_FLOAT:
+					savefile->ReadFloat(*reinterpret_cast<float*>(dataPtr));
+					// RB: 64 bit fix, changed sizeof( float ) to sizeof( intptr_t )
+					size += sizeof(intptr_t);
+					// RB end
+					break;
+				case D_EVENT_INTEGER:
+					// RB: 64 bit fix
+					savefile->ReadInt(*reinterpret_cast<int*>(dataPtr));
+					size += sizeof(intptr_t);
+					break;
+					// RB end
+				case D_EVENT_ENTITY:
+				case D_EVENT_ENTITY_NULL:
+					// RB: 64 bit fix, changed alignment to sizeof( intptr_t )
+					reinterpret_cast<idEntityPtr<idEntity>*>(dataPtr)->Restore(savefile);
+					size += sizeof(intptr_t);
+					// RB end
+					break;
+				case D_EVENT_VECTOR:
+					savefile->ReadVec3(*reinterpret_cast<idVec3*>(dataPtr));
+					// RB: 64 bit fix, changed sizeof( int ) to E_EVENT_SIZEOF_VEC
+					size += E_EVENT_SIZEOF_VEC;
+					// RB end
+					break;
+#if 1
+					// RB: added missing D_EVENT_STRING case
+				case D_EVENT_STRING:
+					savefile->ReadString(s);
+					//idStr::Copynz(reinterpret_cast<char *>( dataPtr ), s, s.Length() );
+					//size += s.Length();
+					idStr::Copynz(reinterpret_cast<char*>(dataPtr), s, MAX_STRING_LEN);
+					size += MAX_STRING_LEN;
+					break;
+					// RB end
+#endif
+				case D_EVENT_TRACE:
+					savefile->ReadBool(*reinterpret_cast<bool*>(dataPtr));
+					size += sizeof(bool);
+					if (*reinterpret_cast<bool*>(dataPtr))
+					{
+						size += sizeof(trace_t);
+						trace_t& t = *reinterpret_cast<trace_t*>(dataPtr + sizeof(bool));
+						RestoreTrace(savefile, t);
+						if (t.c.material)
+						{
+							size += MAX_STRING_LEN;
+							str = reinterpret_cast<char*>(dataPtr + sizeof(bool) + sizeof(trace_t));
+							savefile->Read(str, MAX_STRING_LEN);
 						}
-						break;
-					// HUMANHEAD mdl:  Added support for saving strings passed in events
-					case D_EVENT_STRING:
-						str = reinterpret_cast<char *>( dataPtr );
-						savefile->Read( str, MAX_STRING_LEN );
-						size += MAX_STRING_LEN;
-						break;
-					// HUMANHEAD END
-					default:
-						break;
+					}
+					break;
+				default:
+					break;
 				}
 			}
-			assert( size == event->eventdef->GetArgSize() );
-		} else {
+			assert(size == (int)event->eventdef->GetArgSize());
+		}
+		else
+		{
 			event->data = NULL;
 		}
 	}

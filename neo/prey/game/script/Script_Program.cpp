@@ -16,23 +16,23 @@ static int globalOutputRunningSize = 0;
 
 // simple types.  function types are dynamically allocated
 idTypeDef		type_void( ev_void, &def_void, "void", 0, NULL );
-idTypeDef		type_scriptevent( ev_scriptevent, &def_scriptevent, "scriptevent", sizeof( void * ), NULL );
-idTypeDef		type_namespace( ev_namespace, &def_namespace, "namespace", sizeof( void * ), NULL );
+idTypeDef	type_scriptevent(ev_scriptevent, &def_scriptevent, "scriptevent", sizeof(intptr_t), NULL);
+idTypeDef	type_namespace(ev_namespace, &def_namespace, "namespace", sizeof(intptr_t), NULL);
 //HUMANHEAD: aob - changed types to inherited types
 idTypeDefString	type_string( ev_string, &def_string, "string", MAX_STRING_LEN, NULL );
-idTypeDefFloat	type_float( ev_float, &def_float, "float", sizeof( float ), NULL );
-idTypeDefVector	type_vector( ev_vector, &def_vector, "vector", sizeof( idVec3 ), NULL );
-idTypeDefEntity	type_entity( ev_entity, &def_entity, "entity", sizeof( int * ), NULL );					// stored as entity number pointer
+idTypeDefFloat	type_float( ev_float, &def_float, "float", sizeof(intptr_t), NULL );
+idTypeDefVector	type_vector( ev_vector, &def_vector, "vector", E_EVENT_SIZEOF_VEC, NULL );
+idTypeDefEntity	type_entity( ev_entity, &def_entity, "entity", sizeof(intptr_t), NULL );					// stored as entity number pointer
 //HUMANHEAD END
-idTypeDef		type_field( ev_field, &def_field, "field", sizeof( void * ), NULL );
-idTypeDef		type_function( ev_function, &def_function, "function", sizeof( void * ), &type_void );
-idTypeDef		type_virtualfunction( ev_virtualfunction, &def_virtualfunction, "virtual function", sizeof( int ), NULL );
-idTypeDef		type_pointer( ev_pointer, &def_pointer, "pointer", sizeof( void * ), NULL );
-idTypeDef		type_object( ev_object, &def_object, "object", sizeof( int * ), NULL );					// stored as entity number pointer
-idTypeDef		type_jumpoffset( ev_jumpoffset, &def_jumpoffset, "<jump>", sizeof( int ), NULL );		// only used for jump opcodes
-idTypeDef		type_argsize( ev_argsize, &def_argsize, "<argsize>", sizeof( int ), NULL );				// only used for function call and thread opcodes
+idTypeDef		type_field( ev_field, &def_field, "field", sizeof(intptr_t), NULL );
+idTypeDef		type_function( ev_function, &def_function, "function", sizeof(intptr_t), &type_void );
+idTypeDef		type_virtualfunction( ev_virtualfunction, &def_virtualfunction, "virtual function", sizeof(intptr_t), NULL );
+idTypeDef		type_pointer( ev_pointer, &def_pointer, "pointer", sizeof(intptr_t), NULL );
+idTypeDef		type_object( ev_object, &def_object, "object", sizeof(intptr_t), NULL );					// stored as entity number pointer
+idTypeDef		type_jumpoffset( ev_jumpoffset, &def_jumpoffset, "<jump>", sizeof(intptr_t), NULL );		// only used for jump opcodes
+idTypeDef		type_argsize( ev_argsize, &def_argsize, "<argsize>", sizeof(intptr_t), NULL );				// only used for function call and thread opcodes
 //HUMANHEAD: aob - changed types to inherited types
-idTypeDefBool	type_boolean( ev_boolean, &def_boolean, "boolean", sizeof( int ), NULL );
+idTypeDefBool	type_boolean( ev_boolean, &def_boolean, "boolean", sizeof(intptr_t), NULL );
 //HUMANHEAD END
 
 idVarDef	def_void( &type_void );
@@ -1341,24 +1341,22 @@ idVarDef *idProgram::AllocDef( idTypeDef *type, const char *name, idVarDef *scop
 			def->initialized		= idVarDef::stackVariable;
 			scope->value.functionPtr->locals += type->Size();
 		} else if ( scope->TypeDef()->Inherits( &type_object ) ) {
-			idTypeDef	newtype( ev_field, NULL, "float field", 0, &type_float );
-			idTypeDef	*type = GetType( newtype, true );
-
-			// set the value to the variable's position in the object
+			idTypeDef	newtype(ev_field, NULL, "float field", 0, &type_float);
+			// RB: changed local type to ftype	
+			idTypeDef* ftype = GetType(newtype, true);
+			// set the value to the variable's position in the object	
 			def->value.ptrOffset = scope->TypeDef()->Size();
-
-			// make automatic defs for the vectors elements
-			// origin can be accessed as origin_x, origin_y, and origin_z
-			sprintf( element, "%s_x", def->Name() );
-			def_x = AllocDef( type, element, scope, constant );
-
-			sprintf( element, "%s_y", def->Name() );
-			def_y = AllocDef( type, element, scope, constant );
-			def_y->value.ptrOffset = def_x->value.ptrOffset + type_float.Size();
-
-			sprintf( element, "%s_z", def->Name() );
-			def_z = AllocDef( type, element, scope, constant );
-			def_z->value.ptrOffset = def_y->value.ptrOffset + type_float.Size();
+			// make automatic defs for the vectors elements	
+			// origin can be accessed as origin_x, origin_y, and origin_z	
+			sprintf(element, "%s_x", def->Name());
+			def_x = AllocDef(ftype, element, scope, constant);
+			sprintf(element, "%s_y", def->Name());
+			def_y = AllocDef(ftype, element, scope, constant);
+			def_y->value.ptrOffset = def_x->value.ptrOffset + sizeof(float);
+			sprintf(element, "%s_z", def->Name());
+			def_z = AllocDef(ftype, element, scope, constant);
+			def_z->value.ptrOffset = def_y->value.ptrOffset + sizeof(float);
+			// RB end
 		} else {
 			// make automatic defs for the vectors elements
 			// origin can be accessed as origin_x, origin_y, and origin_z
@@ -1718,29 +1716,29 @@ idProgram::DisassembleStatement
 ==============
 */
 void idProgram::DisassembleStatement( idFile *file, int instructionPointer ) const {
-	opcode_t			*op;
-	const statement_t	*statement;
+	opcode_t* op;
+	const statement_t* statement;
 
-	statement = &statements[ instructionPointer ];
-	op = &idCompiler::opcodes[ statement->op ];
-	file->Printf( "%20s(%d):\t%6d: %15s\t", fileList[ statement->file ].c_str(), statement->linenumber, instructionPointer, op->opname );
+	statement = &statements[instructionPointer];
+	op = &idCompiler::opcodes[statement->op];
+	file->Printf("%20s(%d):\t%6d: %15s\t", fileList[statement->file].c_str(), statement->linenumber, instructionPointer, op->opname);
 
-	if ( statement->a ) {
-		file->Printf( "\ta: " );
-		statement->a->PrintInfo( file, instructionPointer );
+	if (statement->a) {
+		file->Printf("\ta: ");
+		statement->a->PrintInfo(file, instructionPointer);
 	}
 
-	if ( statement->b ) {
-		file->Printf( "\tb: " );
-		statement->b->PrintInfo( file, instructionPointer );
+	if (statement->b) {
+		file->Printf("\tb: ");
+		statement->b->PrintInfo(file, instructionPointer);
 	}
 
-	if ( statement->c ) {
-		file->Printf( "\tc: " );
-		statement->c->PrintInfo( file, instructionPointer );
+	if (statement->c) {
+		file->Printf("\tc: ");
+		statement->c->PrintInfo(file, instructionPointer);
 	}
 
-	file->Printf( "\n" );
+	file->Printf("\n");
 }
 
 /*
@@ -2257,6 +2255,7 @@ idProgram::ReturnEntity
 */
 void idProgram::ReturnEntity( idEntity *ent ) {
 	if ( ent ) {
+		assert(ent->entityNumber + 1 <= MAX_GENTITIES);
 		*returnDef->value.entityNumberPtr = ent->entityNumber + 1;
 	} else {
 		*returnDef->value.entityNumberPtr = 0;
