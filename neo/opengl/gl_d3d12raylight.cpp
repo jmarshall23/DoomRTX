@@ -332,22 +332,51 @@ static D3D12_GPU_DESCRIPTOR_HANDLE glRaytracingOffsetGpu(D3D12_GPU_DESCRIPTOR_HA
 // Shared command context
 // ============================================================
 
+#ifndef GL_RAYTRACING_CMD_RING_SIZE
+#define GL_RAYTRACING_CMD_RING_SIZE 4
+#endif
+
+#if GL_RAYTRACING_CMD_RING_SIZE < 2
+#error GL_RAYTRACING_CMD_RING_SIZE must be at least 2
+#endif
+
+#ifndef GL_RAYTRACING_FORCE_CPU_SYNC
+#define GL_RAYTRACING_FORCE_CPU_SYNC 0
+#endif
+
 struct glRaytracingCmdContext_t
 {
 	ComPtr<ID3D12Device5> device;
 	ComPtr<ID3D12CommandQueue> queue;
 
+	// Active command allocator/list for the command currently being recorded.
+	// The ring below avoids the old every-frame CPU/GPU fence wait.
 	ComPtr<ID3D12CommandAllocator> cmdAlloc;
 	ComPtr<ID3D12GraphicsCommandList4> cmdList;
 	UINT64 cmdLastFenceValue;
+	ComPtr<ID3D12CommandAllocator> cmdAllocRing[GL_RAYTRACING_CMD_RING_SIZE];
+	ComPtr<ID3D12GraphicsCommandList4> cmdListRing[GL_RAYTRACING_CMD_RING_SIZE];
+	UINT64 cmdFenceValueRing[GL_RAYTRACING_CMD_RING_SIZE];
+	UINT cmdRingIndex;
+	UINT cmdCurrentSlot;
 
 	ComPtr<ID3D12CommandAllocator> blasCmdAlloc;
 	ComPtr<ID3D12GraphicsCommandList4> blasCmdList;
 	UINT64 blasLastFenceValue;
+	ComPtr<ID3D12CommandAllocator> blasCmdAllocRing[GL_RAYTRACING_CMD_RING_SIZE];
+	ComPtr<ID3D12GraphicsCommandList4> blasCmdListRing[GL_RAYTRACING_CMD_RING_SIZE];
+	UINT64 blasFenceValueRing[GL_RAYTRACING_CMD_RING_SIZE];
+	UINT blasRingIndex;
+	UINT blasCurrentSlot;
 
 	ComPtr<ID3D12CommandAllocator> tlasCmdAlloc;
 	ComPtr<ID3D12GraphicsCommandList4> tlasCmdList;
 	UINT64 tlasLastFenceValue;
+	ComPtr<ID3D12CommandAllocator> tlasCmdAllocRing[GL_RAYTRACING_CMD_RING_SIZE];
+	ComPtr<ID3D12GraphicsCommandList4> tlasCmdListRing[GL_RAYTRACING_CMD_RING_SIZE];
+	UINT64 tlasFenceValueRing[GL_RAYTRACING_CMD_RING_SIZE];
+	UINT tlasRingIndex;
+	UINT tlasCurrentSlot;
 
 	ComPtr<ID3D12Fence> fence;
 	HANDLE fenceEvent;
@@ -359,6 +388,18 @@ struct glRaytracingCmdContext_t
 		cmdLastFenceValue = 0;
 		blasLastFenceValue = 0;
 		tlasLastFenceValue = 0;
+		cmdRingIndex = GL_RAYTRACING_CMD_RING_SIZE - 1;
+		blasRingIndex = GL_RAYTRACING_CMD_RING_SIZE - 1;
+		tlasRingIndex = GL_RAYTRACING_CMD_RING_SIZE - 1;
+		cmdCurrentSlot = 0;
+		blasCurrentSlot = 0;
+		tlasCurrentSlot = 0;
+		for (UINT i = 0; i < GL_RAYTRACING_CMD_RING_SIZE; ++i)
+		{
+			cmdFenceValueRing[i] = 0;
+			blasFenceValueRing[i] = 0;
+			tlasFenceValueRing[i] = 0;
+		}
 		fenceEvent = nullptr;
 		nextFenceValue = 0;
 		initialized = false;
@@ -396,6 +437,26 @@ static void glRaytracingWaitIdle(void)
 	glRaytracingWaitFenceValue(value);
 }
 
+static int glRaytracingCreateDirectCommandListPair(
+	ID3D12Device5* device,
+	ComPtr<ID3D12CommandAllocator>& allocator,
+	ComPtr<ID3D12GraphicsCommandList4>& list)
+{
+	GLR_CHECK(device->CreateCommandAllocator(
+		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		IID_PPV_ARGS(&allocator)));
+
+	GLR_CHECK(device->CreateCommandList(
+		0,
+		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		allocator.Get(),
+		nullptr,
+		IID_PPV_ARGS(&list)));
+
+	GLR_CHECK(list->Close());
+	return 1;
+}
+
 static int glRaytracingInitCmdContext(void)
 {
 	ID3D12Device* baseDevice = QD3D12_GetDevice();
@@ -429,44 +490,39 @@ static int glRaytracingInitCmdContext(void)
 	GLR_CHECK(baseDevice->QueryInterface(IID_PPV_ARGS(&g_glRaytracingCmd.device)));
 	g_glRaytracingCmd.queue = baseQueue;
 
-	GLR_CHECK(g_glRaytracingCmd.device->CreateCommandAllocator(
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&g_glRaytracingCmd.cmdAlloc)));
+	for (UINT i = 0; i < GL_RAYTRACING_CMD_RING_SIZE; ++i)
+	{
+		if (!glRaytracingCreateDirectCommandListPair(
+			g_glRaytracingCmd.device.Get(),
+			g_glRaytracingCmd.cmdAllocRing[i],
+			g_glRaytracingCmd.cmdListRing[i]))
+		{
+			return 0;
+		}
 
-	GLR_CHECK(g_glRaytracingCmd.device->CreateCommandList(
-		0,
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		g_glRaytracingCmd.cmdAlloc.Get(),
-		nullptr,
-		IID_PPV_ARGS(&g_glRaytracingCmd.cmdList)));
+		if (!glRaytracingCreateDirectCommandListPair(
+			g_glRaytracingCmd.device.Get(),
+			g_glRaytracingCmd.blasCmdAllocRing[i],
+			g_glRaytracingCmd.blasCmdListRing[i]))
+		{
+			return 0;
+		}
 
-	GLR_CHECK(g_glRaytracingCmd.cmdList->Close());
+		if (!glRaytracingCreateDirectCommandListPair(
+			g_glRaytracingCmd.device.Get(),
+			g_glRaytracingCmd.tlasCmdAllocRing[i],
+			g_glRaytracingCmd.tlasCmdListRing[i]))
+		{
+			return 0;
+		}
+	}
 
-	GLR_CHECK(g_glRaytracingCmd.device->CreateCommandAllocator(
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&g_glRaytracingCmd.blasCmdAlloc)));
-
-	GLR_CHECK(g_glRaytracingCmd.device->CreateCommandList(
-		0,
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		g_glRaytracingCmd.blasCmdAlloc.Get(),
-		nullptr,
-		IID_PPV_ARGS(&g_glRaytracingCmd.blasCmdList)));
-
-	GLR_CHECK(g_glRaytracingCmd.blasCmdList->Close());
-
-	GLR_CHECK(g_glRaytracingCmd.device->CreateCommandAllocator(
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&g_glRaytracingCmd.tlasCmdAlloc)));
-
-	GLR_CHECK(g_glRaytracingCmd.device->CreateCommandList(
-		0,
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		g_glRaytracingCmd.tlasCmdAlloc.Get(),
-		nullptr,
-		IID_PPV_ARGS(&g_glRaytracingCmd.tlasCmdList)));
-
-	GLR_CHECK(g_glRaytracingCmd.tlasCmdList->Close());
+	g_glRaytracingCmd.cmdAlloc = g_glRaytracingCmd.cmdAllocRing[0];
+	g_glRaytracingCmd.cmdList = g_glRaytracingCmd.cmdListRing[0];
+	g_glRaytracingCmd.blasCmdAlloc = g_glRaytracingCmd.blasCmdAllocRing[0];
+	g_glRaytracingCmd.blasCmdList = g_glRaytracingCmd.blasCmdListRing[0];
+	g_glRaytracingCmd.tlasCmdAlloc = g_glRaytracingCmd.tlasCmdAllocRing[0];
+	g_glRaytracingCmd.tlasCmdList = g_glRaytracingCmd.tlasCmdListRing[0];
 
 	GLR_CHECK(g_glRaytracingCmd.device->CreateFence(
 		0,
@@ -502,7 +558,13 @@ static void glRaytracingShutdownCmdContext(void)
 
 static int glRaytracingBeginCmd(void)
 {
-	glRaytracingWaitFenceValue(g_glRaytracingCmd.cmdLastFenceValue);
+	const UINT slot = (g_glRaytracingCmd.cmdRingIndex + 1u) % GL_RAYTRACING_CMD_RING_SIZE;
+	glRaytracingWaitFenceValue(g_glRaytracingCmd.cmdFenceValueRing[slot]);
+
+	g_glRaytracingCmd.cmdRingIndex = slot;
+	g_glRaytracingCmd.cmdCurrentSlot = slot;
+	g_glRaytracingCmd.cmdAlloc = g_glRaytracingCmd.cmdAllocRing[slot];
+	g_glRaytracingCmd.cmdList = g_glRaytracingCmd.cmdListRing[slot];
 
 	GLR_CHECK(g_glRaytracingCmd.cmdAlloc->Reset());
 	GLR_CHECK(g_glRaytracingCmd.cmdList->Reset(g_glRaytracingCmd.cmdAlloc.Get(), nullptr));
@@ -517,13 +579,24 @@ static int glRaytracingEndCmd(void)
 	g_glRaytracingCmd.queue->ExecuteCommandLists(1, lists);
 
 	g_glRaytracingCmd.cmdLastFenceValue = glRaytracingSignalQueue();
+	g_glRaytracingCmd.cmdFenceValueRing[g_glRaytracingCmd.cmdCurrentSlot] = g_glRaytracingCmd.cmdLastFenceValue;
+
+#if GL_RAYTRACING_FORCE_CPU_SYNC
 	glRaytracingWaitFenceValue(g_glRaytracingCmd.cmdLastFenceValue);
+#endif
+
 	return 1;
 }
 
 static int glRaytracingBeginBlasCmd(void)
 {
-	glRaytracingWaitFenceValue(g_glRaytracingCmd.blasLastFenceValue);
+	const UINT slot = (g_glRaytracingCmd.blasRingIndex + 1u) % GL_RAYTRACING_CMD_RING_SIZE;
+	glRaytracingWaitFenceValue(g_glRaytracingCmd.blasFenceValueRing[slot]);
+
+	g_glRaytracingCmd.blasRingIndex = slot;
+	g_glRaytracingCmd.blasCurrentSlot = slot;
+	g_glRaytracingCmd.blasCmdAlloc = g_glRaytracingCmd.blasCmdAllocRing[slot];
+	g_glRaytracingCmd.blasCmdList = g_glRaytracingCmd.blasCmdListRing[slot];
 
 	GLR_CHECK(g_glRaytracingCmd.blasCmdAlloc->Reset());
 	GLR_CHECK(g_glRaytracingCmd.blasCmdList->Reset(g_glRaytracingCmd.blasCmdAlloc.Get(), nullptr));
@@ -538,12 +611,24 @@ static UINT64 glRaytracingEndBlasCmd(void)
 	g_glRaytracingCmd.queue->ExecuteCommandLists(1, lists);
 
 	g_glRaytracingCmd.blasLastFenceValue = glRaytracingSignalQueue();
+	g_glRaytracingCmd.blasFenceValueRing[g_glRaytracingCmd.blasCurrentSlot] = g_glRaytracingCmd.blasLastFenceValue;
+
+#if GL_RAYTRACING_FORCE_CPU_SYNC
+	glRaytracingWaitFenceValue(g_glRaytracingCmd.blasLastFenceValue);
+#endif
+
 	return g_glRaytracingCmd.blasLastFenceValue;
 }
 
 static int glRaytracingBeginTlasCmd(void)
 {
-	glRaytracingWaitFenceValue(g_glRaytracingCmd.tlasLastFenceValue);
+	const UINT slot = (g_glRaytracingCmd.tlasRingIndex + 1u) % GL_RAYTRACING_CMD_RING_SIZE;
+	glRaytracingWaitFenceValue(g_glRaytracingCmd.tlasFenceValueRing[slot]);
+
+	g_glRaytracingCmd.tlasRingIndex = slot;
+	g_glRaytracingCmd.tlasCurrentSlot = slot;
+	g_glRaytracingCmd.tlasCmdAlloc = g_glRaytracingCmd.tlasCmdAllocRing[slot];
+	g_glRaytracingCmd.tlasCmdList = g_glRaytracingCmd.tlasCmdListRing[slot];
 
 	GLR_CHECK(g_glRaytracingCmd.tlasCmdAlloc->Reset());
 	GLR_CHECK(g_glRaytracingCmd.tlasCmdList->Reset(g_glRaytracingCmd.tlasCmdAlloc.Get(), nullptr));
@@ -558,6 +643,12 @@ static UINT64 glRaytracingEndTlasCmd(void)
 	g_glRaytracingCmd.queue->ExecuteCommandLists(1, lists);
 
 	g_glRaytracingCmd.tlasLastFenceValue = glRaytracingSignalQueue();
+	g_glRaytracingCmd.tlasFenceValueRing[g_glRaytracingCmd.tlasCurrentSlot] = g_glRaytracingCmd.tlasLastFenceValue;
+
+#if GL_RAYTRACING_FORCE_CPU_SYNC
+	glRaytracingWaitFenceValue(g_glRaytracingCmd.tlasLastFenceValue);
+#endif
+
 	return g_glRaytracingCmd.tlasLastFenceValue;
 }
 
@@ -602,6 +693,7 @@ struct glRaytracingMeshRecord_t
 
 	int blasBuilt;
 	int dirty;
+	UINT64 blasBuildFenceValue;
 	int currentBlasIndex;
 	uint32_t materialFlags;
 
@@ -614,6 +706,7 @@ struct glRaytracingMeshRecord_t
 		blasResultSize = 0;
 		blasBuilt = 0;
 		dirty = 0;
+		blasBuildFenceValue = 0;
 		currentBlasIndex = 0;
 		materialFlags = 0;
 	}
@@ -669,6 +762,7 @@ struct glRaytracingRenderWorld_t
 	uint32_t nextInstanceHandle;
 
 	glRaytracingSceneUploadBuffer_t instanceDescUpload[2];
+	UINT64 instanceDescUploadFenceValue[2];
 	glRaytracingBuffer_t tlasScratch;
 	glRaytracingBuffer_t tlasResult[2];
 
@@ -688,6 +782,8 @@ struct glRaytracingRenderWorld_t
 		handle = 0;
 		alive = 0;
 		nextInstanceHandle = 1;
+		instanceDescUploadFenceValue[0] = 0;
+		instanceDescUploadFenceValue[1] = 0;
 		tlasScratchSize = 0;
 		tlasResultSize = 0;
 		activeInstanceCount = 0;
@@ -736,6 +832,8 @@ static void glRaytracingReleaseWorldResources(glRaytracingRenderWorld_t* world)
 		world->tlasResult[i].resource.Reset();
 	}
 
+	world->instanceDescUploadFenceValue[0] = 0;
+	world->instanceDescUploadFenceValue[1] = 0;
 	world->tlasScratch.resource.Reset();
 	world->tlasScratchSize = 0;
 	world->tlasResultSize = 0;
@@ -804,6 +902,8 @@ static void glRaytracingClearWorldContents(glRaytracingRenderWorld_t* world)
 	world->handle = handle;
 	world->alive = alive;
 	world->nextInstanceHandle = 1;
+	world->instanceDescUploadFenceValue[0] = 0;
+	world->instanceDescUploadFenceValue[1] = 0;
 	world->tlasScratchSize = 0;
 	world->tlasResultSize = 0;
 	world->activeInstanceCount = 0;
@@ -949,6 +1049,18 @@ static int glRaytracingEnsureTLASBuffers(
 		prebuild.ResultDataMaxSizeInBytes,
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT);
 
+	const bool resizingScratch = world->tlasScratch.resource &&
+		world->tlasScratchSize < requiredScratch;
+	const bool resizingResult = (world->tlasResult[0].resource || world->tlasResult[1].resource) &&
+		world->tlasResultSize < requiredResult;
+	if (resizingScratch || resizingResult)
+	{
+		// Releasing/reallocating a TLAS resource can invalidate an in-flight ray
+		// dispatch that still references the old resource. This resize path is rare,
+		// so prefer correctness over complex deferred destruction.
+		glRaytracingWaitIdle();
+	}
+
 	if (!world->tlasScratch.resource ||
 		world->tlasScratchSize < requiredScratch)
 	{
@@ -1061,6 +1173,7 @@ static int glRaytracingEnsureMeshScratch(glRaytracingMeshRecord_t* mesh, UINT64 
 
 	if (!mesh->blasScratch.resource || mesh->blasScratchSize < requiredScratch)
 	{
+		glRaytracingWaitFenceValue(mesh->blasBuildFenceValue);
 		mesh->blasScratch.resource.Reset();
 		mesh->blasScratch = glRaytracingCreateBuffer(
 			g_glRaytracingCmd.device.Get(),
@@ -1090,6 +1203,7 @@ static int glRaytracingEnsureMeshResultBuffers(glRaytracingMeshRecord_t* mesh, U
 	{
 		if (!mesh->blasResult[i].resource || mesh->blasResultSize < requiredResult)
 		{
+			glRaytracingWaitFenceValue(mesh->blasBuildFenceValue);
 			mesh->blasResult[i].resource.Reset();
 			mesh->blasResult[i] = glRaytracingCreateBuffer(
 				g_glRaytracingCmd.device.Get(),
@@ -1103,8 +1217,11 @@ static int glRaytracingEnsureMeshResultBuffers(glRaytracingMeshRecord_t* mesh, U
 		}
 	}
 
-	if (!mesh->descCpu.allowUpdate)
+	if (!mesh->descCpu.allowUpdate && mesh->blasResult[1].resource)
+	{
+		glRaytracingWaitFenceValue(mesh->blasBuildFenceValue);
 		mesh->blasResult[1].resource.Reset();
+	}
 
 	mesh->blasResultSize = requiredResult;
 	return 1;
@@ -1254,6 +1371,9 @@ static int glRaytracingUploadCachedInstanceDescs(glRaytracingRenderWorld_t* worl
 		(UINT64)activeCount * (UINT64)sizeof(D3D12_RAYTRACING_INSTANCE_DESC),
 		D3D12_RAYTRACING_INSTANCE_DESCS_BYTE_ALIGNMENT);
 
+	const int uploadIndex = glRaytracingGetInactiveTLASIndex(world);
+	glRaytracingWaitFenceValue(world->instanceDescUploadFenceValue[uploadIndex]);
+
 	if (!glRaytracingEnsureSceneUploadBuffer(world, instBytes))
 		return 0;
 
@@ -1384,12 +1504,15 @@ static int glRaytracingBuildDirtyMeshesInternal(void)
 	if (!blasFenceValue)
 		return 0;
 
-	glRaytracingWaitFenceValue(blasFenceValue);
-
+	// Do not block the CPU here. The BLAS build was submitted before any TLAS
+	// build/lighting work that consumes it, and the shared D3D12 queue preserves
+	// that order. Command allocator reuse is protected by the ring fence in
+	// glRaytracingBeginBlasCmd().
 	for (size_t i = 0; i < builds.size(); ++i)
 	{
 		glRaytracingMeshRecord_t* mesh = builds[i].mesh;
 		mesh->currentBlasIndex = builds[i].newBlasIndex;
+		mesh->blasBuildFenceValue = blasFenceValue;
 		mesh->blasBuilt = 1;
 		mesh->dirty = 0;
 	}
@@ -1588,11 +1711,12 @@ static int glRaytracingBuildSceneInternal(glRaytracingRenderWorld_t* world)
 	if (!glRaytracingEnsureTLASBuffers(world, &inputs))
 		return 0;
 
+	const int buildTLASIndex = glRaytracingGetInactiveTLASIndex(world);
 	glRaytracingBuffer_t* dstTLAS = glRaytracingGetBuildTLASBuffer(world);
 	const glRaytracingBuffer_t* srcTLAS = glRaytracingGetCurrentTLASBufferConst(world);
 
-	glRaytracingWaitFenceValue(g_glRaytracingCmd.blasLastFenceValue);
-
+	// The TLAS build is queued after any pending BLAS builds on the same D3D12
+	// queue, so GPU ordering is sufficient and a CPU wait would stall the frame.
 	if (!glRaytracingBeginTlasCmd())
 		return 0;
 
@@ -1619,9 +1743,13 @@ static int glRaytracingBuildSceneInternal(glRaytracingRenderWorld_t* world)
 	if (!tlasFenceValue)
 		return 0;
 
-	glRaytracingWaitFenceValue(tlasFenceValue);
-
-	world->currentTLASIndex = glRaytracingGetInactiveTLASIndex(world);
+	// Keep TLAS builds asynchronous. Later ray dispatches are submitted to the
+	// same queue after this command list, so the GPU sees a complete TLAS before
+	// tracing without forcing the CPU to wait every update. The upload buffer is
+	// fence-tagged so the CPU does not overwrite instance descriptors still being
+	// consumed by an in-flight TLAS build.
+	world->instanceDescUploadFenceValue[buildTLASIndex] = tlasFenceValue;
+	world->currentTLASIndex = buildTLASIndex;
 	world->activeInstanceCount = activeCount;
 	world->builtInstanceCount = activeCount;
 	world->tlasBuilt = 1;
@@ -1696,6 +1824,7 @@ void glRaytracingShutdown(void)
 	if (!g_glRaytracingScene.initialized)
 		return;
 
+	glRaytracingWaitIdle();
 	glRaytracingClearAllSceneStateInternal();
 	g_glRaytracingScene = glRaytracingSceneState_t();
 	glRaytracingShutdownCmdContext();
@@ -1705,6 +1834,7 @@ void glRaytracingClear(void)
 {
 	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
 
+	glRaytracingWaitIdle();
 	glRaytracingClearAllSceneStateInternal();
 }
 
@@ -1737,6 +1867,7 @@ void glRaytracingClearScene(glRaytracingSceneHandle_t worldHandle)
 	if (!world)
 		return;
 
+	glRaytracingWaitIdle();
 	glRaytracingClearWorldContents(world);
 }
 
@@ -1748,6 +1879,7 @@ void glRaytracingDeleteScene(glRaytracingSceneHandle_t worldHandle)
 	if (!world)
 		return;
 
+	glRaytracingWaitIdle();
 	glRaytracingReleaseWorldResources(world);
 	*world = glRaytracingRenderWorld_t();
 }
@@ -1813,6 +1945,11 @@ int glRaytracingUpdateMesh(glRaytracingMeshHandle_t meshHandle, const glRaytraci
 	mesh->descCpu.vertices = nullptr;
 	mesh->descCpu.indices = nullptr;
 
+	// Updating a mesh destroys/replaces resources that an already submitted frame
+	// may still reference. Wait only for this destructive path; steady-state
+	// rendering remains asynchronous.
+	glRaytracingWaitIdle();
+
 	mesh->vertexBuffer.resource.Reset();
 	mesh->indexBuffer.resource.Reset();
 	mesh->blasScratch.resource.Reset();
@@ -1820,6 +1957,7 @@ int glRaytracingUpdateMesh(glRaytracingMeshHandle_t meshHandle, const glRaytraci
 	mesh->blasResult[1].resource.Reset();
 	mesh->blasScratchSize = 0;
 	mesh->blasResultSize = 0;
+	mesh->blasBuildFenceValue = 0;
 	mesh->blasBuilt = 0;
 	mesh->dirty = 1;
 	mesh->currentBlasIndex = 0;
@@ -1881,6 +2019,7 @@ void glRaytracingDeleteMesh(glRaytracingMeshHandle_t meshHandle)
 	if (!mesh)
 		return;
 
+	glRaytracingWaitIdle();
 	glRaytracingInvalidateInstancesForMesh(meshHandle, 1);
 
 	mesh->alive = 0;
@@ -1891,6 +2030,7 @@ void glRaytracingDeleteMesh(glRaytracingMeshHandle_t meshHandle)
 	mesh->blasResult[1].resource.Reset();
 	mesh->blasScratchSize = 0;
 	mesh->blasResultSize = 0;
+	mesh->blasBuildFenceValue = 0;
 	mesh->blasBuilt = 0;
 	mesh->dirty = 0;
 
@@ -2109,10 +2249,17 @@ struct glRaytracingLightingState_t
 	glRaytracingLightingConstants_t constants;
 
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+	ComPtr<ID3D12DescriptorHeap> descriptorHeapRing[GL_RAYTRACING_CMD_RING_SIZE];
 	UINT descriptorStride;
 
 	glRaytracingBuffer_t constantBuffer;
 	glRaytracingBuffer_t lightBuffer;
+	void* constantBufferMapped;
+	void* lightBufferMapped;
+	glRaytracingBuffer_t constantBufferRing[GL_RAYTRACING_CMD_RING_SIZE];
+	glRaytracingBuffer_t lightBufferRing[GL_RAYTRACING_CMD_RING_SIZE];
+	void* constantBufferMappedRing[GL_RAYTRACING_CMD_RING_SIZE];
+	void* lightBufferMappedRing[GL_RAYTRACING_CMD_RING_SIZE];
 
 	ComPtr<ID3D12RootSignature> globalRootSig;
 	ComPtr<ID3D12RootSignature> localRootSig;
@@ -2132,23 +2279,39 @@ struct glRaytracingLightingState_t
 	glRaytracingTexture_t denoiseTemp[2];
 	uint32_t currentHistoryIndex;
 	glRaytracingBuffer_t denoiseConstantBuffer[3];
+	glRaytracingBuffer_t denoiseConstantBufferRing[GL_RAYTRACING_CMD_RING_SIZE][3];
+	void* denoiseConstantBufferMapped[3];
+	void* denoiseConstantBufferMappedRing[GL_RAYTRACING_CMD_RING_SIZE][3];
 	UINT denoiseWidth;
 	UINT denoiseHeight;
 	DXGI_FORMAT denoiseFormat;
 	uint32_t frameCounter;
 	bool externalDenoiser;
+	bool uploadToCurrentFrameResource;
 	bool initialized;
 
 	glRaytracingLightingState_t()
 	{
 		memset(&constants, 0, sizeof(constants));
 		descriptorStride = 0;
+		constantBufferMapped = nullptr;
+		lightBufferMapped = nullptr;
+		for (UINT frame = 0; frame < GL_RAYTRACING_CMD_RING_SIZE; ++frame)
+		{
+			constantBufferMappedRing[frame] = nullptr;
+			lightBufferMappedRing[frame] = nullptr;
+			for (int i = 0; i < 3; ++i)
+				denoiseConstantBufferMappedRing[frame][i] = nullptr;
+		}
+		for (int i = 0; i < 3; ++i)
+			denoiseConstantBufferMapped[i] = nullptr;
 		denoiseWidth = 0;
 		denoiseHeight = 0;
 		denoiseFormat = DXGI_FORMAT_UNKNOWN;
 		currentHistoryIndex = 0;
 		frameCounter = 0;
 		externalDenoiser = false;
+		uploadToCurrentFrameResource = false;
 		initialized = false;
 	}
 };
@@ -2769,7 +2932,7 @@ float TraceSpotShadow(float3 worldPos, float3 N, float3 toLight, float dist)
 
 float TraceSoftShadow(float3 worldPos, float3 N, Light Lgt, float3 toLight, float dist)
 {
-    const uint SHADOW_SAMPLES = 12;
+    const uint SHADOW_SAMPLES = 4;
 
     float3 L = toLight / max(dist, 1e-6);
 
@@ -2815,7 +2978,7 @@ R"(
 float RectLightShadow(float3 worldPos, float3 N, Light Lgt, uint2 pixel)
 {
     uint sampleCount = max(Lgt.samples, 1u);
-    sampleCount = min(sampleCount, 16u);
+    sampleCount = min(sampleCount, 4u);
 
     float visibility = 0.0;
 
@@ -2873,7 +3036,7 @@ float RectLightShadow(float3 worldPos, float3 N, Light Lgt, uint2 pixel)
 
 float ComputeAmbientOcclusion(float3 worldPos, float3 N, uint2 pixel)
 {
-    const uint AO_SAMPLES = 24;
+    const uint AO_SAMPLES = 8;
     const float AO_RADIUS = 32.0;
 
     float3 tangent, bitangent;
@@ -2919,7 +3082,7 @@ float3 GetSkyLightDirection10AM()
 R"(
 float ComputeSkyVisibility(float3 worldPos, float3 N, uint2 pixel)
 {
-    const uint  SKY_SAMPLES = 12;
+    const uint  SKY_SAMPLES = 4;
     const float SKY_TMAX    = 1000000.0;
 
     // Soft angular size of the sky/sun shadow cone.
@@ -3465,7 +3628,7 @@ float3 PathTraceDirectRectLight(uint2 pixel, float3 worldPos, float3 N, float3 V
         return 0.0;
 
     uint sampleCount = max(Lgt.samples, 1u);
-    sampleCount = min(sampleCount, 8u);
+    sampleCount = min(sampleCount, 4u);
     float rand = Hash12((float2)pixel + worldPos.xy + float2(centerDist, worldPos.z));
 
     float3 diffuseAccum = 0.0;
@@ -3570,7 +3733,7 @@ float3 EstimateSingleLightVolumetricScattering(uint2 pixel, float3 cameraPos, fl
 
     float3 viewDir = cameraToSurface / viewDist;
 
-    uint stepCount = min(max(Lgt.samples, 4u), 12u);
+    uint stepCount = min(max(Lgt.samples, 3u), 6u);
     float stepLen = viewDist / (float)stepCount;
 
     // Do not frame-jitter the march. This renderer has no temporal GI history,
@@ -3818,7 +3981,7 @@ float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 
     }
 
     //if (hitIsSkeletal)
-     //   lighting *= 1.10;
+    //    lighting *= 1.10;
 
     // Outgoing diffuse radiance from the bounce surface.  The primary surface's
     // albedo is applied later in RayGen, so only the secondary hit albedo belongs
@@ -3843,19 +4006,19 @@ float3 EstimateReactiveScreenSpaceFinalGather(uint2 pixel, float3 worldPos, floa
         int2( 29,  18)
     };
 
-    uint sampleBudget = 5u;
+    uint sampleBudget = 3u;
 
     // Keep the pass cheap when many lights or high SPP are active.  This path
     // evaluates bounce lighting against the light list and traces short
     // visibility rays, so adapt the sample count instead of raising ray count.
     if (gLightCount > 4u)
-        sampleBudget = 4u;
+        sampleBudget = 2u;
     if (gLightCount > 10u)
-        sampleBudget = 3u;
+        sampleBudget = 1u;
     if (gSamplesPerPixel >= 4u)
-        sampleBudget = min(sampleBudget, 3u);
-    if (gSamplesPerPixel >= 6u)
         sampleBudget = min(sampleBudget, 2u);
+    if (gSamplesPerPixel >= 6u)
+        sampleBudget = min(sampleBudget, 1u);
 
     int2 maxPixel = int2((int)gScreenSize.x - 1, (int)gScreenSize.y - 1);
     float pixelScale = max(1.0, round(min(gScreenSize.x, gScreenSize.y) / 720.0));
@@ -4092,7 +4255,7 @@ float3 ApplyPrimaryDiffusePost(float3 lightingAccum, float ao, float microShadow
     lightingAccum *= ao;
     lightingAccum *= microShadow;
 
-   // if (isSkeletal)
+    //if (isSkeletal)
     //    lightingAccum *= 1.2;
 
     return max(lightingAccum, 0.0);
@@ -4137,7 +4300,7 @@ float3 PathTraceDeterministicLighting(
     lightingAccum += ambientSkyVis * (skyColorRGB * 0.15);
 
     //if (isSkeletal)
-      //  lightingAccum += 0.1;
+    //    lightingAccum += 0.1;
 
     // The current direct-light evaluators are deterministic.  Keep the inout RNG
     // argument only because the functions share the same signature as stochastic
@@ -4700,8 +4863,10 @@ static ComPtr<IDxcBlob> glRaytracingLightingCompileLibrary(const char* src)
 	const wchar_t* args[] =
 	{
 		L"-T", L"lib_6_3",
+#if defined(_DEBUG)
 		L"-Zi",
 		L"-Qembed_debug",
+#endif
 		L"-O3",
 		L"-all_resources_bound"
 	};
@@ -4771,8 +4936,10 @@ static ComPtr<IDxcBlob> glRaytracingLightingCompileCompute(const char* src, cons
 	{
 		L"-E", entryPoint,
 		L"-T", L"cs_6_0",
+#if defined(_DEBUG)
 		L"-Zi",
 		L"-Qembed_debug",
+#endif
 		L"-O3",
 		L"-all_resources_bound"
 	};
@@ -4813,7 +4980,14 @@ static int glRaytracingLightingCreateDescriptorHeap(void)
 	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-	GLR_CHECK(g_glRaytracingCmd.device->CreateDescriptorHeap(&hd, IID_PPV_ARGS(&g_glRaytracingLighting.descriptorHeap)));
+	for (UINT frame = 0; frame < GL_RAYTRACING_CMD_RING_SIZE; ++frame)
+	{
+		GLR_CHECK(g_glRaytracingCmd.device->CreateDescriptorHeap(
+			&hd,
+			IID_PPV_ARGS(&g_glRaytracingLighting.descriptorHeapRing[frame])));
+	}
+
+	g_glRaytracingLighting.descriptorHeap = g_glRaytracingLighting.descriptorHeapRing[0];
 	g_glRaytracingLighting.descriptorStride =
 		g_glRaytracingCmd.device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -4882,39 +5056,110 @@ static int glRaytracingLightingCreateRootSignatures(void)
 	return 1;
 }
 
+static int glRaytracingMapUploadBufferPersistent(const glRaytracingBuffer_t& buffer, void** mapped)
+{
+	if (!buffer.resource || !mapped)
+		return 0;
+
+	*mapped = nullptr;
+	D3D12_RANGE readRange = {};
+	HRESULT hr = buffer.resource->Map(0, &readRange, mapped);
+	if (FAILED(hr) || !*mapped)
+	{
+		glRaytracingFatal("Persistent upload Map failed 0x%08X", (unsigned)hr);
+		return 0;
+	}
+
+	return 1;
+}
+
+static void glRaytracingLightingSelectFrameResources(UINT frameSlot)
+{
+	frameSlot %= GL_RAYTRACING_CMD_RING_SIZE;
+
+	g_glRaytracingLighting.descriptorHeap = g_glRaytracingLighting.descriptorHeapRing[frameSlot];
+	g_glRaytracingLighting.constantBuffer = g_glRaytracingLighting.constantBufferRing[frameSlot];
+	g_glRaytracingLighting.lightBuffer = g_glRaytracingLighting.lightBufferRing[frameSlot];
+	g_glRaytracingLighting.constantBufferMapped = g_glRaytracingLighting.constantBufferMappedRing[frameSlot];
+	g_glRaytracingLighting.lightBufferMapped = g_glRaytracingLighting.lightBufferMappedRing[frameSlot];
+
+	for (int i = 0; i < 3; ++i)
+	{
+		g_glRaytracingLighting.denoiseConstantBuffer[i] = g_glRaytracingLighting.denoiseConstantBufferRing[frameSlot][i];
+		g_glRaytracingLighting.denoiseConstantBufferMapped[i] = g_glRaytracingLighting.denoiseConstantBufferMappedRing[frameSlot][i];
+	}
+}
+
 static int glRaytracingLightingCreateBuffers(void)
 {
 	const UINT64 constantsBytes = glRaytracingAlignUp(sizeof(glRaytracingLightingConstants_t), 256);
 
-	g_glRaytracingLighting.constantBuffer = glRaytracingCreateBuffer(
-		g_glRaytracingCmd.device.Get(),
-		constantsBytes,
-		D3D12_HEAP_TYPE_UPLOAD,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		D3D12_RESOURCE_FLAG_NONE);
-
-	for (int i = 0; i < 3; ++i)
+	for (UINT frame = 0; frame < GL_RAYTRACING_CMD_RING_SIZE; ++frame)
 	{
-		g_glRaytracingLighting.denoiseConstantBuffer[i] = glRaytracingCreateBuffer(
+		g_glRaytracingLighting.constantBufferRing[frame] = glRaytracingCreateBuffer(
 			g_glRaytracingCmd.device.Get(),
 			constantsBytes,
 			D3D12_HEAP_TYPE_UPLOAD,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			D3D12_RESOURCE_FLAG_NONE);
+
+		g_glRaytracingLighting.lightBufferRing[frame] = glRaytracingCreateBuffer(
+			g_glRaytracingCmd.device.Get(),
+			sizeof(glRaytracingLight_t) * GL_RAYTRACING_MAX_LIGHTS,
+			D3D12_HEAP_TYPE_UPLOAD,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			D3D12_RESOURCE_FLAG_NONE);
+
+		if (!g_glRaytracingLighting.constantBufferRing[frame].resource ||
+			!g_glRaytracingLighting.lightBufferRing[frame].resource)
+		{
+			return 0;
+		}
+
+		for (int i = 0; i < 3; ++i)
+		{
+			g_glRaytracingLighting.denoiseConstantBufferRing[frame][i] = glRaytracingCreateBuffer(
+				g_glRaytracingCmd.device.Get(),
+				constantsBytes,
+				D3D12_HEAP_TYPE_UPLOAD,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				D3D12_RESOURCE_FLAG_NONE);
+
+			if (!g_glRaytracingLighting.denoiseConstantBufferRing[frame][i].resource)
+				return 0;
+		}
+
+		// These are small UPLOAD-heap buffers updated every pass. Keeping every
+		// per-frame copy persistently mapped avoids Map/Unmap overhead and makes
+		// the async command-ring safe: the CPU never overwrites constants that an
+		// older in-flight command list still reads.
+		if (!glRaytracingMapUploadBufferPersistent(
+			g_glRaytracingLighting.constantBufferRing[frame],
+			&g_glRaytracingLighting.constantBufferMappedRing[frame]))
+		{
+			return 0;
+		}
+
+		if (!glRaytracingMapUploadBufferPersistent(
+			g_glRaytracingLighting.lightBufferRing[frame],
+			&g_glRaytracingLighting.lightBufferMappedRing[frame]))
+		{
+			return 0;
+		}
+
+		for (int i = 0; i < 3; ++i)
+		{
+			if (!glRaytracingMapUploadBufferPersistent(
+				g_glRaytracingLighting.denoiseConstantBufferRing[frame][i],
+				&g_glRaytracingLighting.denoiseConstantBufferMappedRing[frame][i]))
+			{
+				return 0;
+			}
+		}
 	}
 
-	g_glRaytracingLighting.lightBuffer = glRaytracingCreateBuffer(
-		g_glRaytracingCmd.device.Get(),
-		sizeof(glRaytracingLight_t) * GL_RAYTRACING_MAX_LIGHTS,
-		D3D12_HEAP_TYPE_UPLOAD,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		D3D12_RESOURCE_FLAG_NONE);
-
-	return g_glRaytracingLighting.constantBuffer.resource &&
-		g_glRaytracingLighting.lightBuffer.resource &&
-		g_glRaytracingLighting.denoiseConstantBuffer[0].resource &&
-		g_glRaytracingLighting.denoiseConstantBuffer[1].resource &&
-		g_glRaytracingLighting.denoiseConstantBuffer[2].resource;
+	glRaytracingLightingSelectFrameResources(0);
+	return 1;
 }
 
 static void glRaytracingLightingUploadConstantsTo(
@@ -4924,11 +5169,37 @@ static void glRaytracingLightingUploadConstantsTo(
 	if (!dst.resource)
 		return;
 
+	void* mapped = nullptr;
+	if (dst.resource.Get() == g_glRaytracingLighting.constantBuffer.resource.Get())
+	{
+		mapped = g_glRaytracingLighting.constantBufferMapped;
+	}
+	else
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			if (dst.resource.Get() == g_glRaytracingLighting.denoiseConstantBuffer[i].resource.Get())
+			{
+				mapped = g_glRaytracingLighting.denoiseConstantBufferMapped[i];
+				break;
+			}
+		}
+	}
+
+	if (mapped)
+	{
+		memcpy(mapped, &constants, sizeof(constants));
+		return;
+	}
+
 	glRaytracingMapCopy(dst.resource.Get(), &constants, sizeof(constants));
 }
 
 static void glRaytracingLightingUpdateConstants(void)
 {
+	if (!g_glRaytracingLighting.uploadToCurrentFrameResource)
+		return;
+
 	glRaytracingLightingUploadConstantsTo(
 		g_glRaytracingLighting.constantBuffer,
 		g_glRaytracingLighting.constants);
@@ -4936,13 +5207,61 @@ static void glRaytracingLightingUpdateConstants(void)
 
 static void glRaytracingLightingUpdateLights(void)
 {
+	if (!g_glRaytracingLighting.uploadToCurrentFrameResource)
+		return;
+
+	if (!g_glRaytracingLighting.lightBuffer.resource)
+		return;
+
 	if (g_glRaytracingLighting.cpuLights.empty())
 		return;
+
+	const size_t bytes = g_glRaytracingLighting.cpuLights.size() * sizeof(glRaytracingLight_t);
+	if (g_glRaytracingLighting.lightBufferMapped)
+	{
+		memcpy(g_glRaytracingLighting.lightBufferMapped, g_glRaytracingLighting.cpuLights.data(), bytes);
+		return;
+	}
 
 	glRaytracingMapCopy(
 		g_glRaytracingLighting.lightBuffer.resource.Get(),
 		g_glRaytracingLighting.cpuLights.data(),
-		g_glRaytracingLighting.cpuLights.size() * sizeof(glRaytracingLight_t));
+		bytes);
+}
+
+static void glRaytracingLightingUnmapUploadBuffers(void)
+{
+	for (UINT frame = 0; frame < GL_RAYTRACING_CMD_RING_SIZE; ++frame)
+	{
+		if (g_glRaytracingLighting.constantBufferRing[frame].resource &&
+			g_glRaytracingLighting.constantBufferMappedRing[frame])
+		{
+			g_glRaytracingLighting.constantBufferRing[frame].resource->Unmap(0, nullptr);
+			g_glRaytracingLighting.constantBufferMappedRing[frame] = nullptr;
+		}
+
+		if (g_glRaytracingLighting.lightBufferRing[frame].resource &&
+			g_glRaytracingLighting.lightBufferMappedRing[frame])
+		{
+			g_glRaytracingLighting.lightBufferRing[frame].resource->Unmap(0, nullptr);
+			g_glRaytracingLighting.lightBufferMappedRing[frame] = nullptr;
+		}
+
+		for (int i = 0; i < 3; ++i)
+		{
+			if (g_glRaytracingLighting.denoiseConstantBufferRing[frame][i].resource &&
+				g_glRaytracingLighting.denoiseConstantBufferMappedRing[frame][i])
+			{
+				g_glRaytracingLighting.denoiseConstantBufferRing[frame][i].resource->Unmap(0, nullptr);
+				g_glRaytracingLighting.denoiseConstantBufferMappedRing[frame][i] = nullptr;
+			}
+		}
+	}
+
+	g_glRaytracingLighting.constantBufferMapped = nullptr;
+	g_glRaytracingLighting.lightBufferMapped = nullptr;
+	for (int i = 0; i < 3; ++i)
+		g_glRaytracingLighting.denoiseConstantBufferMapped[i] = nullptr;
 }
 
 static void glRaytracingLightingCreatePersistentLightSRV(void)
@@ -4956,11 +5275,21 @@ static void glRaytracingLightingCreatePersistentLightSRV(void)
 	srv.Buffer.StructureByteStride = sizeof(glRaytracingLight_t);
 	srv.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE base = g_glRaytracingLighting.descriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	g_glRaytracingCmd.device->CreateShaderResourceView(
-		g_glRaytracingLighting.lightBuffer.resource.Get(),
-		&srv,
-		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, 0));
+	for (UINT frame = 0; frame < GL_RAYTRACING_CMD_RING_SIZE; ++frame)
+	{
+		if (!g_glRaytracingLighting.descriptorHeapRing[frame] ||
+			!g_glRaytracingLighting.lightBufferRing[frame].resource)
+		{
+			continue;
+		}
+
+		D3D12_CPU_DESCRIPTOR_HANDLE base =
+			g_glRaytracingLighting.descriptorHeapRing[frame]->GetCPUDescriptorHandleForHeapStart();
+		g_glRaytracingCmd.device->CreateShaderResourceView(
+			g_glRaytracingLighting.lightBufferRing[frame].resource.Get(),
+			&srv,
+			glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_LIGHTS_SRV));
+	}
 }
 
 static int glRaytracingLightingCreateStateObject(void)
@@ -5191,6 +5520,16 @@ static int glRaytracingLightingEnsureDenoiseResources(UINT width, UINT height)
 		return 1;
 	}
 
+	if (g_glRaytracingLighting.pathTraceTexture.resource ||
+		g_glRaytracingLighting.temporalTexture.resource ||
+		g_glRaytracingLighting.historyTexture[0].resource ||
+		g_glRaytracingLighting.historyTexture[1].resource ||
+		g_glRaytracingLighting.denoiseTemp[0].resource ||
+		g_glRaytracingLighting.denoiseTemp[1].resource)
+	{
+		glRaytracingWaitIdle();
+	}
+
 	g_glRaytracingLighting.pathTraceTexture = glRaytracingTexture_t();
 	g_glRaytracingLighting.temporalTexture = glRaytracingTexture_t();
 	g_glRaytracingLighting.historyTexture[0] = glRaytracingTexture_t();
@@ -5382,6 +5721,11 @@ static bool glRaytracingLightingExecuteInternal(
 		? g_glRaytracingLighting.pathTraceTexture.resource.Get()
 		: pass->outputTexture;
 
+	if (!glRaytracingBeginCmd())
+		return false;
+
+	glRaytracingLightingSelectFrameResources(g_glRaytracingCmd.cmdCurrentSlot);
+
 	g_glRaytracingLighting.constants.screenSize[0] = (float)pass->width;
 	g_glRaytracingLighting.constants.screenSize[1] = (float)pass->height;
 	g_glRaytracingLighting.constants.screenSize[2] = 1.0f / (float)pass->width;
@@ -5390,6 +5734,7 @@ static bool glRaytracingLightingExecuteInternal(
 	g_glRaytracingLighting.constants.lightCount =
 		(uint32_t)glRaytracingClamp<size_t>(g_glRaytracingLighting.cpuLights.size(), 0, GL_RAYTRACING_MAX_LIGHTS);
 
+	g_glRaytracingLighting.uploadToCurrentFrameResource = true;
 	glRaytracingLightingUpdateLights();
 	glRaytracingLightingUpdateConstants();
 
@@ -5400,6 +5745,7 @@ static bool glRaytracingLightingExecuteInternal(
 		denoiseConstants.denoiseStepWidth = (float)(1u << passIndex);
 		glRaytracingLightingUploadConstantsTo(g_glRaytracingLighting.denoiseConstantBuffer[passIndex], denoiseConstants);
 	}
+	g_glRaytracingLighting.uploadToCurrentFrameResource = false;
 
 	const uint32_t historyReadIndex = g_glRaytracingLighting.currentHistoryIndex & 1u;
 	const uint32_t historyWriteIndex = (g_glRaytracingLighting.currentHistoryIndex ^ 1u) & 1u;
@@ -5414,9 +5760,6 @@ static bool glRaytracingLightingExecuteInternal(
 		g_glRaytracingLighting.historyTexture[historyReadIndex].resource.Get(),
 		g_glRaytracingLighting.historyTexture[historyWriteIndex].resource.Get(),
 		g_glRaytracingLighting.temporalTexture.resource.Get());
-
-	if (!glRaytracingBeginCmd())
-		return false;
 
 	if (useInternalDenoiser)
 	{
@@ -5666,7 +6009,7 @@ bool glRaytracingLightingInit(void)
 	g_glRaytracingLighting.constants.normalReconstructZ = 1.0f;
 	g_glRaytracingLighting.constants.shadowBias = 1.5f;
 	g_glRaytracingLighting.constants.frameIndex = 0;
-	g_glRaytracingLighting.constants.samplesPerPixel = 2;
+	g_glRaytracingLighting.constants.samplesPerPixel = 1;
 	g_glRaytracingLighting.constants.maxBounces = 2;
 	g_glRaytracingLighting.constants.enableDenoiser = 1;
 	g_glRaytracingLighting.constants.denoisePassIndex = 0;
@@ -5692,6 +6035,8 @@ void glRaytracingLightingShutdown(void)
 	if (!g_glRaytracingLighting.initialized)
 		return;
 
+	glRaytracingWaitIdle();
+	glRaytracingLightingUnmapUploadBuffers();
 	g_glRaytracingLighting = glRaytracingLightingState_t();
 }
 
