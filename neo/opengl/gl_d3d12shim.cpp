@@ -24,6 +24,10 @@
 #include <string.h>
 #include <algorithm>
 #include <memory>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <deque>
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <dxgi1_6.h>
@@ -420,6 +424,18 @@ struct TextureResource
 	bool forceOpaqueAlpha = false;
 
 	DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	UINT mipLevels = 1;
+
+	// Async mip generation state. Mip 0 is uploaded immediately; the CPU-built
+	// lower mips are produced by worker threads and copied into the D3D12 texture
+	// at the end of a later frame.
+	uint64_t cpuGeneration = 0;
+	uint64_t mipJobQueuedGeneration = 0;
+	uint64_t mipChainResidentGeneration = 0;
+	uint64_t pendingMipGeneration = 0;
+	bool mipChainRequested = false;
+	bool mipChainResident = false;
+	std::vector<std::vector<uint8_t>> pendingMipChain;
 
 	ComPtr<ID3D12Resource> texture;
 	D3D12_CPU_DESCRIPTOR_HANDLE srvCpu{};
@@ -434,6 +450,11 @@ struct TextureResource
 	// active texture unit.
 	bool isNormalMap = false;
 };
+
+static void QD3D12_ShutdownMipWorkers();
+static void QD3D12_ProcessCompletedTextureMipJobs(UINT maxUploads = 2);
+static void QD3D12_RequestAsyncMipBuild(TextureResource& tex);
+static void QD3D12_InvalidateTextureMipChain(TextureResource& tex, bool invalidateBase);
 
 struct DrawConstants
 {
@@ -5773,7 +5794,7 @@ static void QD3D12_CreateWhiteTexture()
 	sd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	sd.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	sd.Texture2D.MipLevels = 1;
+	sd.Texture2D.MipLevels = g_gl.whiteTexture.mipLevels;
 	g_gl.device->CreateShaderResourceView(g_gl.whiteTexture.texture.Get(), &sd, g_gl.whiteTexture.srvCpu);
 
 	// Upload 1x1 white using a one-time command list.
@@ -5940,6 +5961,7 @@ void QD3D12_ShutdownForQuake()
 
 	QD3D12_ShutdownFrameVertexArena();
 	QD3D12_WaitForGPU();
+	QD3D12_ShutdownMipWorkers();
 
 #if defined(QD3D12_ENABLE_STREAMLINE)
 	if (g_qd3d12Sl.initialized)
@@ -6042,6 +6064,10 @@ void QD3D12_EndFrame()
 		QD3D12_RunUpscalerOrBlit(w);
 	}
 
+	// Do the nonblocking mipchain handoff after the frame's draws/blit are recorded.
+	// This keeps first-use texture uploads to mip 0 and spreads completed mip uploads.
+	QD3D12_ProcessCompletedTextureMipJobs(2);
+
 	QD3D12_TransitionResource(g_gl.cmdList.Get(), w.backBuffers[w.frameIndex].Get(), w.backBufferState[w.frameIndex], D3D12_RESOURCE_STATE_PRESENT);
 
 	QD3D12_CHECK(g_gl.cmdList->Close());
@@ -6122,12 +6148,69 @@ void QD3D12_SwapBuffers(HDC hdc) {
 // SECTION 9: texture upload/update
 // ============================================================
 
+static UINT QD3D12_CalcMipCount(int width, int height)
+{
+	if (width <= 0 || height <= 0)
+		return 1;
+
+	UINT levels = 1;
+	UINT w = (UINT)width;
+	UINT h = (UINT)height;
+	while (w > 1 || h > 1)
+	{
+		w = std::max<UINT>(1u, w >> 1);
+		h = std::max<UINT>(1u, h >> 1);
+		++levels;
+	}
+	return levels;
+}
+
+static UINT QD3D12_DesiredTextureMipLevels(const TextureResource& tex)
+{
+	// Compressed uploads stay at one level in this shim because we do not encode
+	// generated BC/DXT blocks. Uncompressed texture storage gets a full CPU-built
+	// mip chain whenever level 0 sysmem exists.
+	if (tex.compressed || tex.width <= 0 || tex.height <= 0 || tex.sysmem.empty())
+		return 1;
+
+	return QD3D12_CalcMipCount(tex.width, tex.height);
+}
+
+static bool QD3D12_TextureWantsMipSampling(const TextureResource& tex)
+{
+	switch (tex.minFilter)
+	{
+	case GL_NEAREST_MIPMAP_NEAREST:
+	case GL_LINEAR_MIPMAP_NEAREST:
+	case GL_NEAREST_MIPMAP_LINEAR:
+	case GL_LINEAR_MIPMAP_LINEAR:
+		return true;
+	case GL_NEAREST:
+	case GL_LINEAR:
+	default:
+		return false;
+	}
+}
+
+static UINT QD3D12_TextureVisibleMipLevels(const TextureResource& tex)
+{
+	if (!QD3D12_TextureWantsMipSampling(tex))
+		return 1;
+
+	if (!tex.mipChainResident || tex.mipChainResidentGeneration != tex.cpuGeneration)
+		return 1;
+
+	return std::max<UINT>(1u, tex.mipLevels);
+}
+
 static void EnsureTextureResource(TextureResource& tex)
 {
 	const DXGI_FORMAT dxgiFormat = tex.dxgiFormat;
 
 	if (tex.width <= 0 || tex.height <= 0 || dxgiFormat == DXGI_FORMAT_UNKNOWN)
 		return;
+
+	const UINT desiredMipLevels = QD3D12_DesiredTextureMipLevels(tex);
 
 	auto EnsureSrvDescriptor = [&]()
 		{
@@ -6145,7 +6228,9 @@ static void EnsureTextureResource(TextureResource& tex)
 			sd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			sd.Format = dxgiFormat;
 			sd.Shader4ComponentMapping = QD3D12_TextureShaderComponentMapping(tex);
-			sd.Texture2D.MipLevels = 1;
+			sd.Texture2D.MostDetailedMip = 0;
+			sd.Texture2D.MipLevels = QD3D12_TextureVisibleMipLevels(tex);
+			sd.Texture2D.ResourceMinLODClamp = 0.0f;
 			g_gl.device->CreateShaderResourceView(tex.texture.Get(), &sd, tex.srvCpu);
 		};
 
@@ -6160,10 +6245,15 @@ static void EnsureTextureResource(TextureResource& tex)
 		D3D12_RESOURCE_DESC desc = tex.texture->GetDesc();
 		if ((int)desc.Width != tex.width ||
 			(int)desc.Height != tex.height ||
-			desc.Format != dxgiFormat)
+			desc.Format != dxgiFormat ||
+			desc.MipLevels != desiredMipLevels)
 		{
 			QD3D12_RetireResource(tex.texture);
 			tex.gpuValid = false;
+			tex.mipChainResident = false;
+			tex.mipChainResidentGeneration = 0;
+			tex.pendingMipGeneration = 0;
+			tex.pendingMipChain.clear();
 			tex.state = D3D12_RESOURCE_STATE_COPY_DEST;
 			needsRecreate = true;
 		}
@@ -6171,18 +6261,22 @@ static void EnsureTextureResource(TextureResource& tex)
 
 	if (!needsRecreate)
 	{
+		tex.mipLevels = desiredMipLevels;
 		// Re-write the SRV descriptor so same-resource changes like RGB DXT1
-		// alpha-forcing are reflected without having to recreate the texture.
+		// alpha-forcing or mip-count decisions are reflected without having to
+		// recreate the texture.
 		EnsureSrvDescriptor();
 		return;
 	}
+
+	tex.mipLevels = desiredMipLevels;
 
 	D3D12_RESOURCE_DESC rd{};
 	rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	rd.Width = (UINT)tex.width;
 	rd.Height = (UINT)tex.height;
 	rd.DepthOrArraySize = 1;
-	rd.MipLevels = 1;
+	rd.MipLevels = (UINT16)tex.mipLevels;
 	rd.Format = dxgiFormat;
 	rd.SampleDesc.Count = 1;
 	rd.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -6222,6 +6316,7 @@ static TextureResource* QD3D12_EnsureLightingTexture(int width, int height)
 		tex.compressedImageSize = 0;
 		tex.forceOpaqueAlpha = false;
 		tex.dxgiFormat = desiredFormat;
+		tex.mipLevels = 1;
 		tex.minFilter = GL_LINEAR;
 		tex.magFilter = GL_LINEAR;
 		tex.wrapS = GL_CLAMP;
@@ -6244,6 +6339,7 @@ static TextureResource* QD3D12_EnsureLightingTexture(int width, int height)
 	}
 
 	g_lightingTexture->dxgiFormat = desiredFormat;
+	g_lightingTexture->mipLevels = 1;
 
 	const bool needsCreate =
 		!g_lightingTexture->texture ||
@@ -6506,6 +6602,466 @@ static void ConvertToRGBA8(const TextureResource& tex, std::vector<uint8_t>& out
 
 	std::fill(outRGBA.begin(), outRGBA.end(), 255);
 }
+
+static inline float QD3D12_Srgb8ToLinearFloat(uint8_t v)
+{
+	const float c = (float)v * (1.0f / 255.0f);
+	return (c <= 0.04045f) ? (c * (1.0f / 12.92f)) : powf((c + 0.055f) * (1.0f / 1.055f), 2.4f);
+}
+
+static inline uint8_t QD3D12_LinearFloatToSrgb8(float v)
+{
+	v = ClampValue<float>(v, 0.0f, 1.0f);
+	const float c = (v <= 0.0031308f) ? (v * 12.92f) : (1.055f * powf(v, 1.0f / 2.4f) - 0.055f);
+	return (uint8_t)ClampValue<int>((int)floorf(c * 255.0f + 0.5f), 0, 255);
+}
+
+static inline const uint8_t* QD3D12_RGBA8PixelClamp(const std::vector<uint8_t>& img, UINT w, UINT h, int x, int y)
+{
+	const UINT cx = ClampValue<UINT>((UINT)max(0, x), 0u, w - 1u);
+	const UINT cy = ClampValue<UINT>((UINT)max(0, y), 0u, h - 1u);
+	return img.data() + ((size_t)cy * (size_t)w + (size_t)cx) * 4u;
+}
+
+static void QD3D12_FilterMipPixelGammaAware(
+	const std::vector<uint8_t>& src,
+	UINT srcW,
+	UINT srcH,
+	UINT dstX,
+	UINT dstY,
+	uint8_t* out)
+{
+	// Centered tent-ish downsample with a mild unsharp restore. This is less blurry
+	// than a plain 2x2 box, but still stable enough for old noisy diffuse textures.
+	const int baseX = (int)dstX * 2;
+	const int baseY = (int)dstY * 2;
+
+	static const float kWeights[4][4] =
+	{
+		{ 1.0f, 2.0f, 2.0f, 1.0f },
+		{ 2.0f, 4.0f, 4.0f, 2.0f },
+		{ 2.0f, 4.0f, 4.0f, 2.0f },
+		{ 1.0f, 2.0f, 2.0f, 1.0f }
+	};
+
+	float rgbLin[3] = { 0.0f, 0.0f, 0.0f };
+	float alpha = 0.0f;
+	float weightSum = 0.0f;
+
+	for (int ky = 0; ky < 4; ++ky)
+	{
+		for (int kx = 0; kx < 4; ++kx)
+		{
+			const float w = kWeights[ky][kx];
+			const uint8_t* p = QD3D12_RGBA8PixelClamp(src, srcW, srcH, baseX + kx - 1, baseY + ky - 1);
+			const float a = (float)p[3] * (1.0f / 255.0f);
+
+			// Premultiply for alpha-tested/cutout textures so transparent border colors
+			// do not bleed into smaller mips.
+			rgbLin[0] += QD3D12_Srgb8ToLinearFloat(p[0]) * a * w;
+			rgbLin[1] += QD3D12_Srgb8ToLinearFloat(p[1]) * a * w;
+			rgbLin[2] += QD3D12_Srgb8ToLinearFloat(p[2]) * a * w;
+			alpha += a * w;
+			weightSum += w;
+		}
+	}
+
+	float outA = alpha / max(weightSum, 1.0e-6f);
+	float invAlpha = (outA > 1.0e-5f) ? (1.0f / (outA * weightSum)) : (1.0f / weightSum);
+	float filtered[3] =
+	{
+		rgbLin[0] * invAlpha,
+		rgbLin[1] * invAlpha,
+		rgbLin[2] * invAlpha
+	};
+
+	// Mild detail restore from the center 2x2 average. This counteracts the tent
+	// filter's softness without turning distant mips into shimmering garbage.
+	float center[3] = { 0.0f, 0.0f, 0.0f };
+	float centerA = 0.0f;
+	for (int yy = 0; yy < 2; ++yy)
+	{
+		for (int xx = 0; xx < 2; ++xx)
+		{
+			const uint8_t* p = QD3D12_RGBA8PixelClamp(src, srcW, srcH, baseX + xx, baseY + yy);
+			const float a = (float)p[3] * (1.0f / 255.0f);
+			center[0] += QD3D12_Srgb8ToLinearFloat(p[0]) * a;
+			center[1] += QD3D12_Srgb8ToLinearFloat(p[1]) * a;
+			center[2] += QD3D12_Srgb8ToLinearFloat(p[2]) * a;
+			centerA += a;
+		}
+	}
+
+	if (centerA > 1.0e-5f)
+	{
+		center[0] /= centerA;
+		center[1] /= centerA;
+		center[2] /= centerA;
+
+		const float sharpen = 0.22f;
+		filtered[0] = ClampValue<float>(filtered[0] + (center[0] - filtered[0]) * sharpen, 0.0f, 1.0f);
+		filtered[1] = ClampValue<float>(filtered[1] + (center[1] - filtered[1]) * sharpen, 0.0f, 1.0f);
+		filtered[2] = ClampValue<float>(filtered[2] + (center[2] - filtered[2]) * sharpen, 0.0f, 1.0f);
+	}
+
+	out[0] = QD3D12_LinearFloatToSrgb8(filtered[0]);
+	out[1] = QD3D12_LinearFloatToSrgb8(filtered[1]);
+	out[2] = QD3D12_LinearFloatToSrgb8(filtered[2]);
+	out[3] = (uint8_t)ClampValue<int>((int)floorf(outA * 255.0f + 0.5f), 0, 255);
+}
+
+static void QD3D12_BuildRGBA8MipChain(const TextureResource& tex, std::vector<std::vector<uint8_t>>& outMips)
+{
+	outMips.clear();
+	if (tex.width <= 0 || tex.height <= 0)
+		return;
+
+	ConvertToRGBA8(tex, outMips.emplace_back());
+
+	UINT srcW = (UINT)tex.width;
+	UINT srcH = (UINT)tex.height;
+	const UINT mipCount = QD3D12_CalcMipCount(tex.width, tex.height);
+	outMips.reserve(mipCount);
+
+	for (UINT level = 1; level < mipCount; ++level)
+	{
+		const UINT dstW = std::max<UINT>(1u, srcW >> 1);
+		const UINT dstH = std::max<UINT>(1u, srcH >> 1);
+		const std::vector<uint8_t>& src = outMips[level - 1];
+		std::vector<uint8_t>& dst = outMips.emplace_back();
+		dst.resize((size_t)dstW * (size_t)dstH * 4u);
+
+		for (UINT y = 0; y < dstH; ++y)
+		{
+			for (UINT x = 0; x < dstW; ++x)
+			{
+				uint8_t* d = dst.data() + ((size_t)y * dstW + x) * 4u;
+				QD3D12_FilterMipPixelGammaAware(src, srcW, srcH, x, y, d);
+			}
+		}
+
+		srcW = dstW;
+		srcH = dstH;
+	}
+}
+
+
+struct QD3D12MipBuildInput
+{
+	GLuint textureId = 0;
+	uint64_t generation = 0;
+	int width = 0;
+	int height = 0;
+	GLenum format = GL_RGBA;
+	std::vector<uint8_t> sysmem;
+};
+
+struct QD3D12MipBuildResult
+{
+	GLuint textureId = 0;
+	uint64_t generation = 0;
+	int width = 0;
+	int height = 0;
+	GLenum format = GL_RGBA;
+	std::vector<std::vector<uint8_t>> mipChain;
+};
+
+static std::mutex g_qd3d12MipMutex;
+static std::condition_variable g_qd3d12MipCv;
+static std::deque<QD3D12MipBuildInput> g_qd3d12MipJobs;
+static std::deque<QD3D12MipBuildResult> g_qd3d12MipCompleted;
+static std::vector<std::thread> g_qd3d12MipWorkers;
+static bool g_qd3d12MipShutdown = false;
+
+static bool QD3D12_TextureShouldBuildAsyncMips(const TextureResource& tex)
+{
+	if (tex.compressed || tex.width <= 0 || tex.height <= 0 || tex.sysmem.empty())
+		return false;
+
+	if (QD3D12_DesiredTextureMipLevels(tex) <= 1)
+		return false;
+
+	return tex.mipChainRequested || QD3D12_TextureWantsMipSampling(tex);
+}
+
+static void QD3D12_MipWorkerMain()
+{
+	for (;;)
+	{
+		QD3D12MipBuildInput input;
+		{
+			std::unique_lock<std::mutex> lock(g_qd3d12MipMutex);
+			g_qd3d12MipCv.wait(lock, []() { return g_qd3d12MipShutdown || !g_qd3d12MipJobs.empty(); });
+
+			if (g_qd3d12MipShutdown && g_qd3d12MipJobs.empty())
+				return;
+
+			input = std::move(g_qd3d12MipJobs.front());
+			g_qd3d12MipJobs.pop_front();
+		}
+
+		TextureResource snapshot{};
+		snapshot.glId = input.textureId;
+		snapshot.width = input.width;
+		snapshot.height = input.height;
+		snapshot.format = input.format;
+		snapshot.compressed = false;
+		snapshot.dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+		snapshot.sysmem = std::move(input.sysmem);
+
+		QD3D12MipBuildResult result{};
+		result.textureId = input.textureId;
+		result.generation = input.generation;
+		result.width = input.width;
+		result.height = input.height;
+		result.format = input.format;
+		QD3D12_BuildRGBA8MipChain(snapshot, result.mipChain);
+
+		{
+			std::lock_guard<std::mutex> lock(g_qd3d12MipMutex);
+			if (!g_qd3d12MipShutdown)
+				g_qd3d12MipCompleted.push_back(std::move(result));
+		}
+	}
+}
+
+static void QD3D12_EnsureMipWorkersStarted()
+{
+	if (!g_qd3d12MipWorkers.empty())
+		return;
+
+	g_qd3d12MipShutdown = false;
+
+	UINT workerCount = 1;
+	const unsigned hw = std::thread::hardware_concurrency();
+	if (hw >= 6)
+		workerCount = 2;
+
+	for (UINT i = 0; i < workerCount; ++i)
+		g_qd3d12MipWorkers.emplace_back(QD3D12_MipWorkerMain);
+}
+
+static void QD3D12_ShutdownMipWorkers()
+{
+	{
+		std::lock_guard<std::mutex> lock(g_qd3d12MipMutex);
+		g_qd3d12MipShutdown = true;
+		g_qd3d12MipJobs.clear();
+		g_qd3d12MipCompleted.clear();
+	}
+
+	g_qd3d12MipCv.notify_all();
+
+	for (std::thread& worker : g_qd3d12MipWorkers)
+	{
+		if (worker.joinable())
+			worker.join();
+	}
+
+	g_qd3d12MipWorkers.clear();
+	g_qd3d12MipShutdown = false;
+}
+
+static void QD3D12_InvalidateTextureMipChain(TextureResource& tex, bool invalidateBase)
+{
+	++tex.cpuGeneration;
+	if (tex.cpuGeneration == 0)
+		++tex.cpuGeneration;
+
+	tex.mipChainResident = false;
+	tex.mipChainResidentGeneration = 0;
+	tex.mipJobQueuedGeneration = 0;
+	tex.pendingMipGeneration = 0;
+	tex.pendingMipChain.clear();
+
+	if (invalidateBase)
+		tex.gpuValid = false;
+}
+
+static void QD3D12_RequestAsyncMipBuild(TextureResource& tex)
+{
+	if (!QD3D12_TextureShouldBuildAsyncMips(tex))
+		return;
+
+	if (tex.mipChainResident && tex.mipChainResidentGeneration == tex.cpuGeneration)
+		return;
+
+	if (tex.mipJobQueuedGeneration == tex.cpuGeneration)
+		return;
+
+	QD3D12_EnsureMipWorkersStarted();
+
+	QD3D12MipBuildInput input{};
+	input.textureId = tex.glId;
+	input.generation = tex.cpuGeneration;
+	input.width = tex.width;
+	input.height = tex.height;
+	input.format = tex.format;
+	input.sysmem = tex.sysmem;
+
+	{
+		std::lock_guard<std::mutex> lock(g_qd3d12MipMutex);
+		if (!g_qd3d12MipShutdown)
+		{
+			g_qd3d12MipJobs.push_back(std::move(input));
+			tex.mipJobQueuedGeneration = tex.cpuGeneration;
+		}
+	}
+
+	g_qd3d12MipCv.notify_one();
+}
+
+static UINT64 QD3D12_EstimateMipUploadBytes(const std::vector<std::vector<uint8_t>>& mipChain)
+{
+	UINT64 bytes = 0;
+	for (size_t i = 1; i < mipChain.size(); ++i)
+		bytes += (UINT64)mipChain[i].size();
+	return bytes;
+}
+
+static bool QD3D12_UploadReadyMipChain(TextureResource& tex, std::vector<std::vector<uint8_t>>& mipChain, uint64_t generation)
+{
+	if (!g_currentWindow || !g_gl.cmdList || !tex.texture)
+		return false;
+
+	if (generation != tex.cpuGeneration || mipChain.size() <= 1)
+		return true;
+
+	if (tex.compressed || tex.width <= 0 || tex.height <= 0)
+		return true;
+
+	if (!tex.gpuValid)
+		return false;
+
+	EnsureTextureResource(tex);
+	if (!tex.gpuValid)
+		return false;
+	if (!tex.texture || tex.texture->GetDesc().MipLevels <= 1)
+		return false;
+
+	const UINT expectedMipLevels = std::min<UINT>(tex.mipLevels, (UINT)mipChain.size());
+	if (expectedMipLevels <= 1)
+		return true;
+
+	if (tex.state != D3D12_RESOURCE_STATE_COPY_DEST)
+	{
+		D3D12_RESOURCE_BARRIER toCopy{};
+		toCopy.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		toCopy.Transition.pResource = tex.texture.Get();
+		toCopy.Transition.StateBefore = tex.state;
+		toCopy.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+		toCopy.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		g_gl.cmdList->ResourceBarrier(1, &toCopy);
+		tex.state = D3D12_RESOURCE_STATE_COPY_DEST;
+	}
+
+	UINT mipW = std::max<UINT>(1u, (UINT)tex.width >> 1);
+	UINT mipH = std::max<UINT>(1u, (UINT)tex.height >> 1);
+	for (UINT mip = 1; mip < expectedMipLevels; ++mip)
+	{
+		const std::vector<uint8_t>& mipData = mipChain[mip];
+		const UINT srcRowBytes = mipW * 4u;
+		const UINT rowPitch = (srcRowBytes + 255u) & ~255u;
+		const UINT uploadSize = rowPitch * mipH;
+		UploadAlloc alloc = QD3D12_AllocUpload(uploadSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+
+		uint8_t* dstBase = (uint8_t*)alloc.cpu;
+		memset(dstBase, 0, uploadSize);
+		for (UINT y = 0; y < mipH; ++y)
+		{
+			memcpy(dstBase + (size_t)y * rowPitch,
+				mipData.data() + (size_t)y * srcRowBytes,
+				srcRowBytes);
+		}
+
+		D3D12_TEXTURE_COPY_LOCATION srcLoc{};
+		srcLoc.pResource = g_currentWindow->upload.resource[g_currentWindow->frameIndex].Get();
+		srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		srcLoc.PlacedFootprint.Offset = alloc.offset;
+		srcLoc.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srcLoc.PlacedFootprint.Footprint.Width = mipW;
+		srcLoc.PlacedFootprint.Footprint.Height = mipH;
+		srcLoc.PlacedFootprint.Footprint.Depth = 1;
+		srcLoc.PlacedFootprint.Footprint.RowPitch = rowPitch;
+
+		D3D12_TEXTURE_COPY_LOCATION dstLoc{};
+		dstLoc.pResource = tex.texture.Get();
+		dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dstLoc.SubresourceIndex = mip;
+		g_gl.cmdList->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+
+		mipW = std::max<UINT>(1u, mipW >> 1);
+		mipH = std::max<UINT>(1u, mipH >> 1);
+	}
+
+	D3D12_RESOURCE_BARRIER toSrv{};
+	toSrv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	toSrv.Transition.pResource = tex.texture.Get();
+	toSrv.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+	toSrv.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	toSrv.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	g_gl.cmdList->ResourceBarrier(1, &toSrv);
+
+	tex.state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	tex.mipChainResident = true;
+	tex.mipChainResidentGeneration = generation;
+	tex.pendingMipGeneration = 0;
+	tex.pendingMipChain.clear();
+
+	EnsureTextureResource(tex);
+	return true;
+}
+
+static void QD3D12_ProcessCompletedTextureMipJobs(UINT maxUploads)
+{
+	if (!g_currentWindow || !g_gl.cmdList || maxUploads == 0)
+		return;
+
+	std::deque<QD3D12MipBuildResult> completed;
+	{
+		std::lock_guard<std::mutex> lock(g_qd3d12MipMutex);
+		completed.swap(g_qd3d12MipCompleted);
+	}
+
+	for (QD3D12MipBuildResult& result : completed)
+	{
+		auto it = g_gl.textures.find(result.textureId);
+		if (it == g_gl.textures.end())
+			continue;
+
+		TextureResource& tex = it->second;
+		if (result.generation != tex.cpuGeneration || result.width != tex.width || result.height != tex.height || result.format != tex.format)
+			continue;
+
+		tex.pendingMipGeneration = result.generation;
+		tex.pendingMipChain = std::move(result.mipChain);
+	}
+
+	UINT uploads = 0;
+	const UINT64 uploadBudgetBytes = 8ull * 1024ull * 1024ull;
+	UINT64 uploadedBytes = 0;
+
+	for (auto& kv : g_gl.textures)
+	{
+		if (uploads >= maxUploads)
+			break;
+
+		TextureResource& tex = kv.second;
+		if (tex.pendingMipChain.empty() || tex.pendingMipGeneration != tex.cpuGeneration)
+			continue;
+
+		const UINT64 bytes = QD3D12_EstimateMipUploadBytes(tex.pendingMipChain);
+		if (uploads > 0 && uploadedBytes + bytes > uploadBudgetBytes)
+			break;
+
+		if (QD3D12_UploadReadyMipChain(tex, tex.pendingMipChain, tex.pendingMipGeneration))
+		{
+			++uploads;
+			uploadedBytes += bytes;
+		}
+	}
+}
+
 static void UploadTexture(TextureResource& tex)
 {
 	if (!tex.texture)
@@ -6587,204 +7143,11 @@ static void UploadTexture(TextureResource& tex)
 		return;
 	}
 
-	const UINT srcRowBytes = (UINT)(tex.width * 4);
-	const UINT rowPitch = (srcRowBytes + 255u) & ~255u;
-	const UINT uploadSize = rowPitch * (UINT)tex.height;
-	UploadAlloc alloc = QD3D12_AllocUpload(uploadSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 
-	uint8_t* dstBase = (uint8_t*)alloc.cpu;
-
-	if (tex.sysmem.empty())
-	{
-		for (int y = 0; y < tex.height; ++y)
-		{
-			uint8_t* dst = dstBase + (size_t)y * rowPitch;
-			memset(dst, 255, tex.width * 4);
-		}
-	}
-	else if (tex.format == GL_RGBA)
-	{
-		const uint8_t* srcBase = tex.sysmem.data();
-		for (int y = 0; y < tex.height; ++y)
-		{
-			memcpy(dstBase + (size_t)y * rowPitch, srcBase + (size_t)y * tex.width * 4, tex.width * 4);
-		}
-	}
-	else if (tex.format == GL_RGB)
-	{
-		const uint8_t* srcBase = tex.sysmem.data();
-
-		for (int y = 0; y < tex.height; ++y)
-		{
-			const uint8_t* src = srcBase + (size_t)y * tex.width * 3;
-			uint8_t* dst = dstBase + (size_t)y * rowPitch;
-
-#if defined(__SSSE3__) || defined(_M_X64)
-			const int count = tex.width;
-			int x = 0;
-			int srcByteOffset = 0;
-			const int srcBytes = count * 3;
-
-			const __m128i alphaMask = _mm_set1_epi32(0xFF000000);
-
-			while (x + 4 <= count && srcByteOffset + 16 <= srcBytes)
-			{
-				__m128i in = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + srcByteOffset));
-
-				__m128i shuffled = _mm_shuffle_epi8(
-					in,
-					_mm_setr_epi8(
-						0, 1, 2, char(0x80),
-						3, 4, 5, char(0x80),
-						6, 7, 8, char(0x80),
-						9, 10, 11, char(0x80)
-					)
-				);
-
-				__m128i out = _mm_or_si128(shuffled, alphaMask);
-				_mm_storeu_si128(reinterpret_cast<__m128i*>(dst + x * 4), out);
-
-				x += 4;
-				srcByteOffset += 12;
-			}
-
-			for (; x < count; ++x)
-			{
-				dst[x * 4 + 0] = src[x * 3 + 0];
-				dst[x * 4 + 1] = src[x * 3 + 1];
-				dst[x * 4 + 2] = src[x * 3 + 2];
-				dst[x * 4 + 3] = 255;
-			}
-#else
-			for (int x = 0; x < tex.width; ++x)
-			{
-				dst[x * 4 + 0] = src[x * 3 + 0];
-				dst[x * 4 + 1] = src[x * 3 + 1];
-				dst[x * 4 + 2] = src[x * 3 + 2];
-				dst[x * 4 + 3] = 255;
-			}
-#endif
-		}
-	}
-	else if (tex.format == GL_ALPHA)
-	{
-		const uint8_t* srcBase = tex.sysmem.data();
-
-		for (int y = 0; y < tex.height; ++y)
-		{
-			const uint8_t* src = srcBase + (size_t)y * tex.width;
-			uint8_t* dst = dstBase + (size_t)y * rowPitch;
-
-#if defined(__AVX2__)
-			int x = 0;
-			const __m256i white = _mm256_set1_epi32(0x00FFFFFF);
-
-			for (; x + 32 <= tex.width; x += 32)
-			{
-				__m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(src + x));
-
-				__m256i lo16 = _mm256_unpacklo_epi8(_mm256_setzero_si256(), a);
-				__m256i hi16 = _mm256_unpackhi_epi8(_mm256_setzero_si256(), a);
-
-				__m256i p0 = _mm256_unpacklo_epi16(white, lo16);
-				__m256i p1 = _mm256_unpackhi_epi16(white, lo16);
-				__m256i p2 = _mm256_unpacklo_epi16(white, hi16);
-				__m256i p3 = _mm256_unpackhi_epi16(white, hi16);
-
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 0) * 4), p0);
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 8) * 4), p1);
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 16) * 4), p2);
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 24) * 4), p3);
-			}
-
-			for (; x < tex.width; ++x)
-			{
-				dst[x * 4 + 0] = 255;
-				dst[x * 4 + 1] = 255;
-				dst[x * 4 + 2] = 255;
-				dst[x * 4 + 3] = src[x];
-			}
-#else
-			for (int x = 0; x < tex.width; ++x)
-			{
-				dst[x * 4 + 0] = 255;
-				dst[x * 4 + 1] = 255;
-				dst[x * 4 + 2] = 255;
-				dst[x * 4 + 3] = src[x];
-			}
-#endif
-		}
-	}
-	else if (tex.format == GL_LUMINANCE || tex.format == GL_INTENSITY)
-	{
-		const bool intensity = (tex.format == GL_INTENSITY);
-		const uint8_t* srcBase = tex.sysmem.data();
-
-		for (int y = 0; y < tex.height; ++y)
-		{
-			const uint8_t* src = srcBase + (size_t)y * tex.width;
-			uint8_t* dst = dstBase + (size_t)y * rowPitch;
-
-#if defined(__AVX2__)
-			int x = 0;
-
-			for (; x + 32 <= tex.width; x += 32)
-			{
-				__m256i v = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(src + x));
-
-				__m256i lo16 = _mm256_unpacklo_epi8(v, v);
-				__m256i hi16 = _mm256_unpackhi_epi8(v, v);
-
-				__m256i p0 = _mm256_unpacklo_epi16(lo16, lo16);
-				__m256i p1 = _mm256_unpackhi_epi16(lo16, lo16);
-				__m256i p2 = _mm256_unpacklo_epi16(hi16, hi16);
-				__m256i p3 = _mm256_unpackhi_epi16(hi16, hi16);
-
-				if (!intensity)
-				{
-					const __m256i rgbMask = _mm256_set1_epi32(0x00FFFFFF);
-					const __m256i alphaMask = _mm256_set1_epi32(0xFF000000);
-
-					p0 = _mm256_or_si256(_mm256_and_si256(p0, rgbMask), alphaMask);
-					p1 = _mm256_or_si256(_mm256_and_si256(p1, rgbMask), alphaMask);
-					p2 = _mm256_or_si256(_mm256_and_si256(p2, rgbMask), alphaMask);
-					p3 = _mm256_or_si256(_mm256_and_si256(p3, rgbMask), alphaMask);
-				}
-
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 0) * 4), p0);
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 8) * 4), p1);
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 16) * 4), p2);
-				_mm256_storeu_si256(reinterpret_cast<__m256i*>(dst + (x + 24) * 4), p3);
-			}
-
-			for (; x < tex.width; ++x)
-			{
-				uint8_t v = src[x];
-				dst[x * 4 + 0] = v;
-				dst[x * 4 + 1] = v;
-				dst[x * 4 + 2] = v;
-				dst[x * 4 + 3] = intensity ? v : 255;
-			}
-#else
-			for (int x = 0; x < tex.width; ++x)
-			{
-				uint8_t v = src[x];
-				dst[x * 4 + 0] = v;
-				dst[x * 4 + 1] = v;
-				dst[x * 4 + 2] = v;
-				dst[x * 4 + 3] = intensity ? v : 255;
-			}
-#endif
-		}
-	}
-	else
-	{
-		for (int y = 0; y < tex.height; ++y)
-		{
-			uint8_t* dst = dstBase + (size_t)y * rowPitch;
-			memset(dst, 255, tex.width * 4);
-		}
-	}
+	std::vector<uint8_t> baseRGBA;
+	ConvertToRGBA8(tex, baseRGBA);
+	if (baseRGBA.empty())
+		return;
 
 	if (tex.state != D3D12_RESOURCE_STATE_COPY_DEST)
 	{
@@ -6795,8 +7158,21 @@ static void UploadTexture(TextureResource& tex)
 		toCopy.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 		toCopy.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		g_gl.cmdList->ResourceBarrier(1, &toCopy);
-
 		tex.state = D3D12_RESOURCE_STATE_COPY_DEST;
+	}
+
+	const UINT srcRowBytes = (UINT)tex.width * 4u;
+	const UINT rowPitch = (srcRowBytes + 255u) & ~255u;
+	const UINT uploadSize = rowPitch * (UINT)tex.height;
+	UploadAlloc alloc = QD3D12_AllocUpload(uploadSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+
+	uint8_t* dstBase = (uint8_t*)alloc.cpu;
+	memset(dstBase, 0, uploadSize);
+	for (UINT y = 0; y < (UINT)tex.height; ++y)
+	{
+		memcpy(dstBase + (size_t)y * rowPitch,
+			baseRGBA.data() + (size_t)y * srcRowBytes,
+			srcRowBytes);
 	}
 
 	D3D12_TEXTURE_COPY_LOCATION srcLoc{};
@@ -6813,7 +7189,6 @@ static void UploadTexture(TextureResource& tex)
 	dstLoc.pResource = tex.texture.Get();
 	dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 	dstLoc.SubresourceIndex = 0;
-
 	g_gl.cmdList->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
 
 	D3D12_RESOURCE_BARRIER toSrv{};
@@ -6826,7 +7201,11 @@ static void UploadTexture(TextureResource& tex)
 
 	tex.state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	tex.gpuValid = true;
+
+	EnsureTextureResource(tex);
+	QD3D12_RequestAsyncMipBuild(tex);
 }
+
 
 
 
@@ -7050,6 +7429,7 @@ static void QD3D12_CopyRGBARegionIntoTexture(TextureResource& tex, GLint xoffset
 	tex.compressedImageSize = 0;
 	tex.forceOpaqueAlpha = false;
 	tex.dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	tex.mipLevels = QD3D12_CalcMipCount(tex.width, tex.height);
 	const int bpp = BytesPerPixel(tex.format, GL_UNSIGNED_BYTE);
 	if (bpp <= 0 || tex.width <= 0 || tex.height <= 0)
 		return;
@@ -7068,7 +7448,7 @@ static void QD3D12_CopyRGBARegionIntoTexture(TextureResource& tex, GLint xoffset
 		memcpy(tex.sysmem.data() + dstOff, packed.data() + srcOff, (size_t)width * (size_t)bpp);
 	}
 
-	tex.gpuValid = false;
+	QD3D12_InvalidateTextureMipChain(tex, true);
 }
 
 static PipelineMode PickPipeline(bool useTex0, bool useTex1)
@@ -8574,7 +8954,15 @@ void APIENTRY glTexParameterf(GLenum, GLenum pname, GLfloat param)
 	TextureResource& tex = it->second;
 	switch (pname)
 	{
-	case GL_TEXTURE_MIN_FILTER: tex.minFilter = value; break;
+	case GL_TEXTURE_MIN_FILTER:
+		tex.minFilter = value;
+		if (QD3D12_TextureWantsMipSampling(tex))
+		{
+			tex.mipChainRequested = true;
+			QD3D12_RequestAsyncMipBuild(tex);
+		}
+		EnsureTextureResource(tex);
+		break;
 	case GL_TEXTURE_MAG_FILTER: tex.magFilter = value; break;
 	case GL_TEXTURE_WRAP_S:     tex.wrapS = value; break;
 	case GL_TEXTURE_WRAP_T:     tex.wrapT = value; break;
@@ -8864,7 +9252,19 @@ void APIENTRY glTexImage2D(GLenum, GLint level, GLint internalFormat,
 		return;
 
 	if (level > 0)
+	{
+		// Ignore app-provided mip bytes. Level 1 is the legacy cue to build our
+		// generated chain from mip 0, now on the async worker.
+		if (level == 1)
+		{
+			TextureResource& tex = it->second;
+			tex.mipChainRequested = true;
+			QD3D12_InvalidateTextureMipChain(tex, false);
+			QD3D12_RequestAsyncMipBuild(tex);
+			EnsureTextureResource(tex);
+		}
 		return;
+	}
 
 	TextureResource& tex = it->second;
 
@@ -8877,6 +9277,9 @@ void APIENTRY glTexImage2D(GLenum, GLint level, GLint internalFormat,
 	tex.compressedImageSize = 0;
 	tex.forceOpaqueAlpha = false;
 	tex.dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	tex.mipLevels = QD3D12_CalcMipCount(width, height);
+	tex.mipChainRequested = QD3D12_TextureWantsMipSampling(tex);
+	QD3D12_InvalidateTextureMipChain(tex, true);
 
 	const int bpp = BytesPerPixel(tex.format, type);
 	tex.sysmem.resize((size_t)width * (size_t)height * (size_t)bpp);
@@ -8886,7 +9289,6 @@ void APIENTRY glTexImage2D(GLenum, GLint level, GLint internalFormat,
 		memset(tex.sysmem.data(), 0, tex.sysmem.size());
 
 	EnsureTextureResource(tex);
-	tex.gpuValid = false;
 }
 
 void APIENTRY glCompressedTexImage2DARB(GLenum target, GLint level, GLenum internalFormat,
@@ -8944,6 +9346,9 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target, GLint level, GLenum inter
 	tex.compressedImageSize = expectedSize;
 	tex.forceOpaqueAlpha = (internalFormat == GL_COMPRESSED_RGB_S3TC_DXT1_EXT);
 	tex.dxgiFormat = QD3D12_MapCompressedTextureFormat(internalFormat);
+	tex.mipLevels = 1;
+	tex.mipChainRequested = false;
+	QD3D12_InvalidateTextureMipChain(tex, true);
 
 	tex.sysmem.resize(expectedSize);
 	if (data && expectedSize > 0)
@@ -8952,7 +9357,6 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target, GLint level, GLenum inter
 		memset(tex.sysmem.data(), 0, expectedSize);
 
 	EnsureTextureResource(tex);
-	tex.gpuValid = false;
 }
 
 void APIENTRY glCompressedTexImage2D(GLenum target, GLint level, GLenum internalFormat,
@@ -9062,7 +9466,7 @@ void APIENTRY glCompressedTexSubImage2DARB(GLenum target, GLint level,
 	}
 
 	tex.compressedImageSize = (UINT)fullSize;
-	tex.gpuValid = false;
+	QD3D12_InvalidateTextureMipChain(tex, true);
 }
 
 void APIENTRY glCompressedTexSubImage2D(GLenum target, GLint level,
@@ -9112,7 +9516,17 @@ void APIENTRY glTexSubImage2D(GLenum, GLint level, GLint xoffset, GLint yoffset,
 		return;
 
 	if (level > 0)
+	{
+		if (level == 1)
+		{
+			TextureResource& tex = it->second;
+			tex.mipChainRequested = true;
+			QD3D12_InvalidateTextureMipChain(tex, false);
+			QD3D12_RequestAsyncMipBuild(tex);
+			EnsureTextureResource(tex);
+		}
 		return;
+	}
 
 	TextureResource& tex = it->second;
 	if (tex.width <= 0 || tex.height <= 0)
@@ -9136,7 +9550,8 @@ void APIENTRY glTexSubImage2D(GLenum, GLint level, GLint xoffset, GLint yoffset,
 		memcpy(tex.sysmem.data() + dstOff, src + srcOff, (size_t)width * (size_t)bpp);
 	}
 
-	tex.gpuValid = false;
+	QD3D12_InvalidateTextureMipChain(tex, true);
+	EnsureTextureResource(tex);
 }
 
 
@@ -9161,11 +9576,13 @@ void APIENTRY glCopyTexImage2D(GLenum, GLint, GLenum internalFormat,
 	tex.compressedImageSize = 0;
 	tex.forceOpaqueAlpha = false;
 	tex.dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	tex.mipLevels = QD3D12_CalcMipCount(width, height);
+	tex.mipChainRequested = QD3D12_TextureWantsMipSampling(tex);
 
 	QD3D12_PackRGBA8ToTextureFormat(rgba.data(), width * height, tex.format, tex.sysmem);
 
+	QD3D12_InvalidateTextureMipChain(tex, true);
 	EnsureTextureResource(tex);
-	tex.gpuValid = false;
 }
 
 void APIENTRY glCopyTexSubImage2D(GLenum, GLint,
@@ -9251,8 +9668,9 @@ void APIENTRY glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname,
 		return;
 	}
 
-	if (level != 0)
+	if (level < 0)
 	{
+		g_gl.lastError = GL_INVALID_VALUE;
 		*params = 0;
 		return;
 	}
@@ -9265,13 +9683,21 @@ void APIENTRY glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname,
 	}
 
 	const TextureResource& tex = it->second;
+	const UINT mipCount = tex.mipLevels ? tex.mipLevels : QD3D12_DesiredTextureMipLevels(tex);
+	if ((UINT)level >= mipCount)
+	{
+		*params = 0;
+		return;
+	}
+	const GLint mipWidth = std::max<GLint>(1, tex.width >> level);
+	const GLint mipHeight = std::max<GLint>(1, tex.height >> level);
 	switch (pname)
 	{
 	case GL_TEXTURE_WIDTH:
-		*params = tex.width;
+		*params = mipWidth;
 		break;
 	case GL_TEXTURE_HEIGHT:
-		*params = tex.height;
+		*params = mipHeight;
 		break;
 	case GL_TEXTURE_INTERNAL_FORMAT:
 		*params = (GLint)tex.format;
@@ -10321,6 +10747,7 @@ static bool QD3D12_CopyPbufferToBoundTexture(QD3D12Pbuffer& pb)
 	tex.compressedImageSize = 0;
 	tex.forceOpaqueAlpha = false;
 	tex.dxgiFormat = QD3D12_SceneColorFormat;
+	tex.mipLevels = 1;
 	tex.sysmem.clear();
 
 	QD3D12Window* savedWindow = g_currentWindow;
