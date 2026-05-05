@@ -720,6 +720,7 @@ struct glRaytracingSceneState_t
 static glRaytracingSceneState_t g_glRaytracingScene;
 
 void glRaytracingClear(void);
+static void glRaytracingLightingResetDenoiseHistory(void);
 
 static void glRaytracingReleaseWorldResources(glRaytracingRenderWorld_t* world)
 {
@@ -830,6 +831,7 @@ static void glRaytracingMarkWorldNeedsRebuild(glRaytracingRenderWorld_t* world)
 
 	world->tlasNeedsRebuild = 1;
 	world->tlasNeedsUpdate = 0;
+	glRaytracingLightingResetDenoiseHistory();
 }
 
 static void glRaytracingMarkWorldNeedsUpdate(glRaytracingRenderWorld_t* world)
@@ -839,6 +841,7 @@ static void glRaytracingMarkWorldNeedsUpdate(glRaytracingRenderWorld_t* world)
 
 	if (!world->tlasNeedsRebuild)
 		world->tlasNeedsUpdate = 1;
+	glRaytracingLightingResetDenoiseHistory();
 }
 
 static void glRaytracingMarkAllWorldsNeedRebuild(void)
@@ -848,6 +851,8 @@ static void glRaytracingMarkAllWorldsNeedRebuild(void)
 		if (g_glRaytracingScene.worlds[i].alive)
 			glRaytracingMarkWorldNeedsRebuild(&g_glRaytracingScene.worlds[i]);
 	}
+
+	glRaytracingLightingResetDenoiseHistory();
 }
 
 static uint32_t glRaytracingCountAliveInstances(const glRaytracingRenderWorld_t* world)
@@ -2120,8 +2125,12 @@ struct glRaytracingLightingState_t
 	glRaytracingBuffer_t hitTable;
 
 	ComPtr<ID3D12PipelineState> denoisePSO;
+	ComPtr<ID3D12PipelineState> temporalPSO;
 	glRaytracingTexture_t pathTraceTexture;
+	glRaytracingTexture_t temporalTexture;
+	glRaytracingTexture_t historyTexture[2];
 	glRaytracingTexture_t denoiseTemp[2];
+	uint32_t currentHistoryIndex;
 	glRaytracingBuffer_t denoiseConstantBuffer[3];
 	UINT denoiseWidth;
 	UINT denoiseHeight;
@@ -2137,6 +2146,7 @@ struct glRaytracingLightingState_t
 		denoiseWidth = 0;
 		denoiseHeight = 0;
 		denoiseFormat = DXGI_FORMAT_UNKNOWN;
+		currentHistoryIndex = 0;
 		frameCounter = 0;
 		externalDenoiser = false;
 		initialized = false;
@@ -2158,20 +2168,24 @@ enum glRaytracingLightingDescriptorIndex_t
 	GLR_DESC_PATHTRACE_SRV = 6,
 	GLR_DESC_DENOISE_A_SRV = 7,
 	GLR_DESC_DENOISE_B_SRV = 8,
-	GLR_DESC_PATHTRACE_UAV = 9,
-	GLR_DESC_DENOISE_A_UAV = 10,
-	GLR_DESC_DENOISE_B_UAV = 11,
-	GLR_DESC_OUTPUT_UAV = 12,
-	GLR_DESC_COUNT = 13,
-	GLR_DESC_SRV_COUNT = 9,
-	GLR_DESC_UAV_COUNT = 4
+	GLR_DESC_HISTORY_SRV = 9,
+	GLR_DESC_TEMPORAL_SRV = 10,
+	GLR_DESC_PATHTRACE_UAV = 11,
+	GLR_DESC_DENOISE_A_UAV = 12,
+	GLR_DESC_DENOISE_B_UAV = 13,
+	GLR_DESC_OUTPUT_UAV = 14,
+	GLR_DESC_TEMPORAL_UAV = 15,
+	GLR_DESC_HISTORY_UAV = 16,
+	GLR_DESC_COUNT = 17,
+	GLR_DESC_SRV_COUNT = 11,
+	GLR_DESC_UAV_COUNT = 6
 };
 
 static void glRaytracingLightingResetDenoiseHistory(void)
 {
-	// Kept under the old name so existing call sites keep compiling. The denoiser
-	// below is no longer a temporal history blend; this only restarts stochastic
-	// sample indexing after material/camera/light changes.
+	// Kept under the old name so existing call sites keep compiling. This now
+	// invalidates the temporal GI accumulator as well as restarting stochastic
+	// sample indexing after material/camera/light/scene changes.
 	g_glRaytracingLighting.frameCounter = 0;
 	g_glRaytracingLighting.constants.frameIndex = 0;
 }
@@ -3626,10 +3640,9 @@ float3 EstimatePathTracedVolumetricScattering(uint2 pixel, float3 worldPos, inou
 R"(
 float3 EstimateFastBounceLight(float3 hitPos, float3 hitN, Light Lgt)
 {
-    // Secondary-bounce lighting needs to be cheap.  The primary pass already casts
-    // detailed visibility rays.  Here we evaluate every active light analytically
-    // without extra shadow rays so all lights still contribute to GI, but the
-    // indirect path no longer explodes into many TraceRay() calls per pixel.
+    // Cheap unshadowed estimate used as the all-lights baseline for secondary
+    // GI.  A small shadowed subset below corrects this baseline so every light
+    // still bounces, but important occlusion is no longer missing from GI.
     if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
     {
         float3 toLight = Lgt.position - hitPos;
@@ -3642,9 +3655,9 @@ float3 EstimateFastBounceLight(float3 hitPos, float3 hitN, Light Lgt)
         if (atten <= 0.0)
             return 0.0;
 
-        float wrap = 0.35;
+        float wrap = 0.32;
         float nDotL = saturate((dot(hitN, L) + wrap) / (1.0 + wrap));
-        return Lgt.color * (Lgt.intensity * atten * nDotL);
+        return clamp(Lgt.color * (Lgt.intensity * atten * nDotL), 0.0, 8.0);
     }
     else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
     {
@@ -3658,14 +3671,12 @@ float3 EstimateFastBounceLight(float3 hitPos, float3 hitN, Light Lgt)
         if (atten <= 0.0)
             return 0.0;
 
-        float wrap = 0.35;
+        float wrap = 0.32;
         float nDotL = saturate((dot(hitN, L) + wrap) / (1.0 + wrap));
-        return Lgt.color * (Lgt.intensity * atten * nDotL);
+        return clamp(Lgt.color * (Lgt.intensity * atten * nDotL), 0.0, 8.0);
     }
     else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_RECT)
     {
-        // Use the rect center for the bounce estimate.  It is stable and avoids
-        // spending another random sample plus visibility ray on secondary hits.
         float3 toCenter = Lgt.position - hitPos;
         float centerDist = length(toCenter);
         if (centerDist <= 0.01)
@@ -3689,10 +3700,59 @@ float3 EstimateFastBounceLight(float3 hitPos, float3 hitN, Light Lgt)
         if (faceTerm <= 0.0)
             return 0.0;
 
-        return clamp(Lgt.color * (Lgt.intensity * nDotL * faceTerm * atten), 0.0, 4.0);
+        return clamp(Lgt.color * (Lgt.intensity * nDotL * faceTerm * atten), 0.0, 8.0);
     }
 
     return 0.0;
+}
+
+float3 EstimateShadowedBounceLight(uint2 hitPixel, float3 hitPos, float3 hitN, float3 hitV, float3 hitAlbedo, Light Lgt, inout uint rng)
+{
+    float3 spec = 0.0;
+    float3 diffuse = 0.0;
+
+    // Use the same visibility-capable direct-light samplers as the primary hit.
+    // This supplies proper next-event estimation at secondary hits instead of the
+    // old unoccluded light-list approximation.
+    if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
+    {
+        diffuse = PathTraceDirectPointLight(hitPixel, hitPos, hitN, hitV, hitAlbedo, Lgt, rng, spec);
+    }
+    else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
+    {
+        diffuse = PathTraceDirectSpotLight(hitPos, hitN, hitV, hitAlbedo, Lgt, rng, spec);
+    }
+    else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_RECT)
+    {
+        diffuse = PathTraceDirectRectLight(hitPixel, hitPos, hitN, hitV, hitAlbedo, Lgt, rng, spec);
+    }
+
+    return clamp(diffuse, 0.0, 12.0);
+}
+
+float3 EstimateBounceSkyLighting(float3 hitPos, float3 hitN, inout uint rng)
+{
+    const float SKY_TMAX = 1000000.0;
+
+    uint skySamples = (gSamplesPerPixel >= 4u) ? 2u : 1u;
+    float3 accum = 0.0;
+
+    [loop]
+    for (uint i = 0u; i < skySamples; ++i)
+    {
+        float3 skyDir = (i == 0u)
+            ? SampleConeWorld(GetSkyLightDirection10AM(), 0.18, rng)
+            : SampleCosineWorld(hitN, rng);
+
+        float NoSky = saturate(dot(hitN, skyDir));
+        if (NoSky <= 0.0)
+            continue;
+
+        float visibility = TraceVisibilityBiased(hitPos, hitN, skyDir, SKY_TMAX);
+        accum += GetSkyRadiance(skyDir) * visibility * NoSky;
+    }
+
+    return accum / (float)skySamples;
 }
 
 float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 hitN, float3 hitV, float3 hitAlbedo, uint hitGeoFlag, inout uint rng)
@@ -3700,48 +3760,79 @@ float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 
     bool hitIsSkeletal = (hitGeoFlag & GEOMETRY_FLAG_SKELETAL) != 0u;
     bool hitIsUnlit    = (hitGeoFlag & GEOMETRY_FLAG_UNLIT)    != 0u;
 
-    // Treat unlit G-buffer surfaces as emissive-ish for bounce purposes.  This is
-    // useful for light cards / bright UI-like surfaces that deliberately bypass
-    // the regular lighting pass.
+    hitN = SafeNormalizeOr(hitN, float3(0.0, 0.0, 1.0));
+    hitV = SafeNormalizeOr(hitV, -hitN);
+    hitAlbedo = saturate(hitAlbedo);
+
+    // Treat unlit G-buffer surfaces as simple emissive bounce cards.  Clamp so a
+    // white UI/light-card cannot become an uncontrolled firefly in the GI path.
     if (hitIsUnlit)
-        return hitAlbedo;
+        return clamp(hitAlbedo * 2.0 + GetSkyRadiance(hitN) * 0.04, 0.0, 6.0);
 
-    // Cheap environment term.  The expensive sky visibility probes stay in the
-    // primary lighting path; doing them again for every secondary hit was a major
-    // source of the framerate drop.
     float upness = saturate(hitN.z * 0.5 + 0.5);
-    float3 lighting = gAmbientColor.rgb * (gAmbientColor.a * 0.025);
-    lighting += GetSkyRadiance(hitN) * (0.06 + 0.10 * upness);
+    float3 lighting = gAmbientColor.rgb * (gAmbientColor.a * 0.035);
 
-    // Still walk the full light list, but do not cast secondary-hit shadow rays.
-    // That preserves the "all lights bounce" behavior while making the cost
-    // roughly one extra bounce TraceRay() per indirect path instead of one bounce
-    // TraceRay() plus many more visibility TraceRay() calls.
+    // Real occluded sky contribution at the secondary hit.  The previous GI path
+    // used a fixed sky term, so corners/cavities received too much indirect light.
+    lighting += EstimateBounceSkyLighting(hitPos, hitN, rng) * (0.14 + 0.10 * upness);
+
+    // Baseline: every light contributes to bounced radiance, so small dynamic
+    // lights do not vanish just because they were not chosen by the stochastic
+    // next-event-estimation budget.
+    float3 fastAllLights = 0.0;
     [loop]
     for (uint i = 0; i < gLightCount; ++i)
     {
-        lighting += EstimateFastBounceLight(hitPos, hitN, gLights[i]);
+        fastAllLights += EstimateFastBounceLight(hitPos, hitN, gLights[i]);
+    }
+    lighting += fastAllLights;
+
+    // Visibility correction: replace a small rotating subset of the unshadowed
+    // baseline with real shadowed direct lighting.  Temporal accumulation in the
+    // compute pass below makes this converge without tracing every light at every
+    // bounce hit.
+    uint correctionBudget = 0u;
+    if (gLightCount > 0u)
+    {
+        correctionBudget = (gLightCount <= 3u) ? gLightCount : 2u;
+        if (gSamplesPerPixel >= 4u)
+            correctionBudget = min(gLightCount, correctionBudget + 1u);
     }
 
-    if (hitIsSkeletal)
-        lighting *= 1.10;
+    if (correctionBudget > 0u)
+    {
+        uint start = PcgHash(rng ^ 0x9E3779B9u) % gLightCount;
+        rng = PcgHash(rng + 0xBB67AE85u);
+        uint stride = (gLightCount > 1u) ? (1u + (PcgHash(rng ^ 0x3C6EF372u) % (gLightCount - 1u))) : 1u;
+        rng = PcgHash(rng + 0xA54FF53Au);
 
-    // Return outgoing diffuse radiance from the bounce surface.  The caller adds
-    // this as incoming indirect light at the primary surface; primary albedo is
-    // applied later in RayGen just like direct lighting.
-    return max(hitAlbedo * max(lighting, 0.0), 0.0);
+        [loop]
+        for (uint c = 0u; c < correctionBudget; ++c)
+        {
+            uint lightIndex = (start + c * stride) % gLightCount;
+            Light Lgt = gLights[lightIndex];
+            float3 fast = EstimateFastBounceLight(hitPos, hitN, Lgt);
+            float3 shadowed = EstimateShadowedBounceLight(hitPixel, hitPos, hitN, hitV, hitAlbedo, Lgt, rng);
+            lighting += shadowed - fast;
+        }
+    }
+
+    //if (hitIsSkeletal)
+     //   lighting *= 1.10;
+
+    // Outgoing diffuse radiance from the bounce surface.  The primary surface's
+    // albedo is applied later in RayGen, so only the secondary hit albedo belongs
+    // here.
+    return clamp(hitAlbedo * max(lighting, 0.0), 0.0, 16.0);
 }
 
 )"
 R"(
 float3 EstimateReactiveScreenSpaceFinalGather(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, inout uint rng)
 {
-    // Cheap one-frame final gather / irradiance reuse.  This is intentionally not
-    // temporal: light and material changes show up immediately, while the costly
-    // DXR budget stays at one stochastic bounce ray.  The gather samples current
-    // G-buffer surfaces around the shaded pixel and shades them analytically as
-    // bounce emitters, so nearby lit/colorful visible surfaces push GI without
-    // adding more TraceRay() calls.
+    // Current-frame final gather / irradiance reuse.  The gather samples nearby
+    // G-buffer surfaces, shades them as bounce emitters, and now traces short
+    // visibility rays so color bleed does not leak through walls.
     static const int2 kGatherTaps[6] =
     {
         int2(  7,   3),
@@ -3755,8 +3846,8 @@ float3 EstimateReactiveScreenSpaceFinalGather(uint2 pixel, float3 worldPos, floa
     uint sampleBudget = 5u;
 
     // Keep the pass cheap when many lights or high SPP are active.  This path
-    // has no DXR rays, but it still evaluates bounce lighting against the light
-    // list, so adapt the screen-space sample count instead of raising ray count.
+    // evaluates bounce lighting against the light list and traces short
+    // visibility rays, so adapt the sample count instead of raising ray count.
     if (gLightCount > 4u)
         sampleBudget = 4u;
     if (gLightCount > 10u)
@@ -3833,6 +3924,15 @@ float3 EstimateReactiveScreenSpaceFinalGather(uint2 pixel, float3 worldPos, floa
         if (formWeight <= 1e-5)
             continue;
 
+        // Prevent screen-space final gather from leaking through walls.  This is
+        // a short visibility ray, not another diffuse bounce, and it fixes the
+        // most obvious missing GI occlusion cases in doorways/corners.
+        float visibility = TraceVisibilityBiased(worldPos, N, dirToSample, dist);
+        if (visibility <= 0.0)
+            continue;
+
+        formWeight *= visibility;
+
         float3 sampleView = SafeNormalizeOr(-dirToSample, V);
         float3 outgoingRadiance = EstimateDirectLightingForBounceHit(
             uint2(sp),
@@ -3865,13 +3965,9 @@ float3 TraceOneIndirectBouncePath(uint2 pixel, float3 worldPos, float3 N, float3
 {
     const float BOUNCE_TMAX = 1000000.0;
 
-    uint maxIndirectDepth = (gMaxBounces > 1u) ? 1u : 0u;
-
-    // Extra diffuse depths are very expensive because each depth launches another
-    // DXR ray.  Keep the common 1-2 SPP mode to one indirect hit.  Higher SPP can
-    // opt into one additional diffuse depth, capped at two total secondary hits.
-    if (gSamplesPerPixel >= 4u)
-        maxIndirectDepth = min(gMaxBounces - 1u, 2u);
+    uint maxIndirectDepth = (gMaxBounces > 1u) ? min(gMaxBounces - 1u, 3u) : 0u;
+    if (gSamplesPerPixel <= 1u)
+        maxIndirectDepth = min(maxIndirectDepth, 2u);
 
     float3 accum = 0.0;
     float3 throughput = 1.0;
@@ -3899,9 +3995,10 @@ float3 TraceOneIndirectBouncePath(uint2 pixel, float3 worldPos, float3 N, float3
 
         if (!hit)
         {
-            // A miss is ordinary environment lighting for the path. Keep this
-            // modest because the main pass already has stable direct sky terms.
-            accum += throughput * GetSkyRadiance(bounceDir) * 0.18;
+            // Environment miss.  This is part of the path throughput and is now
+            // allowed at every diffuse depth, not only at the first miss.
+            float missScale = (depth == 0u) ? 0.28 : 0.42;
+            accum += throughput * GetSkyRadiance(bounceDir) * missScale;
             break;
         }
 
@@ -3939,14 +4036,11 @@ float3 TraceOneIndirectBouncePath(uint2 pixel, float3 worldPos, float3 N, float3
 
         if (!hasGBufferMaterial)
         {
-            // IMPORTANT: this is the path that made some lights look like they
-            // were not bouncing.  The TLAS can hit an off-screen or camera-hidden
-            // surface, and the old code returned only a tiny sky fallback because
-            // it could not fetch albedo/normal from the G-buffer.  Still shade the
-            // real ray hit against every active light using a neutral diffuse
-            // material so point, spot, and rect lights all contribute to bounce.
-            float3 skyTint = GetSkyRadiance(SafeNormalizeOr(reflect(bounceDir, pathNormal), float3(0.0, 0.0, 1.0)));
-            bouncedRadiance += skyTint * 0.035;
+            // The ray hit real TLAS geometry, but material lookup via camera
+            // G-buffer failed because the surface is hidden/off-screen.  Keep the
+            // bounce alive with a neutral material and a little environment tint.
+            float3 skyTint = GetSkyRadiance(SafeNormalizeOr(reflect(bounceDir, hitNormal), float3(0.0, 0.0, 1.0)));
+            bouncedRadiance += skyTint * 0.045;
         }
 
         accum += throughput * bouncedRadiance;
@@ -3954,12 +4048,21 @@ float3 TraceOneIndirectBouncePath(uint2 pixel, float3 worldPos, float3 N, float3
         if ((hitGeoFlag & GEOMETRY_FLAG_UNLIT) != 0u)
             break;
 
-        // Cosine-weighted diffuse sampling cancels the Lambertian cosine/pdf term,
-        // so the path throughput is the surface albedo plus a conservative energy
-        // scale to keep multiple G-buffer-assisted bounces stable.
-        throughput *= saturate(hitAlbedo) * 0.68;
+        // Cosine-weighted diffuse sampling cancels the Lambertian cosine/pdf term;
+        // the remaining throughput is just the secondary surface albedo.  Use a
+        // conservative energy scale because material data for off-screen hits is a
+        // G-buffer approximation.
+        throughput *= saturate(hitAlbedo) * 0.72;
 
-        if (max(max(throughput.x, throughput.y), throughput.z) < 0.02)
+        float continuation = clamp(max(max(throughput.x, throughput.y), throughput.z), 0.12, 0.92);
+        if (depth >= 1u)
+        {
+            if (Rand(rng) > continuation)
+                break;
+            throughput /= continuation;
+        }
+
+        if (max(max(throughput.x, throughput.y), throughput.z) < 0.015)
             break;
 
         pathPos = hitPos;
@@ -3976,13 +4079,11 @@ float3 EstimatePathTracedIndirectBounce(uint2 pixel, float3 worldPos, float3 N, 
     if (gMaxBounces <= 1u)
         return 0.0;
 
-    // Keep the realtime GI ray budget flat: one stochastic DXR bounce path per
-    // lighting sample.  Extra GI coverage now comes from the reactive final
-    // gather in RayGen, which uses current-frame G-buffer reuse instead of more
-    // secondary TraceRay() calls.
+    // One stochastic diffuse path per lighting sample.  The path can contain
+    // several diffuse depths, while the temporal pass below handles convergence.
     float3 accum = TraceOneIndirectBouncePath(pixel, worldPos, N, V, baseAlbedo, rng);
 
-    const float INDIRECT_STRENGTH = 0.58;
+    const float INDIRECT_STRENGTH = 0.72;
     return accum * INDIRECT_STRENGTH;
 }
 
@@ -3991,8 +4092,8 @@ float3 ApplyPrimaryDiffusePost(float3 lightingAccum, float ao, float microShadow
     lightingAccum *= ao;
     lightingAccum *= microShadow;
 
-    if (isSkeletal)
-        lightingAccum *= 1.2;
+   // if (isSkeletal)
+    //    lightingAccum *= 1.2;
 
     return max(lightingAccum, 0.0);
 }
@@ -4001,8 +4102,8 @@ float3 ApplyPrimarySpecularPost(float3 specularAccum, float ao, bool isSkeletal)
 {
     specularAccum *= ao;
 
-    if (isSkeletal)
-        specularAccum *= 1.15;
+    //if (isSkeletal)
+     //   specularAccum *= 1.15;
 
     return max(specularAccum, 0.0);
 }
@@ -4035,8 +4136,8 @@ float3 PathTraceDeterministicLighting(
     lightingAccum += skyColor * (0.70 * skyVis);
     lightingAccum += ambientSkyVis * (skyColorRGB * 0.15);
 
-    if (isSkeletal)
-        lightingAccum += 0.1;
+    //if (isSkeletal)
+      //  lightingAccum += 0.1;
 
     // The current direct-light evaluators are deterministic.  Keep the inout RNG
     // argument only because the functions share the same signature as stochastic
@@ -4122,7 +4223,7 @@ void RayGen()
         // Evaluate this deterministic screen-space irradiance reuse once per
         // pixel, not once per SPP.  That makes the GI more responsive without
         // multiplying the light-list work inside the stochastic sample loop.
-        uint gatherRng = InitRng(pixel, 0u, 1337u);
+        uint gatherRng = InitRng(pixel, gFrameIndex, 1337u);
         reactiveFinalGather = EstimateReactiveScreenSpaceFinalGather(
             pixel,
             worldPos,
@@ -4156,10 +4257,10 @@ void RayGen()
         [loop]
         for (uint s = 0; s < spp; ++s)
         {
-            // The current denoiser is spatial, not temporal. Do not use
-            // gFrameIndex for the primary GI seed or the same pixel flickers
-            // forever instead of presenting a stable signal for the a-trous pass.
-            uint rng = InitRng(pixel, 0u, s);
+            // Frame-vary the GI path now that a temporal accumulator is present.
+            // This lets the stochastic light subset, sky sample, and diffuse path
+            // converge instead of staying locked to one noisy sample pattern.
+            uint rng = InitRng(pixel, gFrameIndex, s);
             indirectAccum += EstimatePathTracedIndirectBounce(
                 pixel,
                 worldPos,
@@ -4228,6 +4329,7 @@ Texture2D<float4> gPositionTex    : register(t4);
 Texture2D<float4> gPathTraceTex   : register(t6);
 Texture2D<float4> gDenoiseATex    : register(t7);
 Texture2D<float4> gDenoiseBTex    : register(t8);
+Texture2D<float4> gTemporalTex    : register(t10);
 
 RWTexture2D<float4> gRayOutputTex      : register(u0);
 RWTexture2D<float4> gDenoiseAOutTex    : register(u1);
@@ -4273,7 +4375,7 @@ float3 RemodulateLighting(float3 lighting, float3 albedo)
 float4 LoadDenoiseSource(int2 p)
 {
     if (gDenoisePassIndex == 0u)
-        return gPathTraceTex.Load(int3(p, 0));
+        return gTemporalTex.Load(int3(p, 0));
     if (gDenoisePassIndex == 1u)
         return gDenoiseATex.Load(int3(p, 0));
     return gDenoiseBTex.Load(int3(p, 0));
@@ -4379,7 +4481,8 @@ void DenoiseCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     float weightSum = 0.0;
 
     // Three-pass a-trous wavelet filter. The CPU dispatches this with step
-    // widths 1, 2, and 4. It is geometry-aware and does not blend prior frames.
+    // widths 1, 2, and 4. It is geometry-aware; temporal GI accumulation happens
+    // before this pass.
     [unroll]
     for (int ky = 0; ky < 5; ++ky)
     {
@@ -4454,6 +4557,111 @@ void DenoiseCS(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     float3 outColor = lerp(centerSource.rgb, filtered, saturate(gDenoiseStrength));
     StoreDenoiseOutput(pixel, float4(max(outColor, 0.0), centerSource.a));
+}
+)";
+
+
+static const char* g_glRaytracingTemporalHlsl = R"(
+cbuffer LightingCB : register(b0)
+{
+    float4x4 gInvViewProj;
+    float4x4 gInvViewMatrix;
+    float4x4 gViewProj;
+    float4   gCameraPos;
+    float4   gAmbientColor;
+    float4   gScreenSize;
+    float    gNormalReconstructZ;
+    uint     gLightCount;
+    uint     gEnableSpecular;
+    uint     gEnableHalfLambert;
+    float    gShadowBias;
+    uint     gFrameIndex;
+    uint     gSamplesPerPixel;
+    uint     gMaxBounces;
+    uint     gEnableDenoiser;
+    uint     gDenoisePassIndex;
+    float    gDenoiseStepWidth;
+    float    gDenoiseStrength;
+    float    gDenoisePhiColor;
+    float    gDenoisePhiNormal;
+    float    gDenoisePhiPosition;
+    float    gBumpStrength;
+};
+
+Texture2D<float4> gAlbedoTex    : register(t1);
+Texture2D<float>  gDepthTex     : register(t2);
+Texture2D<float4> gNormalTex    : register(t3);
+Texture2D<float4> gPositionTex  : register(t4);
+Texture2D<float4> gPathTraceTex : register(t6);
+Texture2D<float4> gHistoryTex   : register(t9);
+
+RWTexture2D<float4> gTemporalOutTex : register(u4);
+RWTexture2D<float4> gHistoryOutTex  : register(u5);
+
+float LuminanceTemporal(float3 c)
+{
+    return dot(c, float3(0.2126, 0.7152, 0.0722));
+}
+
+float3 SafeNormalTemporal(float3 n)
+{
+    float lenSq = max(dot(n, n), 1e-8);
+    return n * rsqrt(lenSq);
+}
+
+float3 ClampHistoryToCurrent(float3 history, float3 current)
+{
+    // Loose temporal clamp: it removes GI fireflies and old lighting while still
+    // allowing bright muzzle-flash/door-light changes to appear in a few frames.
+    float3 radius = 0.20 + abs(current) * 0.55;
+    return clamp(history, current - radius, current + radius);
+}
+
+[numthreads(8, 8, 1)]
+void TemporalAccumCS(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    uint2 pixel = dispatchThreadId.xy;
+
+    if (pixel.x >= (uint)gScreenSize.x || pixel.y >= (uint)gScreenSize.y)
+        return;
+
+    float4 raw = gPathTraceTex.Load(int3(pixel, 0));
+    float depth = gDepthTex.Load(int3(pixel, 0));
+
+    if (depth <= 0.0 || depth >= 1.0 || gMaxBounces <= 1u)
+    {
+        gTemporalOutTex[pixel] = raw;
+        gHistoryOutTex[pixel] = float4(raw.rgb, 0.0);
+        return;
+    }
+
+    float4 history = gHistoryTex.Load(int3(pixel, 0));
+    float historyCount = (gFrameIndex == 0u) ? 0.0 : clamp(history.a, 0.0, 31.0);
+
+    if (historyCount <= 0.0)
+    {
+        gTemporalOutTex[pixel] = raw;
+        gHistoryOutTex[pixel] = float4(raw.rgb, 1.0);
+        return;
+    }
+
+    float3 historyColor = ClampHistoryToCurrent(max(history.rgb, 0.0), max(raw.rgb, 0.0));
+
+    float rawLum = LuminanceTemporal(max(raw.rgb, 0.0));
+    float histLum = LuminanceTemporal(historyColor);
+    float relChange = abs(rawLum - histLum) / max(max(rawLum, histLum), 0.08);
+
+    // Base accumulation approaches 32 frames, but large lighting changes raise
+    // current-frame weight so the accumulator does not leave obvious trails.
+    float currentWeight = max(1.0 / (historyCount + 1.0), 0.055);
+    currentWeight = max(currentWeight, saturate(relChange * 0.28));
+    currentWeight = saturate(currentWeight);
+
+    float3 resolved = lerp(historyColor, max(raw.rgb, 0.0), currentWeight);
+    float nextCount = min(historyCount + 1.0, 31.0);
+
+    gTemporalOutTex[pixel] = float4(resolved, raw.a);
+    gHistoryOutTex[pixel] = float4(resolved, nextCount);
 }
 )";
 
@@ -4946,12 +5154,34 @@ static int glRaytracingLightingCreateDenoisePipeline(void)
 	return 1;
 }
 
+
+static int glRaytracingLightingCreateTemporalPipeline(void)
+{
+	ComPtr<IDxcBlob> dxil = glRaytracingLightingCompileCompute(g_glRaytracingTemporalHlsl, L"TemporalAccumCS");
+	if (!dxil)
+		return 0;
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC pso = {};
+	pso.pRootSignature = g_glRaytracingLighting.globalRootSig.Get();
+	pso.CS.pShaderBytecode = dxil->GetBufferPointer();
+	pso.CS.BytecodeLength = dxil->GetBufferSize();
+
+	GLR_CHECK(g_glRaytracingCmd.device->CreateComputePipelineState(
+		&pso,
+		IID_PPV_ARGS(&g_glRaytracingLighting.temporalPSO)));
+
+	return 1;
+}
+
 static int glRaytracingLightingEnsureDenoiseResources(UINT width, UINT height)
 {
 	if (width == 0 || height == 0)
 		return 0;
 
 	if (g_glRaytracingLighting.pathTraceTexture.resource &&
+		g_glRaytracingLighting.temporalTexture.resource &&
+		g_glRaytracingLighting.historyTexture[0].resource &&
+		g_glRaytracingLighting.historyTexture[1].resource &&
 		g_glRaytracingLighting.denoiseTemp[0].resource &&
 		g_glRaytracingLighting.denoiseTemp[1].resource &&
 		g_glRaytracingLighting.denoiseWidth == width &&
@@ -4962,6 +5192,9 @@ static int glRaytracingLightingEnsureDenoiseResources(UINT width, UINT height)
 	}
 
 	g_glRaytracingLighting.pathTraceTexture = glRaytracingTexture_t();
+	g_glRaytracingLighting.temporalTexture = glRaytracingTexture_t();
+	g_glRaytracingLighting.historyTexture[0] = glRaytracingTexture_t();
+	g_glRaytracingLighting.historyTexture[1] = glRaytracingTexture_t();
 	g_glRaytracingLighting.denoiseTemp[0] = glRaytracingTexture_t();
 	g_glRaytracingLighting.denoiseTemp[1] = glRaytracingTexture_t();
 
@@ -4972,6 +5205,25 @@ static int glRaytracingLightingEnsureDenoiseResources(UINT width, UINT height)
 		GL_RAYTRACING_DENOISE_FORMAT,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+
+	g_glRaytracingLighting.temporalTexture = glRaytracingCreateTexture2D(
+		g_glRaytracingCmd.device.Get(),
+		width,
+		height,
+		GL_RAYTRACING_DENOISE_FORMAT,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+
+	for (int i = 0; i < 2; ++i)
+	{
+		g_glRaytracingLighting.historyTexture[i] = glRaytracingCreateTexture2D(
+			g_glRaytracingCmd.device.Get(),
+			width,
+			height,
+			GL_RAYTRACING_DENOISE_FORMAT,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	}
 
 	for (int i = 0; i < 2; ++i)
 	{
@@ -4985,12 +5237,16 @@ static int glRaytracingLightingEnsureDenoiseResources(UINT width, UINT height)
 	}
 
 	if (!g_glRaytracingLighting.pathTraceTexture.resource ||
+		!g_glRaytracingLighting.temporalTexture.resource ||
+		!g_glRaytracingLighting.historyTexture[0].resource ||
+		!g_glRaytracingLighting.historyTexture[1].resource ||
 		!g_glRaytracingLighting.denoiseTemp[0].resource ||
 		!g_glRaytracingLighting.denoiseTemp[1].resource)
 	{
 		return 0;
 	}
 
+	g_glRaytracingLighting.currentHistoryIndex = 0;
 	g_glRaytracingLighting.denoiseWidth = width;
 	g_glRaytracingLighting.denoiseHeight = height;
 	g_glRaytracingLighting.denoiseFormat = GL_RAYTRACING_DENOISE_FORMAT;
@@ -5004,7 +5260,10 @@ static void glRaytracingLightingCreatePerPassDescriptors(
 	ID3D12Resource* rayOutputTexture,
 	ID3D12Resource* pathTraceTexture,
 	ID3D12Resource* denoiseATexture,
-	ID3D12Resource* denoiseBTexture)
+	ID3D12Resource* denoiseBTexture,
+	ID3D12Resource* historyReadTexture,
+	ID3D12Resource* historyWriteTexture,
+	ID3D12Resource* temporalTexture)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE base = g_glRaytracingLighting.descriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
@@ -5059,6 +5318,10 @@ static void glRaytracingLightingCreatePerPassDescriptors(
 		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_DENOISE_A_SRV));
 	g_glRaytracingCmd.device->CreateShaderResourceView(denoiseBTexture, &denoiseSrv,
 		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_DENOISE_B_SRV));
+	g_glRaytracingCmd.device->CreateShaderResourceView(historyReadTexture, &denoiseSrv,
+		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_HISTORY_SRV));
+	g_glRaytracingCmd.device->CreateShaderResourceView(temporalTexture, &denoiseSrv,
+		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_TEMPORAL_SRV));
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC rayOutputUav = {};
 	rayOutputUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -5079,6 +5342,14 @@ static void glRaytracingLightingCreatePerPassDescriptors(
 	outputUav.Format = pass->outputFormat;
 	g_glRaytracingCmd.device->CreateUnorderedAccessView(pass->outputTexture, nullptr, &outputUav,
 		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_OUTPUT_UAV));
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC temporalUav = {};
+	temporalUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	temporalUav.Format = GL_RAYTRACING_DENOISE_FORMAT;
+	g_glRaytracingCmd.device->CreateUnorderedAccessView(temporalTexture, nullptr, &temporalUav,
+		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_TEMPORAL_UAV));
+	g_glRaytracingCmd.device->CreateUnorderedAccessView(historyWriteTexture, nullptr, &temporalUav,
+		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_HISTORY_UAV));
 }
 
 
@@ -5130,13 +5401,19 @@ static bool glRaytracingLightingExecuteInternal(
 		glRaytracingLightingUploadConstantsTo(g_glRaytracingLighting.denoiseConstantBuffer[passIndex], denoiseConstants);
 	}
 
+	const uint32_t historyReadIndex = g_glRaytracingLighting.currentHistoryIndex & 1u;
+	const uint32_t historyWriteIndex = (g_glRaytracingLighting.currentHistoryIndex ^ 1u) & 1u;
+
 	glRaytracingLightingCreatePerPassDescriptors(
 		pass,
 		topLevelAS,
 		rayOutputTexture,
 		g_glRaytracingLighting.pathTraceTexture.resource.Get(),
 		g_glRaytracingLighting.denoiseTemp[0].resource.Get(),
-		g_glRaytracingLighting.denoiseTemp[1].resource.Get());
+		g_glRaytracingLighting.denoiseTemp[1].resource.Get(),
+		g_glRaytracingLighting.historyTexture[historyReadIndex].resource.Get(),
+		g_glRaytracingLighting.historyTexture[historyWriteIndex].resource.Get(),
+		g_glRaytracingLighting.temporalTexture.resource.Get());
 
 	if (!glRaytracingBeginCmd())
 		return false;
@@ -5194,11 +5471,60 @@ static bool glRaytracingLightingExecuteInternal(
 
 	if (useInternalDenoiser)
 	{
+		const UINT groupsX = (pass->width + 7u) / 8u;
+		const UINT groupsY = (pass->height + 7u) / 8u;
+
 		glRaytracingTransition(g_glRaytracingCmd.cmdList.Get(),
 			g_glRaytracingLighting.pathTraceTexture.resource.Get(),
 			g_glRaytracingLighting.pathTraceTexture.state,
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		g_glRaytracingLighting.pathTraceTexture.state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+		glRaytracingTransition(g_glRaytracingCmd.cmdList.Get(),
+			g_glRaytracingLighting.temporalTexture.resource.Get(),
+			g_glRaytracingLighting.temporalTexture.state,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		g_glRaytracingLighting.temporalTexture.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+		glRaytracingTransition(g_glRaytracingCmd.cmdList.Get(),
+			g_glRaytracingLighting.historyTexture[historyReadIndex].resource.Get(),
+			g_glRaytracingLighting.historyTexture[historyReadIndex].state,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		g_glRaytracingLighting.historyTexture[historyReadIndex].state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+		glRaytracingTransition(g_glRaytracingCmd.cmdList.Get(),
+			g_glRaytracingLighting.historyTexture[historyWriteIndex].resource.Get(),
+			g_glRaytracingLighting.historyTexture[historyWriteIndex].state,
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		g_glRaytracingLighting.historyTexture[historyWriteIndex].state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+		g_glRaytracingCmd.cmdList->SetComputeRootSignature(g_glRaytracingLighting.globalRootSig.Get());
+		g_glRaytracingCmd.cmdList->SetComputeRootDescriptorTable(0,
+			glRaytracingOffsetGpu(gpuBase, g_glRaytracingLighting.descriptorStride, GLR_DESC_LIGHTS_SRV));
+		g_glRaytracingCmd.cmdList->SetComputeRootDescriptorTable(1,
+			glRaytracingOffsetGpu(gpuBase, g_glRaytracingLighting.descriptorStride, GLR_DESC_PATHTRACE_UAV));
+		g_glRaytracingCmd.cmdList->SetComputeRootConstantBufferView(2, g_glRaytracingLighting.constantBuffer.gpuVA);
+		g_glRaytracingCmd.cmdList->SetPipelineState(g_glRaytracingLighting.temporalPSO.Get());
+		g_glRaytracingCmd.cmdList->Dispatch(groupsX, groupsY, 1);
+
+		D3D12_RESOURCE_BARRIER temporalUavs[2] = {};
+		temporalUavs[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+		temporalUavs[0].UAV.pResource = g_glRaytracingLighting.temporalTexture.resource.Get();
+		temporalUavs[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+		temporalUavs[1].UAV.pResource = g_glRaytracingLighting.historyTexture[historyWriteIndex].resource.Get();
+		g_glRaytracingCmd.cmdList->ResourceBarrier(2, temporalUavs);
+
+		glRaytracingTransition(g_glRaytracingCmd.cmdList.Get(),
+			g_glRaytracingLighting.temporalTexture.resource.Get(),
+			g_glRaytracingLighting.temporalTexture.state,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		g_glRaytracingLighting.temporalTexture.state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+		glRaytracingTransition(g_glRaytracingCmd.cmdList.Get(),
+			g_glRaytracingLighting.historyTexture[historyWriteIndex].resource.Get(),
+			g_glRaytracingLighting.historyTexture[historyWriteIndex].state,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		g_glRaytracingLighting.historyTexture[historyWriteIndex].state = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
 		for (int i = 0; i < 2; ++i)
 		{
@@ -5221,10 +5547,7 @@ static bool glRaytracingLightingExecuteInternal(
 			glRaytracingOffsetGpu(gpuBase, g_glRaytracingLighting.descriptorStride, GLR_DESC_PATHTRACE_UAV));
 		g_glRaytracingCmd.cmdList->SetPipelineState(g_glRaytracingLighting.denoisePSO.Get());
 
-		const UINT groupsX = (pass->width + 7u) / 8u;
-		const UINT groupsY = (pass->height + 7u) / 8u;
-
-		// Pass 0: raw path trace -> temp A.
+		// Pass 0: temporally accumulated path trace -> temp A.
 		g_glRaytracingCmd.cmdList->SetComputeRootConstantBufferView(2, g_glRaytracingLighting.denoiseConstantBuffer[0].gpuVA);
 		g_glRaytracingCmd.cmdList->Dispatch(groupsX, groupsY, 1);
 
@@ -5271,6 +5594,9 @@ static bool glRaytracingLightingExecuteInternal(
 
 	if (!glRaytracingEndCmd())
 		return false;
+
+	if (useInternalDenoiser)
+		g_glRaytracingLighting.currentHistoryIndex = historyWriteIndex;
 
 	++g_glRaytracingLighting.frameCounter;
 	return true;
@@ -5322,6 +5648,9 @@ bool glRaytracingLightingInit(void)
 		return false;
 
 	if (!glRaytracingLightingCreateDenoisePipeline())
+		return false;
+
+	if (!glRaytracingLightingCreateTemporalPipeline())
 		return false;
 
 	memset(&g_glRaytracingLighting.constants, 0, sizeof(g_glRaytracingLighting.constants));
@@ -5402,6 +5731,7 @@ void glRaytracingLightingClearLights(bool clearPersistant)
 	g_glRaytracingLighting.constants.lightCount =
 		(uint32_t)g_glRaytracingLighting.cpuLights.size();
 
+	glRaytracingLightingResetDenoiseHistory();
 	glRaytracingLightingUpdateConstants();
 }
 
@@ -5418,6 +5748,7 @@ bool glRaytracingLightingAddLight(const glRaytracingLight_t* light)
 	g_glRaytracingLighting.cpuLights.push_back(*light);
 	g_glRaytracingLighting.constants.lightCount = (uint32_t)g_glRaytracingLighting.cpuLights.size();
 
+	glRaytracingLightingResetDenoiseHistory();
 	glRaytracingLightingUpdateLights();
 	glRaytracingLightingUpdateConstants();
 	return true;

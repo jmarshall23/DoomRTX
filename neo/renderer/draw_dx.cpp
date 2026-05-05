@@ -187,9 +187,9 @@ void RB_DXDrawInteractions(void)
 				vLight->globalLightOrigin.x,
 				vLight->globalLightOrigin.y,
 				vLight->globalLightOrigin.z,
-				srcLight.lightRadius[0] * 2.0f,
-				srcLight.lightRadius[1] * 2.0f,
-				srcLight.lightRadius[2] * 2.0f,
+				srcLight.lightRadius[0] * 1.7f,
+				srcLight.lightRadius[1] * 1.7f,
+				srcLight.lightRadius[2] * 1.7f,
 				r, g, b,
 				intensity);
 
