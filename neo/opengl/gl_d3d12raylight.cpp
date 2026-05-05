@@ -3986,23 +3986,47 @@ float3 EstimatePathTracedIndirectBounce(uint2 pixel, float3 worldPos, float3 N, 
     return accum * INDIRECT_STRENGTH;
 }
 
-float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V, float3 baseAlbedo, bool isSkeletal, inout uint rng, out float3 specularAccum)
+float3 ApplyPrimaryDiffusePost(float3 lightingAccum, float ao, float microShadow, bool isSkeletal)
+{
+    lightingAccum *= ao;
+    lightingAccum *= microShadow;
+
+    if (isSkeletal)
+        lightingAccum *= 1.2;
+
+    return max(lightingAccum, 0.0);
+}
+
+float3 ApplyPrimarySpecularPost(float3 specularAccum, float ao, bool isSkeletal)
+{
+    specularAccum *= ao;
+
+    if (isSkeletal)
+        specularAccum *= 1.15;
+
+    return max(specularAccum, 0.0);
+}
+
+float3 PathTraceDeterministicLighting(
+    uint2 pixel,
+    float3 worldPos,
+    float3 N,
+    float3 V,
+    float3 baseAlbedo,
+    bool isSkeletal,
+    float cavity,
+    float ao,
+    float skyVis,
+    float ambientSkyVis,
+    out float3 specularAccum)
 {
     specularAccum = 0.0;
 
-    float cavity = ComputeCavity(pixel, worldPos, N);
     float microShadow = lerp(0.75, 1.0, cavity);
 
-    // Keep the environment / sun shadow path deterministic.  The previous
-    // path-traced version sampled the sky cone and AO with frame-varying random
-    // rays; with DLSS RR enabled that raw 1spp signal was noisy enough to lose
-    // the old environment shadow shapes.  Reuse the stable multi-ray sky and AO
-    // probes from the original lighting pass, then add only a small stochastic
-    // sky-bounce term when both extra bounces and an SPP budget are requested.
-    float ao = ComputeAmbientOcclusion(worldPos, N, pixel);
-    float skyVis = ComputeSkyVisibility(worldPos, N, pixel);
-    float ambientSkyVis = TraceStraightUpToSky(worldPos, N);
-
+    // These environment and direct-light terms are deterministic for a given
+    // pixel.  The old RayGen evaluated them once for every SPP, which multiplied
+    // the AO/sky/direct shadow ray budget without adding new samples.
     float upness = saturate(N.z * 0.5 + 0.5);
     float3 skyColorRGB = float3(0.98, 0.55, 0.35);
     float3 skyColor = skyColorRGB * (0.35 + 0.65 * upness);
@@ -4011,13 +4035,13 @@ float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V,
     lightingAccum += skyColor * (0.70 * skyVis);
     lightingAccum += ambientSkyVis * (skyColorRGB * 0.15);
 
-    if (gMaxBounces > 1u)
-    {
-        lightingAccum += EstimatePathTracedIndirectBounce(pixel, worldPos, N, V, baseAlbedo, rng);
-    }
-
     if (isSkeletal)
         lightingAccum += 0.1;
+
+    // The current direct-light evaluators are deterministic.  Keep the inout RNG
+    // argument only because the functions share the same signature as stochastic
+    // helpers; it is not consumed by PathTraceDirect* in the current shader.
+    uint directRng = InitRng(pixel, 0u, 0xD17EC7u);
 
     [loop]
     for (uint i = 0; i < gLightCount; ++i)
@@ -4028,32 +4052,23 @@ float3 PathTraceLightingSample(uint2 pixel, float3 worldPos, float3 N, float3 V,
 
         if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_POINT)
         {
-            diffuse = PathTraceDirectPointLight(pixel, worldPos, N, V, baseAlbedo, Lgt, rng, spec);
+            diffuse = PathTraceDirectPointLight(pixel, worldPos, N, V, baseAlbedo, Lgt, directRng, spec);
         }
         else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_SPOT)
         {
-            diffuse = PathTraceDirectSpotLight(worldPos, N, V, baseAlbedo, Lgt, rng, spec);
+            diffuse = PathTraceDirectSpotLight(worldPos, N, V, baseAlbedo, Lgt, directRng, spec);
         }
         else if (Lgt.type == GL_RAYTRACING_LIGHT_TYPE_RECT)
         {
-            diffuse = PathTraceDirectRectLight(pixel, worldPos, N, V, baseAlbedo, Lgt, rng, spec);
+            diffuse = PathTraceDirectRectLight(pixel, worldPos, N, V, baseAlbedo, Lgt, directRng, spec);
         }
 
         lightingAccum += diffuse;
         specularAccum += spec;
     }
 
-    lightingAccum *= ao;
-    specularAccum *= ao;
-    lightingAccum *= microShadow;
-
-    if (isSkeletal)
-    {
-        lightingAccum *= 1.2;
-        specularAccum *= 1.15;
-    }
-
-    return max(lightingAccum, 0.0);
+    specularAccum = ApplyPrimarySpecularPost(specularAccum, ao, isSkeletal);
+    return ApplyPrimaryDiffusePost(lightingAccum, ao, microShadow, isSkeletal);
 }
 
 [shader("raygeneration")]
@@ -4093,6 +4108,14 @@ void RayGen()
     uint spp = max(gSamplesPerPixel, 1u);
     spp = min(spp, 8u);
 
+    // All four of these are deterministic for this pixel.  Compute them once,
+    // then reuse them for every stochastic GI sample.
+    float cavity = ComputeCavity(pixel, worldPos, N);
+    float ao = ComputeAmbientOcclusion(worldPos, N, pixel);
+    float skyVis = ComputeSkyVisibility(worldPos, N, pixel);
+    float ambientSkyVis = TraceStraightUpToSky(worldPos, N);
+    float microShadow = lerp(0.75, 1.0, cavity);
+
     float3 reactiveFinalGather = 0.0;
     if (gMaxBounces > 1u)
     {
@@ -4109,34 +4132,49 @@ void RayGen()
             gatherRng);
     }
 
-    float3 colorAccum = 0.0;
+    float3 specularAccum = 0.0;
+    float3 lightingAccum = PathTraceDeterministicLighting(
+        pixel,
+        worldPos,
+        N,
+        V,
+        baseAlbedo,
+        isSkeletal,
+        cavity,
+        ao,
+        skyVis,
+        ambientSkyVis,
+        specularAccum);
 
-    [loop]
-    for (uint s = 0; s < spp; ++s)
+    // Only the indirect bounce path uses per-SPP randomness now.  Direct lights,
+    // AO, sky visibility, cavity, and final gather are deterministic and should
+    // not be re-traced spp times.
+    if (gMaxBounces > 1u)
     {
-        // The current denoiser is spatial, not temporal. Do not use gFrameIndex
-        // for the primary GI seed or the same pixel flickers forever instead of
-        // presenting a stable signal for the a-trous pass.
-        uint rng = InitRng(pixel, 0u, s);
+        float3 indirectAccum = 0.0;
 
-        float3 specularAccum = 0.0;
-        float3 lightingAccum = PathTraceLightingSample(
-            pixel,
-            worldPos,
-            N,
-            V,
-            baseAlbedo,
-            isSkeletal,
-            rng,
-            specularAccum);
+        [loop]
+        for (uint s = 0; s < spp; ++s)
+        {
+            // The current denoiser is spatial, not temporal. Do not use
+            // gFrameIndex for the primary GI seed or the same pixel flickers
+            // forever instead of presenting a stable signal for the a-trous pass.
+            uint rng = InitRng(pixel, 0u, s);
+            indirectAccum += EstimatePathTracedIndirectBounce(
+                pixel,
+                worldPos,
+                N,
+                V,
+                baseAlbedo,
+                rng);
+        }
 
-        float cavity = ComputeCavity(pixel, worldPos, N);
-        float3 albedo = baseAlbedo * cavity;
-
-        colorAccum += (albedo * lightingAccum) + specularAccum;
+        float3 indirectLighting = indirectAccum / (float)spp;
+        lightingAccum += ApplyPrimaryDiffusePost(indirectLighting, ao, microShadow, isSkeletal);
     }
 
-    float3 finalColor = colorAccum / (float)spp;
+    float3 albedo = baseAlbedo * cavity;
+    float3 finalColor = (albedo * lightingAccum) + specularAccum;
 
     if (gMaxBounces > 1u)
     {

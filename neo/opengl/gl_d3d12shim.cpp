@@ -6161,6 +6161,8 @@ static UINT QD3D12_CalcMipCount(int width, int height)
 		w = std::max<UINT>(1u, w >> 1);
 		h = std::max<UINT>(1u, h >> 1);
 		++levels;
+		if (levels > 2)
+			break;
 	}
 	return levels;
 }
