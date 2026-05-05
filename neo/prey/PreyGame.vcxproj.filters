@@ -1,0 +1,1437 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Game">
+      <UniqueIdentifier>{64f6858d-abcb-412f-9639-f9154d9d5879}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\AI">
+      <UniqueIdentifier>{89c83bea-d110-4af2-829c-36d7f45886aa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\Anim">
+      <UniqueIdentifier>{bd4b7791-5153-4f36-a66b-d7163d7057e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\GameSys">
+      <UniqueIdentifier>{8d21115b-d9a7-4838-9b87-1936249cc761}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\Physics">
+      <UniqueIdentifier>{bc884887-c562-4796-b6d7-2bc6de465697}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\Script">
+      <UniqueIdentifier>{8d5df506-0a3f-4471-9526-74cbf060df9e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Prey">
+      <UniqueIdentifier>{c7179be6-0d0c-44d0-9a56-200416113d86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Prey\ai">
+      <UniqueIdentifier>{bd362569-8213-4742-ab46-f3dbed2e0c5c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="idLib">
+      <UniqueIdentifier>{5999d3a7-aabc-4afc-b21a-cf50f21edc7c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="idLib\math">
+      <UniqueIdentifier>{0013470f-d677-4c47-b40c-54e38665ff29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="idLib\containers">
+      <UniqueIdentifier>{8aa911cd-ec1c-48a8-b482-c162a07642b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Decls">
+      <UniqueIdentifier>{69c7617b-47bd-4927-a11c-9a5c4e872494}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="game\Actor.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\AF.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\AFEntity.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\BrittleFracture.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Camera.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Entity.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\EntityAdditions.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Fx.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Game_local.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Game_network.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\GameEdit.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\IK.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Item.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Light.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Misc.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Moveable.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Mover.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\MultiplayerGame.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Player.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\PlayerIcon.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\PlayerView.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Projectile.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Pvs.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\SecurityCamera.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\SmokeParticles.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Sound.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Target.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Trigger.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\Weapon.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\WorldSpawn.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AAS.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AAS_debug.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AAS_pathing.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AAS_routing.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AI.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AI_events.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ai\AI_pathing.cpp">
+      <Filter>Game\AI</Filter>
+    </ClCompile>
+    <ClCompile Include="game\anim\Anim.cpp">
+      <Filter>Game\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="game\anim\Anim_Blend.cpp">
+      <Filter>Game\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="game\anim\Anim_Import.cpp">
+      <Filter>Game\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="game\anim\Anim_Testmodel.cpp">
+      <Filter>Game\Anim</Filter>
+    </ClCompile>
+    <ClCompile Include="game\gamesys\Class.cpp">
+      <Filter>Game\GameSys</Filter>
+    </ClCompile>
+    <ClCompile Include="game\gamesys\DebugGraph.cpp">
+      <Filter>Game\GameSys</Filter>
+    </ClCompile>
+    <ClCompile Include="game\gamesys\Event.cpp">
+      <Filter>Game\GameSys</Filter>
+    </ClCompile>
+    <ClCompile Include="game\gamesys\SaveGame.cpp">
+      <Filter>Game\GameSys</Filter>
+    </ClCompile>
+    <ClCompile Include="game\gamesys\SysCmds.cpp">
+      <Filter>Game\GameSys</Filter>
+    </ClCompile>
+    <ClCompile Include="game\gamesys\SysCvar.cpp">
+      <Filter>Game\GameSys</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Clip.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Force.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Force_Constant.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Force_Drag.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Force_Field.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Force_Spring.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_Actor.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_AF.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_Base.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_Monster.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_Parametric.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_Player.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_PreyPlayer.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_RigidBody.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_Static.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Physics_StaticMulti.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\physics\Push.cpp">
+      <Filter>Game\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="game\script\Script_Compiler.cpp">
+      <Filter>Game\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="game\script\Script_Interpreter.cpp">
+      <Filter>Game\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="game\script\Script_Program.cpp">
+      <Filter>Game\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="game\script\Script_Thread.cpp">
+      <Filter>Game\Script</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\anim_baseanim.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\force_converge.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_afs.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_alarm.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_anim.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_animatedentity.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_animatedgui.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_animator.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_animBlend.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_animDriven.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_arcadegame.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_barrel.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_bindController.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_blackjack.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_cards.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_cilia.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_console.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_damagetester.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_dda.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_deathwraith.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_debrisspawner.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_dock.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_dockedgun.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_door.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_eggspawner.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_energynode.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_entityfx.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_entityspawner.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_fixedpod.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_forcefield.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_fxinfo.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_gibbable.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_gravityswitch.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_guihand.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_gun.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_hand.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_handcontrol.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_healthbasin.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_healthspore.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_inventory.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_itemautomatic.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_itemcabinet.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_jukebox.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_jumpzone.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_light.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_lightfixture.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_mine.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_misc.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_modeldoor.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_modeltoggle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_mountedgun.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_moveable.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_mover.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_note.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_organtrigger.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_player.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_playerview.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_pod.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_podspawner.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_poker.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_portal.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_portalframe.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_proxdoor.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_rail.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_railshuttle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_renderentity.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_safeDeathVolume.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_securityeye.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_shuttle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_shuttledock.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_shuttletransport.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_skybox.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_slots.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_sphere.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_spherepart.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_spring.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_sunCorona.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_talon.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_targetproxy.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_targets.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_trackmover.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_trigger.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_tripwire.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_utils.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_vehicle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_vomiter.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_weaponHandState.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_woundmanager.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_wraith.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\game_zone.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\physics_delta.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\physics_preyai.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\physics_preyparametric.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\physics_simple.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\physics_vehicle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_animator.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_baseweapons.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_beam.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_bonecontroller.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_camerainterpolator.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_firecontroller.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_game.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_items.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_liquid.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_local.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_projectile.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectileautocannon.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilebounce.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilebug.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilebugtrigger.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilecocoon.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilecrawlergrenade.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilefreezer.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilegasbagpod.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilehiderweapon.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilemine.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilerifle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilerocketlauncher.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectileshuttle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilesoulcannon.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilespiritarrow.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectiletracking.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectiletrigger.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectilewrench.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_script_thread.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_sound.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_soundleadincontroller.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_spiritbridge.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_spiritproxy.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_spiritsecret.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_vehiclefirecontroller.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_weaponautocannon.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_weaponcrawlergrenade.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_weaponfirecontroller.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_weaponhider.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_weaponrifle.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_weaponrocketlauncher.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\prey_weaponsoulstripper.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\prey_weaponspiritbow.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\sys_debugger.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\sys_preycmds.cpp">
+      <Filter>Prey</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_centurion.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_crawler.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_creaturex.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_droid.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_gasbag_simple.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_harvester_simple.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_hunter_simple.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_inspector.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_jetpack_harvester_simple.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_keeper_simple.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_mutate.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_mutilatedhuman.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\ai_passageway.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_possessedTommy.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\ai_reaction.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_spawncase.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="prey\ai_speech.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\ai_sphereboss.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_monster_ai.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="Prey\game_monster_ai_events.cpp">
+      <Filter>Prey\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="..\idlib\precompiled.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="idLib\math\prey_math.cpp">
+      <Filter>idLib\math</Filter>
+    </ClCompile>
+    <ClCompile Include="idLib\MsgQueue.cpp">
+      <Filter>idLib</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\DeclPreyBeam.cpp">
+      <Filter>Decls</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="game\Actor.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\AF.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\AFEntity.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\BrittleFracture.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Camera.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Entity.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Fx.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Game.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Game_local.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\GameEdit.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\IK.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Item.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Light.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Misc.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Moveable.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Mover.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\MultiplayerGame.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Player.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\PlayerIcon.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\PlayerView.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Projectile.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Pvs.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\SecurityCamera.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\SmokeParticles.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Sound.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Target.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Trigger.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\Weapon.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\WorldSpawn.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ai\AAS.h">
+      <Filter>Game\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ai\AAS_local.h">
+      <Filter>Game\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ai\AI.h">
+      <Filter>Game\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="game\anim\Anim.h">
+      <Filter>Game\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="game\anim\Anim_Testmodel.h">
+      <Filter>Game\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gamesys\Class.h">
+      <Filter>Game\GameSys</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gamesys\DebugGraph.h">
+      <Filter>Game\GameSys</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gamesys\Event.h">
+      <Filter>Game\GameSys</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gamesys\SaveGame.h">
+      <Filter>Game\GameSys</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gamesys\SysCmds.h">
+      <Filter>Game\GameSys</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gamesys\SysCvar.h">
+      <Filter>Game\GameSys</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Clip.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Force.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Force_Constant.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Force_Drag.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Force_Field.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Force_Spring.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_Actor.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_AF.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_Base.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_Monster.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_Parametric.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_Player.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_PreyPlayer.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_RigidBody.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_Static.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Physics_StaticMulti.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\physics\Push.h">
+      <Filter>Game\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="game\script\Script_Compiler.h">
+      <Filter>Game\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="game\script\Script_Interpreter.h">
+      <Filter>Game\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="game\script\Script_Program.h">
+      <Filter>Game\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="game\script\Script_Thread.h">
+      <Filter>Game\Script</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\anim_baseanim.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\force_converge.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_afs.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_alarm.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_anim.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_animatedentity.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_animatedgui.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_animator.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_animBlend.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_animDriven.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_arcadegame.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_barrel.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_bindController.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_blackjack.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_cards.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_cilia.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_console.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_damagetester.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_dda.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_deathwraith.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_debrisspawner.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_dock.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_dockedgun.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_door.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_eggspawner.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_energynode.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_entityfx.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_entityspawner.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_fixedpod.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_forcefield.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_fxinfo.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_gibbable.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_gravityswitch.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_guihand.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_gun.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_hand.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_handcontrol.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_healthbasin.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_healthspore.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_inventory.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_itemautomatic.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_itemcabinet.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_jukebox.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_jumpzone.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_light.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_lightfixture.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_mine.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_misc.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_modeldoor.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_modeltoggle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_mountedgun.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_moveable.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_mover.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_note.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_organtrigger.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_player.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_playerview.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_pod.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_podspawner.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_poker.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_portal.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_portalframe.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_proxdoor.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_rail.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_railshuttle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_renderentity.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_safeDeathVolume.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_securityeye.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_shuttle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_shuttledock.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_shuttletransport.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_skybox.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_slots.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_sphere.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_spherepart.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_spring.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_sunCorona.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_talon.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_targetproxy.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_targets.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_trackmover.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_trigger.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_tripwire.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_utils.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_vehicle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_vomiter.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_weaponHandState.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_woundmanager.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_wraith.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\game_zone.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\physics_delta.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\physics_preyai.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\physics_preyparametric.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\physics_simple.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\physics_vehicle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_animator.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_baseweapons.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_beam.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_bonecontroller.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_camerainterpolator.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_firecontroller.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_game.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_items.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_liquid.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_local.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_projectile.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectileautocannon.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilebounce.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilebug.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilebugtrigger.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilecocoon.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilecrawlergrenade.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilefreezer.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilegasbagpod.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilehiderweapon.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilemine.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilerifle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilerocketlauncher.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectileshuttle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilesoulcannon.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilespiritarrow.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectiletracking.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectiletrigger.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_projectilewrench.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_script_thread.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_sound.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_soundleadincontroller.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_spiritbridge.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_spiritproxy.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_spiritsecret.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_vehiclefirecontroller.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_weaponautocannon.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_weaponcrawlergrenade.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_weaponfirecontroller.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_weaponhider.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_weaponrifle.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_weaponrocketlauncher.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\prey_weaponsoulstripper.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\prey_weaponspiritbow.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\sys_debugger.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\sys_preycmds.h">
+      <Filter>Prey</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_centurion.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_crawler.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_creaturex.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_droid.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_gasbag_simple.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_harvester_simple.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_hunter_simple.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_inspector.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_jetpack_harvester_simple.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_keeper_simple.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_mutate.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_mutilatedhuman.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\ai_passageway.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_possessedTommy.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\ai_reaction.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_spawncase.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="prey\ai_speech.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\ai_sphereboss.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="Prey\game_monster_ai.h">
+      <Filter>Prey\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="..\idlib\precompiled.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="idLib\math\prey_interpolate.h">
+      <Filter>idLib\math</Filter>
+    </ClInclude>
+    <ClInclude Include="idLib\math\prey_math.h">
+      <Filter>idLib\math</Filter>
+    </ClInclude>
+    <ClInclude Include="idLib\preylib.h">
+      <Filter>idLib</Filter>
+    </ClInclude>
+    <ClInclude Include="idLib\MsgQueue.h">
+      <Filter>idLib</Filter>
+    </ClInclude>
+    <ClInclude Include="idLib\containers\PreyStack.h">
+      <Filter>idLib\containers</Filter>
+    </ClInclude>
+    <ClInclude Include="framework\DeclPreyBeam.h">
+      <Filter>Decls</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="game\Game.def" />
+  </ItemGroup>
+</Project>

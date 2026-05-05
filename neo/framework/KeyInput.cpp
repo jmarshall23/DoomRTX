@@ -454,6 +454,39 @@ int idKeyInput::GetUsercmdAction( int keynum ) {
 	return keys[ keynum ].usercmdAction;
 }
 
+#ifdef PREY
+/*
+===================
+idKeyInput::SingleKeyFromBinding
+===================
+*/
+const char* idKeyInput::SingleKeyFromBinding(const char* binding, bool localized) {
+	static idStr keyName;
+
+	keyName.Clear();
+
+	if (binding == NULL || binding[0] == '\0') {
+		return keyName.c_str();
+	}
+
+	int keyNum;
+
+	for (keyNum = 0; keyNum < 256; keyNum++) {
+		if (!idStr::Icmp(keys[keyNum].binding, binding)) {
+			break;
+		}
+	}
+
+	if (keyNum == 256) {
+		return keyName.c_str();
+	}
+
+	keyName.Append(KeyNumToString(keyNum, localized));
+
+	return keyName.c_str();
+}
+#endif
+
 /*
 ===================
 Key_Unbind_f

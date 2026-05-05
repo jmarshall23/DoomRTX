@@ -189,6 +189,16 @@ void idDeclFX::ParseSingleFXAction( idLexer &src, idFXSingleAction& FXAction ) {
 			continue;
 		}
 
+#ifdef PREY
+		if (!token.Icmp("useAxis")) {
+			if (!src.ReadToken(&token)) {
+				break;
+			}
+			ParseUseAxis(token, FXAction);
+			continue;
+		}
+#endif
+
 		if ( !token.Icmp( "rotate" ) ) {
 			FXAction.rotate = src.ParseFloat();
 			continue;
@@ -471,3 +481,23 @@ idDeclFX::FreeData
 void idDeclFX::FreeData( void ) {
 	events.Clear();
 }
+
+#ifdef PREY
+void idDeclFX::ParseUseAxis(idStr& text, idFXSingleAction& action) const {
+	if (!idStr::Icmp(text, "normal")) {
+		action.useAxis = AXIS_NORMAL;
+	}
+	else if (!idStr::Icmp(text, "bounce")) {
+		action.useAxis = AXIS_BOUNCE;
+	}
+	else if (!idStr::Icmp(text, "incoming")) {
+		action.useAxis = AXIS_INCOMING;
+	}
+	else if (!idStr::Icmp(text, "customlocal")) {
+		action.useAxis = AXIS_CUSTOMLOCAL;
+	}
+	else {
+		action.useAxis = AXIS_CURRENT;
+	}
+}
+#endif

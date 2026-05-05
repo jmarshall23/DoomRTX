@@ -84,6 +84,7 @@ public:
 	virtual void				ReadFromDemoFile( class idDemoFile *f );
 	virtual void				WriteToDemoFile( class idDemoFile *f );
 	virtual float				DepthHack() const;
+	virtual void				IntersectBounds(const idBounds& bounds, float displacement) {} // this is empty intentionally
 
 	void						MakeDefaultModel();
 	
@@ -239,7 +240,7 @@ public:
 	virtual idBounds			Bounds( const struct renderEntity_s *ent ) const;
 
 	virtual void				Reset();
-	void						IntersectBounds( const idBounds &bounds, float displacement );
+	virtual void				IntersectBounds( const idBounds &bounds, float displacement );
 
 private:
 	modelSurface_t				GenerateSurface( float lerp );

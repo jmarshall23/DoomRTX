@@ -45,7 +45,7 @@ public:
 	virtual bool			Parse( const char *text, const int textLength );
 	virtual void			FreeData( void );
 
-	float					TableLookup( float index ) const;
+	virtual float			TableLookup( float index ) const;
 
 private:
 	bool					clamp;

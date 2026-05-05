@@ -104,7 +104,12 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
+#ifdef PREY
+IDI_ICON1               ICON                    "res\\prey.ico"
+#else
 IDI_ICON1               ICON                    "res\\doom.ico"
+#endif
+
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

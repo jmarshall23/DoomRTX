@@ -576,9 +576,11 @@ void idSessionLocal::HandleMainMenuCommands( const char *menuCommand ) {
 		}
 
 		// always let the game know the command is being run
+#ifndef PREY
 		if ( game ) {
 			game->HandleMainMenuCommands( cmd, guiActive );
 		}
+#endif
 		
 		if ( !idStr::Icmp( cmd, "startGame" ) ) {
 			cvarSystem->SetCVarInteger( "g_skill", guiMainMenu->State().GetInt( "skill" ) );

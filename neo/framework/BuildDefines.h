@@ -133,3 +133,8 @@ If you have questions concerning this license or the applicable additional terms
 #	endif
 #endif
 
+// jmarshall - have to make this public outside of preygame for the collision model code. 
+#ifdef PREY
+#define DEATHWALK_AUTOLOAD				1		// Append deathwalk map to all maps loaded
+#endif
+// jmarshall end

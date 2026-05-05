@@ -60,7 +60,12 @@ typedef struct {
 	idStr					data;
 	idStr					name;
 	idStr					fire;
-
+#ifdef PREY
+	// HUMANHEAD nla
+	int						useAxis;
+	idVec3					dir;
+	// HUMANHEAD END
+#endif
 	float					delay;
 	float					duration;
 	float					restart;
@@ -91,6 +96,11 @@ typedef struct {
 	bool					trackOrigin;
 } idFXSingleAction;
 
+
+#ifdef PREY
+enum fxAxis { AXIS_CURRENT, AXIS_NORMAL, AXIS_BOUNCE, AXIS_INCOMING, AXIS_CUSTOMLOCAL };
+#endif
+
 //
 // grouped fx structures
 //
@@ -108,6 +118,12 @@ public:
 
 private:
 	void					ParseSingleFXAction( idLexer &src, idFXSingleAction& FXAction );
+#ifdef PREY
+	// HUMANHEAD nla
+	void	ParseUseAxis(idStr& text, idFXSingleAction& action) const;
+	// HUMANHEAD END
+#endif
 };
+
 
 #endif /* !__DECLFX_H__ */

@@ -37,6 +37,10 @@ If you have questions concerning this license or the applicable additional terms
 ==============================================================
 */
 
+#ifdef PREY
+class idKeyInput;
+#endif
+
 typedef enum {
 	EDITOR_NONE					= 0,
 	EDITOR_RADIANT				= BIT(1),
@@ -204,6 +208,10 @@ public:
 
 								// Directly sample a keystate.
 	virtual int					KeyState( int key ) = 0;
+
+#ifdef PREY
+	virtual void				MaterialKeyForBinding(const char* binding, char* materialName, char* keyText, bool* wideKey) = 0;
+#endif
 
 	virtual float				Get_com_engineHz_latched(void) = 0;
 	virtual int64_t				Get_com_engineHz_numerator(void) = 0;

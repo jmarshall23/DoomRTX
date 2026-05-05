@@ -78,6 +78,9 @@ typedef enum {
 	DECL_EMAIL,
 	DECL_MODELEXPORT,
 	DECL_MAPDEF,
+#ifdef PREY
+	DECL_BEAM,
+#endif
 
 	// new decl types can be added here
 

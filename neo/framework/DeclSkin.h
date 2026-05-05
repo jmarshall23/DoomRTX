@@ -50,7 +50,7 @@ public:
 	virtual bool			Parse( const char *text, const int textLength );
 	virtual void			FreeData( void );
 
-	const idMaterial *		RemapShaderBySkin( const idMaterial *shader ) const;
+	virtual const idMaterial *		RemapShaderBySkin( const idMaterial *shader ) const;
 
 							// model associations are just for the preview dialog in the editor
 	const int				GetNumModelAssociations() const;

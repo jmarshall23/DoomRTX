@@ -699,8 +699,10 @@ static const char* CameraNav_SurfaceTypeName(surfTypes_t type) {
 	case SURFTYPE_CARDBOARD: return "cardboard";
 	case SURFTYPE_LIQUID: return "liquid";
 	case SURFTYPE_GLASS: return "glass";
+#ifndef PREY
 	case SURFTYPE_PLASTIC: return "plastic";
 	case SURFTYPE_RICOCHET: return "ricochet";
+#endif
 	default: return "none";
 	}
 }

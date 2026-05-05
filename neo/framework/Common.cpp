@@ -146,7 +146,9 @@ public:
 	virtual void				Error( const char *fmt, ... ) id_attribute((format(printf,2,3)));
 	virtual void				FatalError( const char *fmt, ... ) id_attribute((format(printf,2,3)));
 	virtual const idLangDict *	GetLanguageDict( void );
-
+#ifdef PREY
+	virtual void				MaterialKeyForBinding(const char* binding, char* materialName, char* keyText, bool* wideKey);
+#endif
 	virtual const char *		KeysFromBinding( const char *bind );
 	virtual const char *		BindingFromKey( const char *key );
 
@@ -2645,8 +2647,11 @@ void idCommonLocal::LoadGameDLL( void ) {
 	gameImport_t	gameImport;
 	gameExport_t	gameExport;
 	GetGameAPI_t	GetGameAPI;
-
+#ifdef PREY
+	fileSystem->FindDLL( "preygame", dllPath, true);
+#else
 	fileSystem->FindDLL( "game", dllPath, true );
+#endif
 
 	if ( !dllPath[ 0 ] ) {
 		common->FatalError( "couldn't find game dynamic library" );
@@ -3123,3 +3128,144 @@ int64_t	idCommonLocal::Get_com_engineHz_numerator(void) {
 int64_t	idCommonLocal::Get_com_engineHz_denominator(void) {
 	return com_engineHz_denominator;
 }
+
+#ifdef PREY
+void idCommonLocal::MaterialKeyForBinding(const char* binding, char* materialName, char* keyText, bool* wideKey) {
+	bool unused1 = false;
+	bool unused2 = false;
+
+	idStr keyName;
+	idStr displayName;
+
+	const char* rawKey = idKeyInput::SingleKeyFromBinding(binding, unused1);
+	if (rawKey != NULL) {
+		keyName = rawKey;
+	}
+
+	const char* localizedKey = idKeyInput::SingleKeyFromBinding(binding, unused2);
+	if (localizedKey != NULL) {
+		displayName = localizedKey;
+	}
+
+	keyText[0] = '\0';
+	*wideKey = false;
+
+	if (keyName.Length() <= 0) {
+		strcpy(materialName, "textures/interface/tips/keywide");
+
+		const idLangDict* lang = GetLanguageDict();
+		strcpy(keyText, lang->GetString("#str_07133"));
+
+		*wideKey = true;
+		return;
+	}
+
+	if (!keyName.Icmp("mouse1")) {
+		strcpy(materialName, "textures/interface/tips/mouse1");
+		return;
+	}
+
+	if (!keyName.Icmp("mouse2")) {
+		strcpy(materialName, "textures/interface/tips/mouse2");
+		return;
+	}
+
+	if (!keyName.Icmp("mouse3")) {
+		strcpy(materialName, "textures/interface/tips/mouse3");
+		return;
+	}
+
+	if (!keyName.Icmp("mwheelup")) {
+		strcpy(materialName, "textures/interface/tips/mouseup");
+		return;
+	}
+
+	if (!keyName.Icmp("mwheeldown")) {
+		strcpy(materialName, "textures/interface/tips/mousedn");
+		return;
+	}
+
+	if (!keyName.Icmp("uparrow")) {
+		strcpy(materialName, "textures/interface/tips/uparrow");
+		return;
+	}
+
+	if (!keyName.Icmp("downarrow")) {
+		strcpy(materialName, "textures/interface/tips/downarrow");
+		return;
+	}
+
+	if (!keyName.Icmp("leftarrow")) {
+		strcpy(materialName, "textures/interface/tips/leftarrow");
+		return;
+	}
+
+	if (!keyName.Icmp("rightarrow")) {
+		strcpy(materialName, "textures/interface/tips/rightarrow");
+		return;
+	}
+
+	if (!keyName.Icmp("enter")) {
+		strcpy(materialName, "textures/interface/tips/enter");
+		*wideKey = true;
+		return;
+	}
+
+	if (!keyName.Icmp("backspace")) {
+		strcpy(materialName, "textures/interface/tips/backspace");
+		*wideKey = true;
+		return;
+	}
+
+	if (!keyName.Icmp("tab")) {
+		strcpy(materialName, "textures/interface/tips/tab");
+		*wideKey = true;
+		return;
+	}
+
+	if (!keyName.Icmp("menu")) {
+		strcpy(materialName, "textures/interface/tips/menu");
+		return;
+	}
+
+	if (!keyName.Icmp("shift")) {
+		strcpy(materialName, "textures/interface/tips/shift");
+		*wideKey = true;
+		return;
+	}
+
+	/*
+		Generic short printable keys use the normal key material and put the
+		localized/display key text on top of it.
+
+		The original excludes large/special keys from this path:
+		printscreen, keypad keys, pause, capslock, windows keys,
+		modifiers, and space.
+	*/
+	if (keyName.Icmp("printscreen") &&
+		keyName.Icmpn("kp_", 3) &&
+		keyName.Icmp("pause") &&
+		keyName.Icmp("capslock") &&
+		keyName.Icmp("lwin") &&
+		keyName.Icmp("rwin") &&
+		keyName.Icmp("shift") &&
+		keyName.Icmp("ctrl") &&
+		keyName.Icmp("alt") &&
+		keyName.Icmp("space") &&
+		displayName.Length() <= 3) {
+
+		strcpy(materialName, "textures/interface/tips/key");
+		strcpy(keyText, displayName.c_str());
+		return;
+	}
+
+	/*
+		Everything else falls back to the wide key material with text.
+		This handles longer key names or special keys that do not have
+		dedicated art.
+	*/
+	strcpy(materialName, "textures/interface/tips/keywide");
+	strcpy(keyText, displayName.c_str());
+	*wideKey = true;
+}
+#endif

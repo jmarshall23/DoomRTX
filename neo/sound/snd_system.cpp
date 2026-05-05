@@ -1503,3 +1503,143 @@ int idSoundSystemLocal::IsEAXAvailable( void ) {
 	return 0;
 #endif
 }
+
+#ifdef PREY
+
+/*
+========================
+idSoundSystemLocal::GetSubtitleIndex
+
+Returns a 1-based subtitle index.
+
+Index 0 means "no subtitle index assigned yet", which matches the decompiled
+ParseShader behavior where parms.subIndex starts at 0 and is lazily assigned.
+========================
+*/
+int idSoundSystemLocal::GetSubtitleIndex(const char* soundName) {
+	int i;
+
+	if (soundName == NULL || soundName[0] == '\0') {
+		return 0;
+	}
+
+	for (i = 0; i < subtitleLists.Num(); i++) {
+		if (!subtitleLists[i].soundName.Icmp(soundName)) {
+			return i + 1;
+		}
+	}
+
+	soundSubtitleList_t& newList = subtitleLists.Alloc();
+	newList.soundName = soundName;
+	newList.subList.Clear();
+
+	return subtitleLists.Num();
+}
+
+/*
+========================
+idSoundSystemLocal::SetSubtitleData
+
+subIndex is 1-based.
+subNum is also treated as 1-based because the shader syntax uses subtitle,
+subtitle2, subtitle3, etc.
+========================
+*/
+void idSoundSystemLocal::SetSubtitleData(int subIndex, int subNum, const char* subText, float subTime, int subChannel) {
+	soundSubtitleList_t* subtitleList;
+	soundSub_t* subtitle;
+	int oldNum;
+	int subtitleNum;
+
+	if (subIndex <= 0) {
+		return;
+	}
+
+	if (subNum <= 0) {
+		subNum = 1;
+	}
+
+	subtitleList = GetSubtitleList(subIndex);
+	if (subtitleList == NULL) {
+		return;
+	}
+
+	subtitleNum = subNum - 1;
+
+	if (subtitleList->subList.Num() <= subtitleNum) {
+		oldNum = subtitleList->subList.Num();
+
+		subtitleList->subList.SetNum(subtitleNum + 1);
+
+		for (int i = oldNum; i < subtitleList->subList.Num(); i++) {
+			subtitleList->subList[i].subText.Clear();
+			subtitleList->subList[i].subTime = 0.0f;
+			subtitleList->subList[i].subChannel = 0;
+		}
+	}
+
+	subtitle = &subtitleList->subList[subtitleNum];
+
+	subtitle->subText = subText ? subText : "";
+	subtitle->subTime = subTime;
+	subtitle->subChannel = subChannel;
+}
+
+/*
+========================
+idSoundSystemLocal::GetSubtitle
+
+subIndex is 1-based.
+subNum is 1-based.
+========================
+*/
+soundSub_t* idSoundSystemLocal::GetSubtitle(int subIndex, int subNum) {
+	soundSubtitleList_t* subtitleList;
+	int subtitleNum;
+
+	if (subIndex <= 0 || subNum <= 0) {
+		return NULL;
+	}
+
+	subtitleList = GetSubtitleList(subIndex);
+	if (subtitleList == NULL) {
+		return NULL;
+	}
+
+	subtitleNum = subNum - 1;
+
+	if (subtitleNum < 0 || subtitleNum >= subtitleList->subList.Num()) {
+		return NULL;
+	}
+
+	if (subtitleList->subList[subtitleNum].subText.Length() <= 0) {
+		return NULL;
+	}
+
+	return &subtitleList->subList[subtitleNum];
+}
+
+/*
+========================
+idSoundSystemLocal::GetSubtitleList
+
+subIndex is 1-based.
+========================
+*/
+soundSubtitleList_t* idSoundSystemLocal::GetSubtitleList(int subIndex) {
+	int listIndex;
+
+	if (subIndex <= 0) {
+		return NULL;
+	}
+
+	listIndex = subIndex - 1;
+
+	if (listIndex < 0 || listIndex >= subtitleLists.Num()) {
+		return NULL;
+	}
+
+	return &subtitleLists[listIndex];
+}
+
+#endif

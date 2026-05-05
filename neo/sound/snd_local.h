@@ -457,6 +457,8 @@ public:
 	virtual void		StopSound( const s_channelType channel );
 	virtual void		FadeSound( const s_channelType channel, float to, float over );
 
+	virtual float		CurrentVoiceAmplitude(const s_channelType channel);
+
 	virtual bool		CurrentlyPlaying( void ) const;
 
 	// can pass SCHANNEL_ANY
@@ -482,6 +484,8 @@ public:
 	int					listenerId;		
 	soundShaderParms_t	parms;						// default overrides for all channels
 
+	float					amplitudeCache;
+	float				amplitudeTime;
 
 	// the following are calculated in UpdateEmitter, and don't need to be archived
 	float				maxDistance;				// greatest of all playing channel distances
@@ -731,6 +735,17 @@ public:
 
 	ALuint					AllocOpenALSource( idSoundChannel *chan, bool looping, bool stereo );
 	void					FreeOpenALSource( ALuint handle );
+
+#ifdef PREY
+	virtual int					GetSubtitleIndex(const char* soundName);
+	virtual void				SetSubtitleData(int subIndex, int subNum, const char* subText, float subTime, int subChannel);
+	virtual soundSub_t*			GetSubtitle(int subIndex, int subNum);
+	virtual soundSubtitleList_t* GetSubtitleList(int subIndex);
+#endif
+
+#ifdef PREY
+	idList<soundSubtitleList_t>	subtitleLists;
+#endif
 
 	idAudioHardware *		snd_audio_hw;
 	idSoundCache *			soundCache;

@@ -308,6 +308,8 @@ public:
 	// Returns number of the joint nearest to the given triangle.
 	virtual int					NearestJoint( int surfaceNum, int a, int c, int b ) const = 0;
 
+	virtual void				IntersectBounds(const idBounds& bounds, float displacement) = 0;
+
 	// Writing to and reading from a demo file.
 	virtual void				ReadFromDemoFile( class idDemoFile *f ) = 0;
 	virtual void				WriteToDemoFile( class idDemoFile *f ) = 0;

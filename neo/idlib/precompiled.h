@@ -163,29 +163,40 @@ const int MAX_EXPRESSION_REGISTERS = 4096;
 #include "../ui/UserInterface.h"
 
 // collision detection system
+#if defined(PREY)
+#include "../prey/cm/CollisionModel.h"
+#else
 #include "../cm/CollisionModel.h"
+#endif
 
 // AAS files and manager
 #include "../tools/compilers/aas/AASFile.h"
 #include "../tools/compilers/aas/AASFileManager.h"
 
 // game
+#if defined(PREY)
+#include "../prey/game/Game.h"
+#else
 #if defined(_D3XP)
 #include "../d3xp/Game.h"
 #else
 #include "../game/Game.h"
 #endif
-
+#endif
 //-----------------------------------------------------
 
 #ifndef _D3SDK
 
 #ifdef GAME_DLL
 
+#if defined(PREY)
+#include "../prey/game/Game_local.h"
+#else
 #if defined(_D3XP)
 #include "../d3xp/Game_local.h"
 #else
 #include "../game/Game_local.h"
+#endif
 #endif
 
 #else

@@ -1444,7 +1444,9 @@ void idSessionLocal::LoadLoadingGui( const char *mapName ) {
 	char guiMap[ MAX_STRING_CHARS ];
 	strncpy( guiMap, va( "guis/map/%s.gui", stripped.c_str() ), MAX_STRING_CHARS );
 	// give the gamecode a chance to override
+#ifndef PREY
 	game->GetMapLoadingGUI( guiMap );
+#endif
 
 	if ( uiManager->CheckGui( guiMap ) ) {
 		guiLoading = uiManager->FindGui( guiMap, true, false, true );

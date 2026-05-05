@@ -106,6 +106,9 @@
     <Filter Include="Ui">
       <UniqueIdentifier>{b3166d25-0562-49da-bc8d-961006fe1785}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CM\PreyCM">
+      <UniqueIdentifier>{f7ebd0db-2189-45da-a492-76ab782e337a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -602,6 +605,12 @@
     </ClInclude>
     <ClInclude Include="renderer\DeviceContext.h">
       <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="cm\PreyCM\CollisionModel.h">
+      <Filter>CM\PreyCM</Filter>
+    </ClInclude>
+    <ClInclude Include="cm\PreyCM\CollisionModel_local.h">
+      <Filter>CM\PreyCM</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1766,6 +1775,30 @@
     <ClCompile Include="renderer\draw_dx.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_contacts.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_contents.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_debug.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_files.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_load.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_rotate.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_trace.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
+    <ClCompile Include="cm\PreyCM\CollisionModel_translate.cpp">
+      <Filter>CM\PreyCM</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="openal\idal.py">
@@ -2483,5 +2516,10 @@
     <CustomBuildStep Include="tools\script\DialogScriptEditor.h">
       <Filter>Tools\Script</Filter>
     </CustomBuildStep>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="sys\win32\rc\res\prey.ico">
+      <Filter>Sys\RC\res</Filter>
+    </Image>
   </ItemGroup>
 </Project>

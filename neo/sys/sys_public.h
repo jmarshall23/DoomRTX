@@ -568,6 +568,21 @@ public:
 
 	virtual void			OpenURL( const char *url, bool quit ) = 0;
 	virtual void			StartProcess( const char *exePath, bool quit ) = 0;
+
+#ifdef PREY
+	//logitech lcd keyboard interface functions
+	bool					LGLCD_Init(void) { return false; }
+	void					LGLCD_Shutdown(void) { }
+	bool					LGLCD_Valid(void) { return false; }
+	void					LGLCD_UploadImage(unsigned char* pixels, int w, int h, bool highPriority, bool flipColor) {}
+	bool					LGLCD_ReadSoftButtons(DWORD* out) { return false; }
+	void					LGLCD_DrawBegin(void) {}
+	void					LGLCD_DrawFinish(bool clearBuffer) {}
+	void					LGLCD_DrawRaw(unsigned char* pixels, int x, int y, int w, int h, int pitch, bool flipColor, bool layered, int rotate) {}
+	void					LGLCD_DrawText(const char* text, int x, int y, bool layered) {}
+	void					LGLCD_DrawShape(int shapeType, int x, int y, int sizeX, int sizeY, int parm, bool layered) {}
+	//HUMANHEAD END
+#endif
 };
 
 extern idSys *				sys;

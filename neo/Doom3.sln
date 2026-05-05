@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.4.11626.88 stable
+VisualStudioVersion = 18.4.11626.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "libs", "libs", "{347D107C-D787-4408-A60D-86FA45997F9B}"
 EndProject
@@ -20,95 +20,81 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MayaImport", "MayaImport.vc
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "opengl", "opengl\opengl.vcxproj", "{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "preydlls", "preydlls", "{F65E2305-0208-4A25-BEB0-038C92484211}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PreyGame", "prey\PreyGame.vcxproj", "{6CD8E46D-E28E-493F-BB06-537A637A68C2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug with inlines and memory log|x64 = Debug with inlines and memory log|x64
-		Debug with inlines|x64 = Debug with inlines|x64
 		Debug|x64 = Debug|x64
-		Dedicated Debug with inlines|x64 = Dedicated Debug with inlines|x64
 		Dedicated Debug|x64 = Dedicated Debug|x64
 		Dedicated Release|x64 = Dedicated Release|x64
+		Prey Debug|x64 = Prey Debug|x64
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{49BEC5C6-B964-417A-851E-808886B57430}.Debug with inlines and memory log|x64.ActiveCfg = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B57430}.Debug with inlines and memory log|x64.Build.0 = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B57430}.Debug with inlines|x64.ActiveCfg = Debug with inlines|x64
-		{49BEC5C6-B964-417A-851E-808886B57430}.Debug with inlines|x64.Build.0 = Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Debug|x64.ActiveCfg = Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Debug|x64.Build.0 = Debug|x64
-		{49BEC5C6-B964-417A-851E-808886B57430}.Dedicated Debug with inlines|x64.ActiveCfg = Dedicated Debug with inlines|x64
-		{49BEC5C6-B964-417A-851E-808886B57430}.Dedicated Debug with inlines|x64.Build.0 = Dedicated Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Dedicated Debug|x64.ActiveCfg = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Dedicated Debug|x64.Build.0 = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Dedicated Release|x64.ActiveCfg = Dedicated Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Dedicated Release|x64.Build.0 = Dedicated Release|x64
+		{49BEC5C6-B964-417A-851E-808886B57430}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Release|x64.ActiveCfg = Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57430}.Release|x64.Build.0 = Release|x64
-		{49BEC5C6-B964-417A-851E-808886B57400}.Debug with inlines and memory log|x64.ActiveCfg = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B57400}.Debug with inlines and memory log|x64.Build.0 = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B57400}.Debug with inlines|x64.ActiveCfg = Debug with inlines|x64
-		{49BEC5C6-B964-417A-851E-808886B57400}.Debug with inlines|x64.Build.0 = Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Debug|x64.ActiveCfg = Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Debug|x64.Build.0 = Debug|x64
-		{49BEC5C6-B964-417A-851E-808886B57400}.Dedicated Debug with inlines|x64.ActiveCfg = Dedicated Debug with inlines|x64
-		{49BEC5C6-B964-417A-851E-808886B57400}.Dedicated Debug with inlines|x64.Build.0 = Dedicated Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Dedicated Debug|x64.ActiveCfg = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Dedicated Debug|x64.Build.0 = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Dedicated Release|x64.ActiveCfg = Dedicated Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Dedicated Release|x64.Build.0 = Dedicated Release|x64
+		{49BEC5C6-B964-417A-851E-808886B57400}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
+		{49BEC5C6-B964-417A-851E-808886B57400}.Prey Debug|x64.Build.0 = Prey Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Release|x64.ActiveCfg = Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Release|x64.Build.0 = Release|x64
-		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Debug with inlines and memory log|x64.ActiveCfg = Debug|x64
-		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Debug with inlines and memory log|x64.Build.0 = Debug|x64
-		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Debug with inlines|x64.ActiveCfg = Debug|x64
-		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Debug with inlines|x64.Build.0 = Debug|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Debug|x64.ActiveCfg = Debug|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Debug|x64.Build.0 = Debug|x64
-		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Dedicated Debug with inlines|x64.ActiveCfg = Debug|x64
-		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Dedicated Debug with inlines|x64.Build.0 = Debug|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Dedicated Debug|x64.ActiveCfg = Debug|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Dedicated Debug|x64.Build.0 = Debug|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Dedicated Release|x64.ActiveCfg = Release|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Dedicated Release|x64.Build.0 = Release|x64
+		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
+		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Prey Debug|x64.Build.0 = Prey Debug|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Release|x64.ActiveCfg = Release|x64
 		{F46F5D4E-C1D4-4ADE-9FAA-5F0CE3AA07F1}.Release|x64.Build.0 = Release|x64
-		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines and memory log|x64.ActiveCfg = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines and memory log|x64.Build.0 = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines|x64.ActiveCfg = Debug with inlines|x64
-		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines|x64.Build.0 = Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Debug|x64.ActiveCfg = Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Debug|x64.Build.0 = Debug|x64
-		{49BEC5C6-B964-417A-851E-808886B57420}.Dedicated Debug with inlines|x64.ActiveCfg = Dedicated Debug with inlines|x64
-		{49BEC5C6-B964-417A-851E-808886B57420}.Dedicated Debug with inlines|x64.Build.0 = Dedicated Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Dedicated Debug|x64.ActiveCfg = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Dedicated Debug|x64.Build.0 = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Dedicated Release|x64.ActiveCfg = Dedicated Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Dedicated Release|x64.Build.0 = Dedicated Release|x64
+		{49BEC5C6-B964-417A-851E-808886B57420}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
+		{49BEC5C6-B964-417A-851E-808886B57420}.Prey Debug|x64.Build.0 = Prey Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Release|x64.ActiveCfg = Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Release|x64.Build.0 = Release|x64
-		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug with inlines and memory log|x64.ActiveCfg = Debug with inlines and memory log|x64
-		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug with inlines|x64.ActiveCfg = Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug|x64.ActiveCfg = Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug|x64.Build.0 = Debug|x64
-		{49BEC5C6-B964-417A-851E-808886B574F1}.Dedicated Debug with inlines|x64.ActiveCfg = Dedicated Debug with inlines|x64
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Dedicated Debug|x64.ActiveCfg = Dedicated Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Dedicated Release|x64.ActiveCfg = Dedicated Release|x64
+		{49BEC5C6-B964-417A-851E-808886B574F1}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
+		{49BEC5C6-B964-417A-851E-808886B574F1}.Prey Debug|x64.Build.0 = Prey Debug|x64
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Release|x64.ActiveCfg = Release|x64
-		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Debug with inlines and memory log|x64.ActiveCfg = Debug|x64
-		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Debug with inlines and memory log|x64.Build.0 = Debug|x64
-		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Debug with inlines|x64.ActiveCfg = Debug|x64
-		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Debug with inlines|x64.Build.0 = Debug|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Debug|x64.ActiveCfg = Debug|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Debug|x64.Build.0 = Debug|x64
-		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Dedicated Debug with inlines|x64.ActiveCfg = Debug|x64
-		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Dedicated Debug with inlines|x64.Build.0 = Debug|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Dedicated Debug|x64.ActiveCfg = Debug|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Dedicated Debug|x64.Build.0 = Debug|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Dedicated Release|x64.ActiveCfg = Release|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Dedicated Release|x64.Build.0 = Release|x64
+		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
+		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Prey Debug|x64.Build.0 = Prey Debug|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Release|x64.ActiveCfg = Release|x64
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D}.Release|x64.Build.0 = Release|x64
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2}.Debug|x64.ActiveCfg = Debug|x64
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2}.Dedicated Debug|x64.ActiveCfg = Dedicated Debug with Inlines|x64
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2}.Dedicated Release|x64.ActiveCfg = Dedicated Release|x64
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2}.Prey Debug|x64.ActiveCfg = Prey Debug|x64
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2}.Prey Debug|x64.Build.0 = Prey Debug|x64
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -120,6 +106,7 @@ Global
 		{49BEC5C6-B964-417A-851E-808886B57420} = {003B01AB-152D-45C8-BF45-E5A035042D7F}
 		{49BEC5C6-B964-417A-851E-808886B574F1} = {1E2B3940-65F8-4D8F-9EEE-85E94EBBC6DF}
 		{58320C19-5139-47C5-AAFE-4CAD2C8ED14D} = {003B01AB-152D-45C8-BF45-E5A035042D7F}
+		{6CD8E46D-E28E-493F-BB06-537A637A68C2} = {F65E2305-0208-4A25-BEB0-038C92484211}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {822AE68E-37FD-4947-AC78-29CFA29E613F}

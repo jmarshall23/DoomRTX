@@ -207,6 +207,10 @@ public:
 	static int			StringToKeyNum( const char *str );
 	static const char *	KeyNumToString( int keyNum, bool localized );
 
+#ifdef PREY
+	static const char* SingleKeyFromBinding(const char* binding, bool localized);
+#endif
+
 	static void			SetBinding( int keyNum, const char *binding );
 	static const char *	GetBinding( int keyNum );
 	static bool			UnbindBinding( const char *bind );

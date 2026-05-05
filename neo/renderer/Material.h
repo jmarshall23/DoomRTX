@@ -265,7 +265,8 @@ typedef enum {
 	MF_FORCESHADOWS				= BIT(3),
 	MF_NOSELFSHADOW				= BIT(4),
 	MF_NOPORTALFOG				= BIT(5),	// this fog volume won't ever consider a portal fogged out
-	MF_EDITOR_VISIBLE			= BIT(6)	// in use (visible) per editor
+	MF_EDITOR_VISIBLE			= BIT(6),	// in use (visible) per editor
+	MF_SKIPCLIP					= BIT(9)
 } materialFlags_t;
 
 // contents flags, NOTE: make sure to keep the defines in doom_defs.script up to date with these!
@@ -287,9 +288,31 @@ typedef enum {
 	CONTENTS_AAS_OBSTACLE		= BIT(14),	// used to compile an obstacle into AAS that can be enabled/disabled
 	CONTENTS_FLASHLIGHT_TRIGGER	= BIT(15),	// used for triggers that are activated by the flashlight
 
+#ifdef PREY
+	// HUMANHEAD CJR: Content flags.  Note that for simplicity of merging, id's areaportal and nocsg flags were left as is
+	CONTENTS_FORCEFIELD = BIT(16),	// forcefield matter, only passable in spirit mode
+	CONTENTS_SPIRITBRIDGE = BIT(17),	// cjr - Collidable only by spiritwalking players
+	// END HUMANHEAD
+
+	// contents used by utils
+	CONTENTS_AREAPORTAL = BIT(18),	// portal separating renderer areas
+	CONTENTS_NOCSG = BIT(19),	// don't cut this brush with CSG operations in the editor
+
+	// HUMANHEAD CJR: Content flags.  Note that for simplicity of merging, id's areaportal and nocsg flags were left as is
+	CONTENTS_BLOCK_RADIUSDAMAGE = BIT(20),	// aob - used by objects like forcefields and chaff
+	CONTENTS_SHOOTABLE = BIT(21),	// pdm - bullets collide with but not player or monsters
+	CONTENTS_DEATHVOLUME = BIT(22),	// AOB: used by death zones so the player can do a simple contents check
+	CONTENTS_VEHICLECLIP = BIT(23),	// PDM: used to clip off vehicle movement
+	CONTENTS_OWNER_TO_OWNER = BIT(24),	// bjk: used to disable owner to owner rejection for collision
+	CONTENTS_GAME_PORTAL = BIT(25),  // cjr: used for clipping against game portals (glow portals, etc)
+	CONTENTS_SHOOTABLEBYARROW = BIT(26),	// pdm: solid to spirit arrows specifically as opposed to other projectiles
+	CONTENTS_HUNTERCLIP = BIT(27),	// pdm: solid to hunters, but not hunters in vehicles
+	// HUMANHEAD END
+#else
 	// contents used by utils
 	CONTENTS_AREAPORTAL			= BIT(20),	// portal separating renderer areas
 	CONTENTS_NOCSG				= BIT(21),	// don't cut this brush with CSG operations in the editor
+#endif
 
 	CONTENTS_REMOVE_UTIL		= ~(CONTENTS_AREAPORTAL|CONTENTS_NOCSG)
 } contentsFlags_t;
@@ -297,7 +320,27 @@ typedef enum {
 // surface types
 const int NUM_SURFACE_BITS		= 4;
 const int MAX_SURFACE_TYPES		= 1 << NUM_SURFACE_BITS;
-
+#ifdef PREY
+typedef enum {
+	SURFTYPE_NONE,					// default type
+	SURFTYPE_METAL,
+	SURFTYPE_STONE,
+	SURFTYPE_FLESH,
+	SURFTYPE_WOOD,
+	SURFTYPE_CARDBOARD,
+	SURFTYPE_LIQUID,
+	SURFTYPE_GLASS,
+	SURFTYPE_TILE,
+	SURFTYPE_WALLWALK,
+	SURFTYPE_ALTMETAL,
+	SURFTYPE_FORCEFIELD,
+	SURFTYPE_PIPE,
+	SURFTYPE_SPIRIT,
+	SURFTYPE_CHAFF,
+	NUM_SURFACE_TYPES
+	// NOTE: Bits all used, no more matter types
+} surfTypes_t;
+#else
 typedef enum {
 	SURFTYPE_NONE,					// default type
     SURFTYPE_METAL,
@@ -316,6 +359,7 @@ typedef enum {
 	SURFTYPE_14,
 	SURFTYPE_15
 } surfTypes_t;
+#endif
 
 // surface flags
 typedef enum {

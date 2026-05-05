@@ -131,7 +131,7 @@ public:
 	void			Swap( idList<type> &other );						// swap the contents of the lists
 	void			DeleteContents( bool clear );						// delete the contents of the list
 
-private:
+protected:
 	int				num;
 	int				size;
 	int				granularity;

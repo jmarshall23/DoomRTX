@@ -34,21 +34,34 @@ If you have questions concerning this license or the applicable additional terms
 ===============================================================================
 */
 
-#define GAME_NAME						"DOOM 3"		// appears on window titles and errors
+#ifdef PREY
+#define GAME_NAME						"PREY"		// appears on window titles and errors
+#else
+#define GAME_NAME						"DOOM 3"	// appears on window titles and errors
+#endif
 
-#define ENGINE_VERSION					"DOOM 1.3.1"	// printed in console
+#define ENGINE_VERSION					GAME_NAME " " __DATE__ " " __TIME__	// printed in console
 
 // paths
 #define	CD_BASEDIR						"Doom"
 #ifdef ID_DEMO_BUILD
 	#define BASE_GAMEDIR					"demo"
 #else
+#ifdef PREY
+	#define	BASE_GAMEDIR					"preybase"
+#else
 	#define	BASE_GAMEDIR					"base"
+#endif
 #endif
 
 // filenames
 #define	CD_EXE							"doom.exe"
+
+#ifdef PREY
+#define CONFIG_FILE						"PreyConfig.cfg"
+#else
 #define CONFIG_FILE						"DoomConfig.cfg"
+#endif
 
 // base folder where the source code lives
 #define SOURCE_CODE_BASE_FOLDER			"neo"
@@ -90,7 +103,7 @@ If you have questions concerning this license or the applicable additional terms
 // editor info
 #define EDITOR_DEFAULT_PROJECT			"doom.qe4"
 #define EDITOR_REGISTRY_KEY				"DOOMRadiant"
-#define EDITOR_WINDOWTEXT				"IceEdit2"
+#define EDITOR_WINDOWTEXT				"IceEdit2(for " GAME_NAME " )"
 
 // win32 info
 #define WIN32_CONSOLE_CLASS				"DOOM 3 WinConsole"

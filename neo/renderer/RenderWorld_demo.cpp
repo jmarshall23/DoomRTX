@@ -662,7 +662,11 @@ void	idRenderWorldLocal::ReadRenderEntity() {
 	session->readDemo->ReadBool( ent.noShadow );
 	session->readDemo->ReadBool( ent.noDynamicInteractions );
 	session->readDemo->ReadBool( ent.weaponDepthHack );
+#ifndef PREY
 	session->readDemo->ReadInt( ent.forceUpdate );
+#else
+	session->readDemo->ReadBool(ent.forceUpdate);
+#endif
 	ent.callback = NULL;
 	if ( ent.customShader ) {
 		ent.customShader = declManager->FindMaterial( session->readDemo->ReadHashString() );

@@ -119,6 +119,14 @@ public:
 	int				ReadData( void *data, int length ) const;
 	void			ReadNetadr( netadr_t *adr ) const;
 
+	void			WriteVec3(const idVec3& vector);
+	void			WriteMat3(const idMat3& axis);
+	void			WriteBool(bool boolean);
+
+	idVec3			ReadVec3() const;
+	idMat3			ReadMat3() const;
+	bool			ReadBool() const;
+
 	int				ReadDeltaChar( int oldValue ) const;
 	int				ReadDeltaByte( int oldValue ) const;
 	int				ReadDeltaShort( int oldValue ) const;
@@ -427,6 +435,42 @@ ID_INLINE float idBitMsg::ReadDeltaFloat( float oldValue, int exponentBits, int 
 	return idMath::BitsToFloat( newBits, exponentBits, mantissaBits );
 }
 
+ID_INLINE void idBitMsg::WriteVec3(const idVec3& vector) {
+	WriteFloat(vector[0]);
+	WriteFloat(vector[1]);
+	WriteFloat(vector[2]);
+}
+
+ID_INLINE void idBitMsg::WriteMat3(const idMat3& axis) {
+	WriteVec3(axis[0]);
+	WriteVec3(axis[1]);
+	WriteVec3(axis[2]);
+}
+
+ID_INLINE void idBitMsg::WriteBool(bool boolean) {
+	WriteBits(boolean, 1);
+}
+
+ID_INLINE idVec3 idBitMsg::ReadVec3() const {
+	idVec3 vector;
+	vector[0] = ReadFloat();
+	vector[1] = ReadFloat();
+	vector[2] = ReadFloat();
+	return vector;
+}
+
+ID_INLINE idMat3 idBitMsg::ReadMat3() const {
+	idMat3 axis;
+	axis[0] = ReadVec3();
+	axis[1] = ReadVec3();
+	axis[2] = ReadVec3();
+	return axis;
+}
+
+ID_INLINE bool idBitMsg::ReadBool() const {
+	int boolean = ReadBits(1);
+	return *(bool*)&boolean;//We seem to get a performance warning unless I do this.  Ick!
+}
 
 /*
 ===============================================================================

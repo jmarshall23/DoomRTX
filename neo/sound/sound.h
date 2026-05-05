@@ -56,6 +56,20 @@ static const int	SSF_UNCLAMPED =			BIT(7);	// don't clamp calculated volumes at 
 static const int	SSF_NO_FLICKER =		BIT(8);	// always return 1.0 for volume queries
 static const int	SSF_NO_DUPS =			BIT(9);	// try not to play the same sound twice in a row
 
+#ifdef PREY
+static const int	SSF_VOICEAMPLITUDE =	BIT(10);	// HUMANHEAD pdm: include in findamplitude queries
+static const int	SSF_OMNI_WHEN_CLOSE =	BIT(11);	// HUMANHEAD pdm: make omni when within the mindistance
+static const int	SSF_NOREVERB =			BIT(12);	// HUMANHEAD pdm: reverb exclusion
+
+#ifndef GAMEPORTAL_SOUND
+#define GAMEPORTAL_SOUND 1
+#endif
+
+#if GAMEPORTAL_SOUND
+static const int	SSF_NOPORTALFLOW =		BIT(13);	// don't allow sounds to flow through game portals
+#endif
+#endif
+
 // these options can be overriden from sound shader defaults on a per-emitter and per-channel basis
 typedef struct {
 	float					minDistance;
@@ -64,14 +78,48 @@ typedef struct {
 	float					shakes;
 	int						soundShaderFlags;		// SSF_* bit flags
 	int						soundClass;				// for global fading of sounds
+#ifdef PREY
+	int						subIndex;				//HUMANHEAD rww - indices into the subtitle table
+	int						profanityIndex;			// HUMANHEAD pdm
+	float					profanityDelay;			// HUMANHEAD pdm
+	float					profanityDuration;		// HUMANHEAD pdm
+#endif
 } soundShaderParms_t;
 
 
 const int		SOUND_MAX_LIST_WAVS		= 32;
 
+#ifdef PREY
+// HUMANHEAD rww - subtitle functionality
+typedef struct soundSubtitle_s {
+	idStr			subText;
+	float			subTime;
+	int				subChannel;
+} soundSub_t;
+
+typedef struct soundSubtitleList_s {
+	idStr				soundName;
+	idList<soundSub_t>	subList;
+} soundSubtitleList_t;
+
+#ifndef MAX_SUBTITLE_CHANNELS
+#define MAX_SUBTITLE_CHANNELS 4
+#endif
+#endif
+
 // sound classes are used to fade most sounds down inside cinematics, leaving dialog
 // flagged with a non-zero class full volume
+#ifdef PREY
+// HUMANHEAD pdm: sound classes
+const int		SOUNDCLASS_NORMAL		= 0;
+const int		SOUNDCLASS_VOICEDUCKER	= 1;
+const int		SOUNDCLASS_SPIRITWALK	= 2;
+const int		SOUNDCLASS_VOICE		= 3;
+const int		SOUNDCLASS_MUSIC		= 4;
+const int		SOUND_MAX_CLASSES		= 5;
+#else
 const int		SOUND_MAX_CLASSES		= 4;
+#endif
 
 // it is somewhat tempting to make this a virtual class to hide the private
 // details here, but that doesn't fit easily with the decl manager at the moment.
@@ -86,6 +134,8 @@ public:
 	virtual bool			Parse( const char *text, const int textLength );
 	virtual void			FreeData( void );
 	virtual void			List( void ) const;
+
+	virtual float			GetVolume() const { return parms.volume; }
 
 	virtual const char *	GetDescription() const;
 
@@ -168,6 +218,8 @@ public:
 	virtual void			StopSound( const s_channelType channel ) = 0;
 	// to is in Db (sigh), over is in seconds
 	virtual void			FadeSound( const s_channelType channel, float to, float over ) = 0;
+
+	virtual float			CurrentVoiceAmplitude(const s_channelType channel) = 0;
 
 	// returns true if there are any sounds playing from this emitter.  There is some conservative
 	// slop at the end to remove inconsistent race conditions with the sound thread updates.
@@ -343,6 +395,13 @@ public:
 
 	// is EAX support present - -1: disabled at compile time, 0: no suitable hardware, 1: ok, 2: failed to load OpenAL DLL
 	virtual int				IsEAXAvailable( void ) = 0;
+
+#ifdef PREY
+	virtual int					GetSubtitleIndex( const char *soundName ) = 0;
+	virtual void				SetSubtitleData( int subIndex, int subNum, const char *subText, float subTime, int subChannel ) = 0;
+	virtual soundSub_t *		GetSubtitle( int subIndex, int subNum ) = 0;
+	virtual soundSubtitleList_t *GetSubtitleList( int subIndex ) = 0;
+#endif
 };
 
 extern idSoundSystem	*soundSystem;

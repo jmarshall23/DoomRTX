@@ -220,7 +220,15 @@ public:
 	virtual void			DrawSmallStringExt( int x, int y, const char *string, const idVec4 &setColor, bool forceColor, const idMaterial *material ) = 0;
 	virtual void			DrawBigChar( int x, int y, int ch, const idMaterial *material ) = 0;
 	virtual void			DrawBigStringExt( int x, int y, const char *string, const idVec4 &setColor, bool forceColor, const idMaterial *material ) = 0;
-
+#ifdef PREY
+	virtual void			SetEntireSceneMaterial(idMaterial* material) {} // HUMANHEAD CJR
+	virtual bool			IsScopeView() { return false; }// HUMANHEAD CJR
+	virtual void			SetScopeView(bool view) {}; // HUMANHEAD CJR
+	virtual bool			IsShuttleView() { return false; }// HUMANHEAD pdm
+	virtual void			SetShuttleView(bool view) {};// HUMANHEAD pdm
+	virtual bool			SupportsFragmentPrograms(void) { return true; }; // HUMANHEAD CJR
+	virtual int				VideoCardNumber(void) { return 0; } // HUMANHEAD CJR
+#endif
 	// dump all 2D drawing so far this frame to the demo file
 	virtual void			WriteDemoPics() = 0;
 

@@ -963,6 +963,37 @@ void idSoundEmitterLocal::StopSound( const s_channelType channel ) {
 }
 
 /*
+========================
+idSoundEmitterLocal::CurrentVoiceAmplitude
+========================
+*/
+float idSoundEmitterLocal::CurrentVoiceAmplitude(const int channel) {
+	float amplitude;
+
+	const int current44kHzTime = soundSystemLocal.GetCurrent44kHzTime();
+
+	// Cache the amplitude for the current sound time so multiple callers in the
+	// same audio tick do not repeatedly walk the sound world.
+	if (current44kHzTime == amplitudeTime) {
+		return amplitudeCache;
+	}
+
+	amplitudeTime = current44kHzTime;
+
+	amplitude = soundWorld->FindAmplitude(
+		this,
+		current44kHzTime,
+		0,
+		channel,
+		false
+	);
+
+	amplitudeCache = amplitude;
+
+	return amplitude;
+}
+
+/*
 ===================
 idSoundEmitterLocal::FadeSound
 

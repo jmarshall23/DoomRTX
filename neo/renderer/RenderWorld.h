@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __RENDERWORLD_H__
 #define __RENDERWORLD_H__
 
+class hhDeclBeam;
+
 /*
 ===============================================================================
 
@@ -70,12 +72,53 @@ const int SHADERPARM_SPRITE_HEIGHT		= 9;
 
 const int SHADERPARM_PARTICLE_STOPTIME = 8;	// don't spawn any more particles after this time
 
+#ifdef PREY
+const int SHADERPARM_MISC = 6; // aob
+const int SHADERPARM_ANY_DEFORM = 9; // Model deformation
+const int SHADERPARM_ANY_DEFORM_PARM1 = 10; // Model deformation parameter1
+const int SHADERPARM_ANY_DEFORM_PARM2 = 11; // Model deformation parameter2
+const int SHADERPARM_DISTANCE = 12; // CJR -- distance shader parm index
+
+// Always add to the end of the list so the old numbers don't change
+enum {
+	DEFORMTYPE_NONE = 0,
+	DEFORMTYPE_SCALE,
+	DEFORMTYPE_VERTEXCOLOR,
+	DEFORMTYPE_SPHERE,
+	DEFORMTYPE_RIPPLE,
+	DEFORMTYPE_PLANTSWAYX,
+	DEFORMTYPE_PLANTSWAYY,
+	DEFORMTYPE_FLATTEN,
+	DEFORMTYPE_VIBRATE,
+	DEFORMTYPE_SQUISH,
+	DEFORMTYPE_TURBULENT,	// 10
+	DEFORMTYPE_RAYS,
+	DEFORMTYPE_ALPHAGLOW,
+	DEFORMTYPE_FATTEN,
+	DEFORMTYPE_RIPPLECENTER,
+	DEFORMTYPE_MELT,
+	DEFORMTYPE_POD,
+	DEFORMTYPE_DEATHEFFECT,
+	DEFORMTYPE_WINDBLAST,
+	DEFORMTYPE_PINCHPOINT,
+	DEFORMTYPE_PORTAL
+	//NOTE: Any added here should also be added to prey_defs.script
+};
+#endif
+
 // guis
 const int MAX_RENDERENTITY_GUI		= 3;
 
 
 typedef bool(*deferredEntityCallback_t)( renderEntity_s *, const renderView_s * );
 
+
+#ifdef PREY
+#define MAX_BEAM_NODES				32
+typedef struct hhBeamNodes_s {
+	idVec3		nodes[MAX_BEAM_NODES];
+} hhBeamNodes_t;
+#endif
 
 typedef struct renderEntity_s {
 	idRenderModel *			hModel;				// this can only be null if callback is set
@@ -137,6 +180,16 @@ typedef struct renderEntity_s {
 
 	float					modelDepthHack;			// squash depth range so particle effects don't clip into walls
 
+#ifdef PREY
+	const hhDeclBeam* declBeam;			// HUMANHEAD beam information
+	hhBeamNodes_t* beamNodes;			// HUMANHEAD beam node array (sized to the number of beams in the system)
+
+	bool onlyVisibleInSpirit;        // HUMANHEAD: visible only in spiritwalking/deathwalking
+	bool onlyInvisibleInSpirit;      // HUMANHEAD: invisible only in spiritwalking/deathwalking
+	bool lowSkippable;               // HUMANHEAD bjk: skippable in low quality
+	float eyeDistance;               // HUMANHEAD pdm: precalculated distance to eye
+#endif
+
 	// options to override surface shader flags (replace with material parameters?)
 	bool					noSelfShadow;			// cast shadows onto other objects,but not self
 	bool					noShadow;				// no shadow at all
@@ -148,7 +201,11 @@ typedef struct renderEntity_s {
 
 	bool					weaponDepthHack;		// squash depth range so view weapons don't poke into walls
 													// this automatically implies noShadow
-	int						forceUpdate;			// force an update (NOTE: not a bool to keep this struct a multiple of 4 bytes)
+#ifdef PREY
+	bool						forceUpdate;		// force an update (NOTE: not a bool to keep this struct a multiple of 4 bytes)
+#else
+	int							forceUpdate;		// force an update (NOTE: not a bool to keep this struct a multiple of 4 bytes)
+#endif
 	int						timeGroup;
 	int						xrayIndex;
 } renderEntity_t;
@@ -172,6 +229,9 @@ typedef struct renderLight_s {
 	// updates
 	bool					noShadows;			// (should we replace this with material parameters on the shader?)
 	bool					noSpecular;			// (should we replace this with material parameters on the shader?)
+#ifdef PREY
+	bool					lowSkippable;
+#endif
 
 	bool					pointLight;			// otherwise a projection light (should probably invert the sense of this, because points are way more common)
 	bool					parallel;			// lightCenter gives the direction to the light at infinity
@@ -218,6 +278,11 @@ typedef struct renderView_s {
 	bool					cramZNear;			// for cinematics, we want to set ZNear much lower
 	bool					forceUpdate;		// for an update 
 
+#ifdef PREY
+	bool			viewSpiritEntities;			// HUMANHEAD cjr: this renderView can see all onlyVisibleInSpirit entities
+												// tmj: this renderView cannot see onlyInvisibleInSpirit entities
+#endif
+
 	// time in milliseconds for shader effects and other time dependent rendering issues
 	int						time;
 	float					shaderParms[MAX_GLOBAL_SHADER_PARMS];		// can be used in any way by shader
@@ -238,6 +303,7 @@ typedef struct {
 typedef struct {
 	float				x, y;			// 0.0 to 1.0 range if trace hit a gui, otherwise -1
 	int					guiId;			// id of gui ( 0, 1, or 2 ) that the trace happened against
+	float				frac;
 } guiPoint_t;
 
 

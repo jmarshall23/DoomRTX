@@ -228,6 +228,73 @@ typedef struct {
 	int		clearSolid, surfaceFlags, contents;
 } infoParm_t;
 
+#ifdef PREY
+static infoParm_t infoParms[] = {
+	// game relevant attributes
+	{"solid",					0,	0,						CONTENTS_SOLID },				// may need to override a clearSolid
+	{"opaque",					0,	0,						CONTENTS_OPAQUE },				// blocks visibility / opaque contents
+	{"water",					1,	0,						CONTENTS_WATER },				// used for water
+	{"playerclip",				0,	0,						CONTENTS_PLAYERCLIP },			// solid to players
+	{"monsterclip",				0,	0,						CONTENTS_MONSTERCLIP },			// solid to monsters
+	{"moveableclip",			0,	0,						CONTENTS_MOVEABLECLIP },		// solid to moveable entities
+	{"ikclip",					0,	0,						CONTENTS_IKCLIP },				// solid to IK
+	{"blood",					0,	0,						CONTENTS_BLOOD },				// used to detect blood decals
+	{"body",					0,	0,						CONTENTS_BODY },				// body contents
+	{"projectile",				0,	0,						CONTENTS_PROJECTILE },			// projectile collision
+	{"corpse",					0,	0,						CONTENTS_CORPSE },				// corpse collision
+	{"rendermodel",				0,	0,						CONTENTS_RENDERMODEL },			// render model collision contents
+	{"trigger",					0,	0,						CONTENTS_TRIGGER },				// used for triggers
+	{"aassolid",				0,	0,						CONTENTS_AAS_SOLID },			// Doom 3-style name
+	{"aas_solid",				0,	0,						CONTENTS_AAS_SOLID },			// HumanHead cm_contentsNameByIndex name
+	{"aasobstacle",				0,	0,						CONTENTS_AAS_OBSTACLE },		// Doom 3-style name
+	{"aas_obstacle",			0,	0,						CONTENTS_AAS_OBSTACLE },		// HumanHead cm_contentsNameByIndex name
+	{"flashlight_trigger",		0,	0,						CONTENTS_FLASHLIGHT_TRIGGER },	// used for triggers that are activated by the flashlight
+
+	// HUMANHEAD pdm: added contents
+	{"forcefield",				0,	0,						CONTENTS_FORCEFIELD },			// forcefield collision/content
+	{"spiritbridge",			0,	0,						CONTENTS_SPIRITBRIDGE },		// spirit bridge collision/content
+	{"areaportal",				1,	0,						CONTENTS_AREAPORTAL },			// divides areas
+	{"nocsg",					1,	0,						CONTENTS_NOCSG },				// don't cut brushes in editor
+	{"qer_nocarve",				1,	0,						CONTENTS_NOCSG },				// Doom 3 editor alias for nocsg
+	{"block_radiusdamage",		0,	0,						CONTENTS_BLOCK_RADIUSDAMAGE },	// blocks radius damage
+	{"shootable",				0,	0,						CONTENTS_SHOOTABLE },			// shootable contents
+	{"deathvolume",				0,	0,						CONTENTS_DEATHVOLUME },			// death volume contents
+	{"vehicleclip",				0,	0,						CONTENTS_VEHICLECLIP },			// solid to vehicles
+	{"owner_to_owner",			0,	0,						CONTENTS_OWNER_TO_OWNER },		// owner-to-owner collision/content filtering
+	{"game_portal",				0,	0,						CONTENTS_GAME_PORTAL },			// game portal contents
+	{"shootablebyarrow",		0,	0,						CONTENTS_SHOOTABLEBYARROW },	// shootable by arrow/projectile type
+	{"hunterclip",				0,	0,						CONTENTS_HUNTERCLIP },			// hunter-specific clipping
+
+	{"nonsolid",				1,	0,						0 },							// clears the solid flag
+	{"nullNormal",				0,	SURF_NULLNORMAL,		0 },							// renderbump will draw as 0x80 0x80 0x80
+
+	// surface behavior attributes
+	{"discrete",				1,	SURF_DISCRETE,			0 },							// do not merge/clip automatically
+	{"noFragment",				0,	SURF_NOFRAGMENT,		0 },
+	{"slick",					0,	SURF_SLICK,				0 },
+	{"collision",				0,	SURF_COLLISION,			0 },
+	{"noimpact",				0,	SURF_NOIMPACT,			0 },							// don't make impact explosions or marks
+	{"nodamage",				0,	SURF_NODAMAGE,			0 },							// no falling damage when hitting
+	{"ladder",					0,	SURF_LADDER,			0 },							// climbable
+	{"nosteps",					0,	SURF_NOSTEPS,			0 },							// no footsteps
+
+	// material types for particle, sound, footstep feedback
+	{"metal",					0,	SURFTYPE_METAL,			0 },							// metal
+	{"stone",					0,	SURFTYPE_STONE,			0 },							// stone
+	{"flesh",					0,	SURFTYPE_FLESH,			0 },							// flesh
+	{"wood",					0,	SURFTYPE_WOOD,			0 },							// wood
+	{"cardboard",				0,	SURFTYPE_CARDBOARD,		0 },							// cardboard
+	{"liquid",					0,	SURFTYPE_LIQUID,		0 },							// liquid
+	{"glass",					0,	SURFTYPE_GLASS,			0 },							// glass
+	{"tile",					0,	SURFTYPE_TILE,			0 },							// tile
+	{"wallwalk",				0,	SURFTYPE_WALLWALK,		0 },							// wallwalk surface
+	{"altmetal",				0,	SURFTYPE_ALTMETAL,		0 },							// alternate metal
+	{"forcefield",				0,	SURFTYPE_FORCEFIELD,		0 },							// forcefield material
+	{"pipe",					0,	SURFTYPE_PIPE,			0 },							// pipe
+	{"spirit",					0,	SURFTYPE_SPIRIT,		0 },							// spirit material
+	{"chaff",					0,	SURFTYPE_CHAFF,			0 },							// chaff material
+};
+#else
 static infoParm_t	infoParms[] = {
 	// game relevant attributes
 	{"solid",		0,	0,	CONTENTS_SOLID },		// may need to override a clearSolid
@@ -280,6 +347,7 @@ static infoParm_t	infoParms[] = {
 	{"surftype14",	0,	SURFTYPE_14,	0 },
 	{"surftype15",	0,	SURFTYPE_15,	0 },
 };
+#endif
 
 static const int numInfoParms = sizeof(infoParms) / sizeof (infoParms[0]);
 

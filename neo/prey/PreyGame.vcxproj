@@ -1,0 +1,1061 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug with inlines and memory log|x64">
+      <Configuration>Debug with inlines and memory log</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug with inlines|x64">
+      <Configuration>Debug with inlines</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dedicated Debug with Inlines|x64">
+      <Configuration>Dedicated Debug with Inlines</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dedicated Release|x64">
+      <Configuration>Dedicated Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Prey Debug|x64">
+      <Configuration>Prey Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectName>PreyGame</ProjectName>
+    <ProjectGuid>{6CD8E46D-E28E-493F-BB06-537A637A68C2}</ProjectGuid>
+    <RootNamespace>Game</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>18.0.11528.56</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_D3SDK;__DOOM__;GAME_DLL;WIN32;_DEBUG;_WINDOWS;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/FIXED:no %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;dbghelp.lib;./DebugDLL/idLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>./DebugDLL/gamex86.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>16000000</StackReserveSize>
+      <StackCommitSize>16000000</StackCommitSize>
+      <SupportUnloadOfDelayLoadedDLL>true</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>Copying gamex86.lib</Message>
+      <Command>copy "$(TargetDir)\gamex86.lib" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>PREY;_D3SDK;__DOOM__;GAME_DLL;WIN32;_DEBUG;_WINDOWS;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/FIXED:no %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>../../preygamex64.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>16000000</StackReserveSize>
+      <StackCommitSize>16000000</StackCommitSize>
+      <SupportUnloadOfDelayLoadedDLL>true</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>
+      </Message>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <PreprocessorDefinitions>_D3SDK;__DOOM__;GAME_DLL;WIN32;NDEBUG;_WINDOWS;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformation>
+      </BrowseInformation>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/MACHINE:I386 /fixed:no %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;./ReleaseDLL/idLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>./ReleaseDLL/gamex86.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>4194304</StackReserveSize>
+      <LargeAddressAware>true</LargeAddressAware>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SupportUnloadOfDelayLoadedDLL>false</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>Copying gamex86.lib</Message>
+      <Command>copy "$(TargetDir)\gamex86.lib" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <PreprocessorDefinitions>_D3SDK;__DOOM__;GAME_DLL;WIN32;_DEBUG;_WINDOWS;_INLINEDEBUG;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <ShowProgress>true</ShowProgress>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;dbghelp.lib;./InlineDebugDLL/idLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>./InlineDebugDLL/gamex86.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>16000000</StackReserveSize>
+      <StackCommitSize>16000000</StackCommitSize>
+      <BaseAddress>
+      </BaseAddress>
+      <SupportUnloadOfDelayLoadedDLL>false</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>Copying gamex86.lib</Message>
+      <Command>copy "$(TargetDir)\gamex86.lib" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">
+    <PreBuildEvent>
+      <Command>.\TypeInfo\InlineDebugMemoryDLL\typeinfo.exe</Command>
+    </PreBuildEvent>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <PreprocessorDefinitions>_D3SDK;__DOOM__;GAME_DLL;WIN32;_DEBUG;_WINDOWS;_INLINEDEBUG;ID_REDIRECT_NEWDELETE;ID_DEBUG_MEMORY;ID_DEBUG_UNINITIALIZED_MEMORY;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/FORCE:MULTIPLE %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;dbghelp.lib;./InlineDebugMemoryDLL/idLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>./InlineDebugMemoryDLL/gamex86.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>./InlineDebugMemoryDLL/gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>16000000</StackReserveSize>
+      <StackCommitSize>16000000</StackCommitSize>
+      <BaseAddress>
+      </BaseAddress>
+      <SupportUnloadOfDelayLoadedDLL>true</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>Copying gamex86.lib</Message>
+      <Command>copy "$(TargetDir)\gamex86.lib" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <PreprocessorDefinitions>__DOOM__;GAME_DLL;WIN32;_DEBUG;_WINDOWS;_INLINEDEBUG;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <ResourceCompile>
+      <ShowProgress>true</ShowProgress>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;dbghelp.lib;./DedicatedInlineDebugDLL/idLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>./DedicatedInlineDebugDLL/gamex86.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>16000000</StackReserveSize>
+      <StackCommitSize>16000000</StackCommitSize>
+      <SupportUnloadOfDelayLoadedDLL>false</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>Copying gamex86.lib</Message>
+      <Command>copy "$(TargetDir)\gamex86.lib" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <PreprocessorDefinitions>__DOOM__;GAME_DLL;WIN32;NDEBUG;_WINDOWS;HUMANHEAD;_DOTNET_2005;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)game.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)</ProgramDataBaseFileName>
+      <BrowseInformation>
+      </BrowseInformation>
+      <BrowseInformationFile>$(IntDir)</BrowseInformationFile>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/MACHINE:I386 /fixed:no %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;./DedicatedReleaseDLL/idLib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>./DedicatedReleaseDLL/gamex86.dll</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(OutDir)gamex86.pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)gamex86.map</MapFileName>
+      <SubSystem>NotSet</SubSystem>
+      <StackReserveSize>4194304</StackReserveSize>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SupportUnloadOfDelayLoadedDLL>false</SupportUnloadOfDelayLoadedDLL>
+    </Link>
+    <PostBuildEvent>
+      <Message>Copying gamex86.lib</Message>
+      <Command>copy "$(TargetDir)\gamex86.lib" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\idlib\precompiled.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'">precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'">precompiled.h</PrecompiledHeaderFile>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">precompiled.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="framework\DeclPreyBeam.cpp" />
+    <ClCompile Include="game\Actor.cpp" />
+    <ClCompile Include="game\AF.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with Inlines|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\AFEntity.cpp" />
+    <ClCompile Include="game\ai\AAS.cpp" />
+    <ClCompile Include="game\ai\AAS_debug.cpp" />
+    <ClCompile Include="game\ai\AAS_pathing.cpp" />
+    <ClCompile Include="game\ai\AAS_routing.cpp" />
+    <ClCompile Include="game\ai\AI.cpp" />
+    <ClCompile Include="game\ai\AI_events.cpp" />
+    <ClCompile Include="game\ai\AI_pathing.cpp" />
+    <ClCompile Include="game\anim\Anim.cpp" />
+    <ClCompile Include="game\anim\Anim_Blend.cpp" />
+    <ClCompile Include="game\anim\Anim_Import.cpp" />
+    <ClCompile Include="game\anim\Anim_Testmodel.cpp" />
+    <ClCompile Include="game\BrittleFracture.cpp" />
+    <ClCompile Include="game\Camera.cpp" />
+    <ClCompile Include="game\Entity.cpp" />
+    <ClCompile Include="game\EntityAdditions.cpp" />
+    <ClCompile Include="game\Fx.cpp" />
+    <ClCompile Include="game\GameEdit.cpp" />
+    <ClCompile Include="game\gamesys\Class.cpp" />
+    <ClCompile Include="game\gamesys\DebugGraph.cpp" />
+    <ClCompile Include="game\gamesys\Event.cpp" />
+    <ClCompile Include="game\gamesys\SaveGame.cpp" />
+    <ClCompile Include="game\gamesys\SysCmds.cpp" />
+    <ClCompile Include="game\gamesys\SysCvar.cpp" />
+    <ClCompile Include="game\Game_local.cpp" />
+    <ClCompile Include="game\Game_network.cpp" />
+    <ClCompile Include="game\IK.cpp" />
+    <ClCompile Include="game\Item.cpp" />
+    <ClCompile Include="game\Light.cpp" />
+    <ClCompile Include="game\Misc.cpp" />
+    <ClCompile Include="game\Moveable.cpp" />
+    <ClCompile Include="game\Mover.cpp" />
+    <ClCompile Include="game\MultiplayerGame.cpp" />
+    <ClCompile Include="game\physics\Clip.cpp" />
+    <ClCompile Include="game\physics\Force.cpp" />
+    <ClCompile Include="game\physics\Force_Constant.cpp" />
+    <ClCompile Include="game\physics\Force_Drag.cpp" />
+    <ClCompile Include="game\physics\Force_Field.cpp" />
+    <ClCompile Include="game\physics\Force_Spring.cpp" />
+    <ClCompile Include="game\physics\Physics.cpp" />
+    <ClCompile Include="game\physics\Physics_Actor.cpp" />
+    <ClCompile Include="game\physics\Physics_AF.cpp" />
+    <ClCompile Include="game\physics\Physics_Base.cpp" />
+    <ClCompile Include="game\physics\Physics_Monster.cpp" />
+    <ClCompile Include="game\physics\Physics_Parametric.cpp" />
+    <ClCompile Include="game\physics\Physics_Player.cpp" />
+    <ClCompile Include="game\physics\Physics_PreyPlayer.cpp" />
+    <ClCompile Include="game\physics\Physics_RigidBody.cpp" />
+    <ClCompile Include="game\physics\Physics_Static.cpp" />
+    <ClCompile Include="game\physics\Physics_StaticMulti.cpp" />
+    <ClCompile Include="game\physics\Push.cpp" />
+    <ClCompile Include="game\Player.cpp" />
+    <ClCompile Include="game\PlayerIcon.cpp" />
+    <ClCompile Include="game\PlayerView.cpp" />
+    <ClCompile Include="game\Projectile.cpp" />
+    <ClCompile Include="game\Pvs.cpp" />
+    <ClCompile Include="game\script\Script_Compiler.cpp" />
+    <ClCompile Include="game\script\Script_Interpreter.cpp" />
+    <ClCompile Include="game\script\Script_Program.cpp" />
+    <ClCompile Include="game\script\Script_Thread.cpp" />
+    <ClCompile Include="game\SecurityCamera.cpp" />
+    <ClCompile Include="game\SmokeParticles.cpp" />
+    <ClCompile Include="game\Sound.cpp" />
+    <ClCompile Include="game\Target.cpp" />
+    <ClCompile Include="game\Trigger.cpp" />
+    <ClCompile Include="game\Weapon.cpp" />
+    <ClCompile Include="game\WorldSpawn.cpp" />
+    <ClCompile Include="idLib\math\prey_math.cpp" />
+    <ClCompile Include="idLib\MsgQueue.cpp" />
+    <ClCompile Include="Prey\ai_centurion.cpp" />
+    <ClCompile Include="Prey\ai_crawler.cpp" />
+    <ClCompile Include="Prey\ai_creaturex.cpp" />
+    <ClCompile Include="Prey\ai_droid.cpp" />
+    <ClCompile Include="Prey\ai_gasbag_simple.cpp" />
+    <ClCompile Include="Prey\ai_harvester_simple.cpp" />
+    <ClCompile Include="Prey\ai_hunter_simple.cpp" />
+    <ClCompile Include="Prey\ai_inspector.cpp" />
+    <ClCompile Include="Prey\ai_jetpack_harvester_simple.cpp" />
+    <ClCompile Include="Prey\ai_keeper_simple.cpp" />
+    <ClCompile Include="Prey\ai_mutate.cpp" />
+    <ClCompile Include="Prey\ai_mutilatedhuman.cpp" />
+    <ClCompile Include="prey\ai_passageway.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\ai_possessedTommy.cpp" />
+    <ClCompile Include="prey\ai_reaction.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\ai_spawncase.cpp">
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">prey_local.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">$(OutDir)prey.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">prey_local.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">$(OutDir)prey.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">prey_local.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)prey.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">prey_local.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)prey.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
+    <ClCompile Include="prey\ai_speech.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\ai_sphereboss.cpp" />
+    <ClCompile Include="prey\anim_baseanim.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\force_converge.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_afs.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_alarm.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_anim.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_animatedentity.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_animatedgui.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_animator.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_animBlend.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_animDriven.cpp" />
+    <ClCompile Include="prey\game_arcadegame.cpp" />
+    <ClCompile Include="Prey\game_barrel.cpp" />
+    <ClCompile Include="prey\game_bindController.cpp" />
+    <ClCompile Include="prey\game_blackjack.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_cards.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_cilia.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_console.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_damagetester.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_dda.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_deathwraith.cpp" />
+    <ClCompile Include="Prey\game_debrisspawner.cpp" />
+    <ClCompile Include="Prey\game_dock.cpp" />
+    <ClCompile Include="prey\game_dockedgun.cpp" />
+    <ClCompile Include="prey\game_door.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_eggspawner.cpp" />
+    <ClCompile Include="Prey\game_energynode.cpp" />
+    <ClCompile Include="prey\game_entityfx.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_entityspawner.cpp" />
+    <ClCompile Include="prey\game_fixedpod.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_forcefield.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_fxinfo.cpp" />
+    <ClCompile Include="prey\game_gibbable.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_gravityswitch.cpp" />
+    <ClCompile Include="prey\game_guihand.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_gun.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_hand.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_handcontrol.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_healthbasin.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_healthspore.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_inventory.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_itemautomatic.cpp" />
+    <ClCompile Include="prey\game_itemcabinet.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_jukebox.cpp" />
+    <ClCompile Include="prey\game_jumpzone.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_light.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_lightfixture.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_mine.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_misc.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_modeldoor.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_modeltoggle.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_monster_ai.cpp" />
+    <ClCompile Include="Prey\game_monster_ai_events.cpp" />
+    <ClCompile Include="prey\game_mountedgun.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_moveable.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_mover.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_note.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_organtrigger.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_player.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_playerview.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_pod.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_podspawner.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_poker.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_portal.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_portalframe.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_proxdoor.cpp" />
+    <ClCompile Include="prey\game_rail.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_railshuttle.cpp" />
+    <ClCompile Include="Prey\game_renderentity.cpp" />
+    <ClCompile Include="prey\game_safeDeathVolume.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_securityeye.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_shuttle.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_shuttledock.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_shuttletransport.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_skybox.cpp" />
+    <ClCompile Include="prey\game_slots.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_sphere.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_spherepart.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_spring.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_sunCorona.cpp" />
+    <ClCompile Include="prey\game_talon.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_targetproxy.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_targets.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_trackmover.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_trigger.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_tripwire.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_utils.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_vehicle.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_vomiter.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_weaponHandState.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\game_woundmanager.cpp" />
+    <ClCompile Include="prey\game_wraith.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\game_zone.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\physics_delta.cpp" />
+    <ClCompile Include="prey\physics_preyai.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\physics_preyparametric.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\physics_simple.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\physics_vehicle.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_animator.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_baseweapons.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_beam.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_bonecontroller.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_camerainterpolator.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\prey_firecontroller.cpp" />
+    <ClCompile Include="prey\prey_game.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_items.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_liquid.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_local.cpp" />
+    <ClCompile Include="prey\prey_projectile.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\prey_projectileautocannon.cpp" />
+    <ClCompile Include="Prey\prey_projectilebounce.cpp" />
+    <ClCompile Include="Prey\prey_projectilebug.cpp" />
+    <ClCompile Include="Prey\prey_projectilebugtrigger.cpp" />
+    <ClCompile Include="Prey\prey_projectilecocoon.cpp" />
+    <ClCompile Include="Prey\prey_projectilecrawlergrenade.cpp" />
+    <ClCompile Include="Prey\prey_projectilefreezer.cpp" />
+    <ClCompile Include="Prey\prey_projectilegasbagpod.cpp" />
+    <ClCompile Include="Prey\prey_projectilehiderweapon.cpp" />
+    <ClCompile Include="Prey\prey_projectilemine.cpp" />
+    <ClCompile Include="Prey\prey_projectilerifle.cpp" />
+    <ClCompile Include="Prey\prey_projectilerocketlauncher.cpp" />
+    <ClCompile Include="Prey\prey_projectileshuttle.cpp" />
+    <ClCompile Include="Prey\prey_projectilesoulcannon.cpp" />
+    <ClCompile Include="Prey\prey_projectilespiritarrow.cpp" />
+    <ClCompile Include="Prey\prey_projectiletracking.cpp" />
+    <ClCompile Include="Prey\prey_projectiletrigger.cpp" />
+    <ClCompile Include="Prey\prey_projectilewrench.cpp" />
+    <ClCompile Include="prey\prey_script_thread.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_sound.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_soundleadincontroller.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_spiritbridge.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_spiritproxy.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\prey_spiritsecret.cpp" />
+    <ClCompile Include="Prey\prey_vehiclefirecontroller.cpp" />
+    <ClCompile Include="prey\prey_weaponautocannon.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_weaponcrawlergrenade.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\prey_weaponfirecontroller.cpp" />
+    <ClCompile Include="Prey\prey_weaponhider.cpp" />
+    <ClCompile Include="Prey\prey_weaponrifle.cpp" />
+    <ClCompile Include="prey\prey_weaponrocketlauncher.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\prey_weaponsoulstripper.cpp">
+    </ClCompile>
+    <ClCompile Include="Prey\prey_weaponspiritbow.cpp" />
+    <ClCompile Include="prey\sys_debugger.cpp">
+    </ClCompile>
+    <ClCompile Include="prey\sys_preycmds.cpp">
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\idlib\precompiled.h" />
+    <ClInclude Include="framework\DeclPreyBeam.h" />
+    <ClInclude Include="game\Actor.h" />
+    <ClInclude Include="game\AF.h" />
+    <ClInclude Include="game\AFEntity.h" />
+    <ClInclude Include="game\ai\AAS.h" />
+    <ClInclude Include="game\ai\AAS_local.h" />
+    <ClInclude Include="game\ai\AI.h" />
+    <ClInclude Include="game\anim\Anim.h" />
+    <ClInclude Include="game\anim\Anim_Testmodel.h" />
+    <ClInclude Include="game\BrittleFracture.h" />
+    <ClInclude Include="game\Camera.h" />
+    <ClInclude Include="game\Entity.h" />
+    <ClInclude Include="game\Fx.h" />
+    <ClInclude Include="game\Game.h" />
+    <ClInclude Include="game\GameEdit.h" />
+    <ClInclude Include="game\gamesys\Class.h" />
+    <ClInclude Include="game\gamesys\DebugGraph.h" />
+    <ClInclude Include="game\gamesys\Event.h" />
+    <ClInclude Include="game\gamesys\SaveGame.h" />
+    <ClInclude Include="game\gamesys\SysCmds.h" />
+    <ClInclude Include="game\gamesys\SysCvar.h" />
+    <ClInclude Include="game\Game_local.h" />
+    <ClInclude Include="game\IK.h" />
+    <ClInclude Include="game\Item.h" />
+    <ClInclude Include="game\Light.h" />
+    <ClInclude Include="game\Misc.h" />
+    <ClInclude Include="game\Moveable.h" />
+    <ClInclude Include="game\Mover.h" />
+    <ClInclude Include="game\MultiplayerGame.h" />
+    <ClInclude Include="game\physics\Clip.h" />
+    <ClInclude Include="game\physics\Force.h" />
+    <ClInclude Include="game\physics\Force_Constant.h" />
+    <ClInclude Include="game\physics\Force_Drag.h" />
+    <ClInclude Include="game\physics\Force_Field.h" />
+    <ClInclude Include="game\physics\Force_Spring.h" />
+    <ClInclude Include="game\physics\Physics.h" />
+    <ClInclude Include="game\physics\Physics_Actor.h" />
+    <ClInclude Include="game\physics\Physics_AF.h" />
+    <ClInclude Include="game\physics\Physics_Base.h" />
+    <ClInclude Include="game\physics\Physics_Monster.h" />
+    <ClInclude Include="game\physics\Physics_Parametric.h" />
+    <ClInclude Include="game\physics\Physics_Player.h" />
+    <ClInclude Include="game\physics\Physics_PreyPlayer.h" />
+    <ClInclude Include="game\physics\Physics_RigidBody.h" />
+    <ClInclude Include="game\physics\Physics_Static.h" />
+    <ClInclude Include="game\physics\Physics_StaticMulti.h" />
+    <ClInclude Include="game\physics\Push.h" />
+    <ClInclude Include="game\Player.h" />
+    <ClInclude Include="game\PlayerIcon.h" />
+    <ClInclude Include="game\PlayerView.h" />
+    <ClInclude Include="game\Projectile.h" />
+    <ClInclude Include="game\Pvs.h" />
+    <ClInclude Include="game\script\Script_Compiler.h" />
+    <ClInclude Include="game\script\Script_Interpreter.h" />
+    <ClInclude Include="game\script\Script_Program.h" />
+    <ClInclude Include="game\script\Script_Thread.h" />
+    <ClInclude Include="game\SecurityCamera.h" />
+    <ClInclude Include="game\SmokeParticles.h" />
+    <ClInclude Include="game\Sound.h" />
+    <ClInclude Include="game\Target.h" />
+    <ClInclude Include="game\Trigger.h" />
+    <ClInclude Include="game\Weapon.h" />
+    <ClInclude Include="game\WorldSpawn.h" />
+    <ClInclude Include="idLib\containers\PreyStack.h" />
+    <ClInclude Include="idLib\math\prey_interpolate.h" />
+    <ClInclude Include="idLib\math\prey_math.h" />
+    <ClInclude Include="idLib\MsgQueue.h" />
+    <ClInclude Include="idLib\preylib.h" />
+    <ClInclude Include="Prey\ai_centurion.h" />
+    <ClInclude Include="Prey\ai_crawler.h" />
+    <ClInclude Include="Prey\ai_creaturex.h" />
+    <ClInclude Include="Prey\ai_droid.h" />
+    <ClInclude Include="Prey\ai_gasbag_simple.h" />
+    <ClInclude Include="Prey\ai_harvester_simple.h" />
+    <ClInclude Include="Prey\ai_hunter_simple.h" />
+    <ClInclude Include="Prey\ai_inspector.h" />
+    <ClInclude Include="Prey\ai_jetpack_harvester_simple.h" />
+    <ClInclude Include="Prey\ai_keeper_simple.h" />
+    <ClInclude Include="Prey\ai_mutate.h" />
+    <ClInclude Include="Prey\ai_mutilatedhuman.h" />
+    <ClInclude Include="prey\ai_passageway.h" />
+    <ClInclude Include="Prey\ai_possessedTommy.h" />
+    <ClInclude Include="prey\ai_reaction.h" />
+    <ClInclude Include="Prey\ai_spawncase.h" />
+    <ClInclude Include="prey\ai_speech.h" />
+    <ClInclude Include="Prey\ai_sphereboss.h" />
+    <ClInclude Include="prey\anim_baseanim.h" />
+    <ClInclude Include="prey\force_converge.h" />
+    <ClInclude Include="prey\game_afs.h" />
+    <ClInclude Include="prey\game_alarm.h" />
+    <ClInclude Include="prey\game_anim.h" />
+    <ClInclude Include="prey\game_animatedentity.h" />
+    <ClInclude Include="prey\game_animatedgui.h" />
+    <ClInclude Include="prey\game_animator.h" />
+    <ClInclude Include="prey\game_animBlend.h" />
+    <ClInclude Include="Prey\game_animDriven.h" />
+    <ClInclude Include="prey\game_arcadegame.h" />
+    <ClInclude Include="Prey\game_barrel.h" />
+    <ClInclude Include="prey\game_bindController.h" />
+    <ClInclude Include="prey\game_blackjack.h" />
+    <ClInclude Include="prey\game_cards.h" />
+    <ClInclude Include="prey\game_cilia.h" />
+    <ClInclude Include="prey\game_console.h" />
+    <ClInclude Include="prey\game_damagetester.h" />
+    <ClInclude Include="prey\game_dda.h" />
+    <ClInclude Include="prey\game_deathwraith.h" />
+    <ClInclude Include="Prey\game_debrisspawner.h" />
+    <ClInclude Include="Prey\game_dock.h" />
+    <ClInclude Include="prey\game_dockedgun.h" />
+    <ClInclude Include="prey\game_door.h" />
+    <ClInclude Include="prey\game_eggspawner.h" />
+    <ClInclude Include="Prey\game_energynode.h" />
+    <ClInclude Include="prey\game_entityfx.h" />
+    <ClInclude Include="Prey\game_entityspawner.h" />
+    <ClInclude Include="prey\game_fixedpod.h" />
+    <ClInclude Include="prey\game_forcefield.h" />
+    <ClInclude Include="Prey\game_fxinfo.h" />
+    <ClInclude Include="prey\game_gibbable.h" />
+    <ClInclude Include="prey\game_gravityswitch.h" />
+    <ClInclude Include="prey\game_guihand.h" />
+    <ClInclude Include="prey\game_gun.h" />
+    <ClInclude Include="prey\game_hand.h" />
+    <ClInclude Include="prey\game_handcontrol.h" />
+    <ClInclude Include="prey\game_healthbasin.h" />
+    <ClInclude Include="prey\game_healthspore.h" />
+    <ClInclude Include="prey\game_inventory.h" />
+    <ClInclude Include="Prey\game_itemautomatic.h" />
+    <ClInclude Include="prey\game_itemcabinet.h" />
+    <ClInclude Include="prey\game_jukebox.h" />
+    <ClInclude Include="prey\game_jumpzone.h" />
+    <ClInclude Include="prey\game_light.h" />
+    <ClInclude Include="prey\game_lightfixture.h" />
+    <ClInclude Include="prey\game_mine.h" />
+    <ClInclude Include="prey\game_misc.h" />
+    <ClInclude Include="prey\game_modeldoor.h" />
+    <ClInclude Include="prey\game_modeltoggle.h" />
+    <ClInclude Include="Prey\game_monster_ai.h" />
+    <ClInclude Include="prey\game_mountedgun.h" />
+    <ClInclude Include="prey\game_moveable.h" />
+    <ClInclude Include="prey\game_mover.h" />
+    <ClInclude Include="prey\game_note.h" />
+    <ClInclude Include="prey\game_organtrigger.h" />
+    <ClInclude Include="prey\game_player.h" />
+    <ClInclude Include="prey\game_playerview.h" />
+    <ClInclude Include="prey\game_pod.h" />
+    <ClInclude Include="prey\game_podspawner.h" />
+    <ClInclude Include="prey\game_poker.h" />
+    <ClInclude Include="prey\game_portal.h" />
+    <ClInclude Include="prey\game_portalframe.h" />
+    <ClInclude Include="Prey\game_proxdoor.h" />
+    <ClInclude Include="prey\game_rail.h" />
+    <ClInclude Include="prey\game_railshuttle.h" />
+    <ClInclude Include="Prey\game_renderentity.h" />
+    <ClInclude Include="prey\game_safeDeathVolume.h" />
+    <ClInclude Include="prey\game_securityeye.h" />
+    <ClInclude Include="prey\game_shuttle.h" />
+    <ClInclude Include="prey\game_shuttledock.h" />
+    <ClInclude Include="prey\game_shuttletransport.h" />
+    <ClInclude Include="Prey\game_skybox.h" />
+    <ClInclude Include="prey\game_slots.h" />
+    <ClInclude Include="prey\game_sphere.h" />
+    <ClInclude Include="prey\game_spherepart.h" />
+    <ClInclude Include="prey\game_spring.h" />
+    <ClInclude Include="Prey\game_sunCorona.h" />
+    <ClInclude Include="prey\game_talon.h" />
+    <ClInclude Include="prey\game_targetproxy.h" />
+    <ClInclude Include="prey\game_targets.h" />
+    <ClInclude Include="prey\game_trackmover.h" />
+    <ClInclude Include="prey\game_trigger.h" />
+    <ClInclude Include="prey\game_tripwire.h" />
+    <ClInclude Include="prey\game_utils.h" />
+    <ClInclude Include="prey\game_vehicle.h" />
+    <ClInclude Include="prey\game_vomiter.h" />
+    <ClInclude Include="prey\game_weaponHandState.h" />
+    <ClInclude Include="Prey\game_woundmanager.h" />
+    <ClInclude Include="prey\game_wraith.h" />
+    <ClInclude Include="prey\game_zone.h" />
+    <ClInclude Include="Prey\physics_delta.h" />
+    <ClInclude Include="prey\physics_preyai.h" />
+    <ClInclude Include="prey\physics_preyparametric.h" />
+    <ClInclude Include="prey\physics_simple.h" />
+    <ClInclude Include="prey\physics_vehicle.h" />
+    <ClInclude Include="prey\prey_animator.h" />
+    <ClInclude Include="prey\prey_baseweapons.h" />
+    <ClInclude Include="prey\prey_beam.h" />
+    <ClInclude Include="prey\prey_bonecontroller.h" />
+    <ClInclude Include="prey\prey_camerainterpolator.h" />
+    <ClInclude Include="Prey\prey_firecontroller.h" />
+    <ClInclude Include="prey\prey_game.h" />
+    <ClInclude Include="prey\prey_items.h" />
+    <ClInclude Include="prey\prey_liquid.h" />
+    <ClInclude Include="prey\prey_local.h" />
+    <ClInclude Include="prey\prey_projectile.h" />
+    <ClInclude Include="Prey\prey_projectileautocannon.h" />
+    <ClInclude Include="Prey\prey_projectilebounce.h" />
+    <ClInclude Include="Prey\prey_projectilebug.h" />
+    <ClInclude Include="Prey\prey_projectilebugtrigger.h" />
+    <ClInclude Include="Prey\prey_projectilecocoon.h" />
+    <ClInclude Include="Prey\prey_projectilecrawlergrenade.h" />
+    <ClInclude Include="Prey\prey_projectilefreezer.h" />
+    <ClInclude Include="Prey\prey_projectilegasbagpod.h" />
+    <ClInclude Include="Prey\prey_projectilehiderweapon.h" />
+    <ClInclude Include="Prey\prey_projectilemine.h" />
+    <ClInclude Include="Prey\prey_projectilerifle.h" />
+    <ClInclude Include="Prey\prey_projectilerocketlauncher.h" />
+    <ClInclude Include="Prey\prey_projectileshuttle.h" />
+    <ClInclude Include="Prey\prey_projectilesoulcannon.h" />
+    <ClInclude Include="Prey\prey_projectilespiritarrow.h" />
+    <ClInclude Include="Prey\prey_projectiletracking.h" />
+    <ClInclude Include="Prey\prey_projectiletrigger.h" />
+    <ClInclude Include="Prey\prey_projectilewrench.h" />
+    <ClInclude Include="prey\prey_script_thread.h" />
+    <ClInclude Include="prey\prey_sound.h" />
+    <ClInclude Include="prey\prey_soundleadincontroller.h" />
+    <ClInclude Include="prey\prey_spiritbridge.h" />
+    <ClInclude Include="prey\prey_spiritproxy.h" />
+    <ClInclude Include="Prey\prey_spiritsecret.h" />
+    <ClInclude Include="Prey\prey_vehiclefirecontroller.h" />
+    <ClInclude Include="prey\prey_weaponautocannon.h" />
+    <ClInclude Include="prey\prey_weaponcrawlergrenade.h" />
+    <ClInclude Include="Prey\prey_weaponfirecontroller.h" />
+    <ClInclude Include="Prey\prey_weaponhider.h" />
+    <ClInclude Include="Prey\prey_weaponrifle.h" />
+    <ClInclude Include="prey\prey_weaponrocketlauncher.h" />
+    <ClInclude Include="prey\prey_weaponsoulstripper.h" />
+    <ClInclude Include="Prey\prey_weaponspiritbow.h" />
+    <ClInclude Include="prey\sys_debugger.h" />
+    <ClInclude Include="prey\sys_preycmds.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="game\Game.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\idlib.vcxproj">
+      <Project>{49bec5c6-b964-417a-851e-808886b57400}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

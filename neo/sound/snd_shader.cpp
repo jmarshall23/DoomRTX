@@ -150,7 +150,12 @@ bool idSoundShader::Parse( const char *text, const int textLength ) {
 idSoundShader::ParseShader
 ===============
 */
-bool idSoundShader::ParseShader( idLexer &src ) {
+/*
+===============
+idSoundShader::ParseShader
+===============
+*/
+bool idSoundShader::ParseShader(idLexer& src) {
 	int			i;
 	idToken		token;
 
@@ -161,208 +166,375 @@ bool idSoundShader::ParseShader( idLexer &src ) {
 	parms.soundShaderFlags = 0;
 	parms.soundClass = 0;
 
+#ifdef PREY
+	parms.subIndex = 0;
+	parms.profanityIndex = -1;
+	parms.profanityDelay = 0.0f;
+	parms.profanityDuration = 0.0f;
+#endif
+
 	speakerMask = 0;
 	altSound = NULL;
 
-	for( i = 0; i < SOUND_MAX_LIST_WAVS; i++ ) {
+	for (i = 0; i < SOUND_MAX_LIST_WAVS; i++) {
 		leadins[i] = NULL;
 		entries[i] = NULL;
 	}
+
 	numEntries = 0;
 	numLeadins = 0;
 
-	int	maxSamples = idSoundSystemLocal::s_maxSoundsPerShader.GetInteger();
-	if ( com_makingBuild.GetBool() || maxSamples <= 0 || maxSamples > SOUND_MAX_LIST_WAVS ) {
+	int maxSamples = idSoundSystemLocal::s_maxSoundsPerShader.GetInteger();
+	if (com_makingBuild.GetBool() || maxSamples <= 0 || maxSamples > SOUND_MAX_LIST_WAVS) {
 		maxSamples = SOUND_MAX_LIST_WAVS;
 	}
 
-	while ( 1 ) {
-		if ( !src.ExpectAnyToken( &token ) ) {
+	while (1) {
+		if (!src.ExpectAnyToken(&token)) {
 			return false;
 		}
+
 		// end of definition
-		else if ( token == "}" ) {
+		if (token == "}") {
 			break;
 		}
+
 		// minimum number of sounds
-		else if ( !token.Icmp( "minSamples" ) ) {
-			maxSamples = idMath::ClampInt( src.ParseInt(), SOUND_MAX_LIST_WAVS, maxSamples );
+		else if (!token.Icmp("minSamples")) {
+			maxSamples = idMath::ClampInt(src.ParseInt(), SOUND_MAX_LIST_WAVS, maxSamples);
 		}
+
 		// description
-		else if ( !token.Icmp( "description" ) ) {
-			src.ReadTokenOnLine( &token );
+		else if (!token.Icmp("description")) {
+			src.ReadTokenOnLine(&token);
 			desc = token.c_str();
 		}
+
 		// mindistance
-		else if ( !token.Icmp( "mindistance" ) ) {
+		else if (!token.Icmp("mindistance")) {
 			parms.minDistance = src.ParseFloat();
 		}
+
 		// maxdistance
-		else if ( !token.Icmp( "maxdistance" ) ) {
+		else if (!token.Icmp("maxdistance")) {
 			parms.maxDistance = src.ParseFloat();
 		}
+
 		// shakes screen
-		else if ( !token.Icmp( "shakes" ) ) {
-			src.ExpectAnyToken( &token );
-			if ( token.type == TT_NUMBER ) {
+		else if (!token.Icmp("shakes")) {
+			src.ExpectAnyToken(&token);
+			if (token.type == TT_NUMBER) {
 				parms.shakes = token.GetFloatValue();
-			} else {
-				src.UnreadToken( &token );
+			}
+			else {
+				src.UnreadToken(&token);
 				parms.shakes = 1.0f;
 			}
 		}
-		// reverb
-		else if ( !token.Icmp( "reverb" ) ) {
-			int reg0 = src.ParseFloat();
-			if ( !src.ExpectTokenString( "," ) ) {
+
+		// reverb -- parsed but unsupported
+		else if (!token.Icmp("reverb")) {
+			src.ParseFloat();
+
+			if (!src.ExpectTokenString(",")) {
 				src.FreeSource();
 				return false;
 			}
-			int reg1 = src.ParseFloat();
-			// no longer supported
-		}
-		// volume
-		else if ( !token.Icmp( "volume" ) ) {
-			parms.volume = src.ParseFloat();
-		}
-		// leadinVolume is used to allow light breaking leadin sounds to be much louder than the broken loop
-		else if ( !token.Icmp( "leadinVolume" ) ) {
-			leadinVolume = src.ParseFloat();
-		}
-		// speaker mask
-		else if ( !token.Icmp( "mask_center" ) ) {
-			speakerMask |= 1<<SPEAKER_CENTER;
-		}
-		// speaker mask
-		else if ( !token.Icmp( "mask_left" ) ) {
-			speakerMask |= 1<<SPEAKER_LEFT;
-		}
-		// speaker mask
-		else if ( !token.Icmp( "mask_right" ) ) {
-			speakerMask |= 1<<SPEAKER_RIGHT;
-		}
-		// speaker mask
-		else if ( !token.Icmp( "mask_backright" ) ) {
-			speakerMask |= 1<<SPEAKER_BACKRIGHT;
-		}
-		// speaker mask
-		else if ( !token.Icmp( "mask_backleft" ) ) {
-			speakerMask |= 1<<SPEAKER_BACKLEFT;
-		}
-		// speaker mask
-		else if ( !token.Icmp( "mask_lfe" ) ) {
-			speakerMask |= 1<<SPEAKER_LFE;
-		}
-		// soundClass
-		else if ( !token.Icmp( "soundClass" ) ) {
-			parms.soundClass = src.ParseInt();
-			if ( parms.soundClass < 0 || parms.soundClass >= SOUND_MAX_CLASSES ) {
-				src.Warning( "SoundClass out of range" );
-				return false;
-			}
-		}
-		// altSound
-		else if ( !token.Icmp( "altSound" ) ) {
-			if ( !src.ExpectAnyToken( &token ) ) {
-				return false;
-			}
-			altSound = declManager->FindSound( token.c_str() );
-		}
-		// ordered
-		else if ( !token.Icmp( "ordered" ) ) {
-			// no longer supported
-		}
-		// no_dups
-		else if ( !token.Icmp( "no_dups" ) ) {
-			parms.soundShaderFlags |= SSF_NO_DUPS;
-		}
-		// no_flicker
-		else if ( !token.Icmp( "no_flicker" ) ) {
-			parms.soundShaderFlags |= SSF_NO_FLICKER;
-		}
-		// plain
-		else if ( !token.Icmp( "plain" ) ) {	
-			// no longer supported
-		}
-		// looping
-		else if ( !token.Icmp( "looping" ) ) {
-			parms.soundShaderFlags |= SSF_LOOPING;
-		}
-		// no occlusion
-		else if ( !token.Icmp( "no_occlusion" ) ) {
-			parms.soundShaderFlags |= SSF_NO_OCCLUSION;
-		}
-		// private
-		else if ( !token.Icmp( "private" ) ) {
-			parms.soundShaderFlags |= SSF_PRIVATE_SOUND;
-		}
-		// antiPrivate
-		else if ( !token.Icmp( "antiPrivate" ) ) {
-			parms.soundShaderFlags |= SSF_ANTI_PRIVATE_SOUND;
-		}
-		// once
-		else if ( !token.Icmp( "playonce" ) ) {
-			parms.soundShaderFlags |= SSF_PLAY_ONCE;
-		}
-		// global
-		else if ( !token.Icmp( "global" ) ) {
-			parms.soundShaderFlags |= SSF_GLOBAL;
-		}
-		// unclamped
-		else if ( !token.Icmp( "unclamped" ) ) {
-			parms.soundShaderFlags |= SSF_UNCLAMPED;
-		}
-		// omnidirectional
-		else if ( !token.Icmp( "omnidirectional" ) ) {
-			parms.soundShaderFlags |= SSF_OMNIDIRECTIONAL;
-		}
-		// onDemand can't be a parms, because we must track all references and overrides would confuse it
-		else if ( !token.Icmp( "onDemand" ) ) {
-			// no longer loading sounds on demand
-			//onDemand = true;
+
+			src.ParseFloat();
 		}
 
-		// the wave files
-		else if ( !token.Icmp( "leadin" ) ) {
-			// add to the leadin list
-			if ( !src.ReadToken( &token ) ) {
-				src.Warning( "Expected sound after leadin" );
+		// volume
+		else if (!token.Icmp("volume")) {
+			parms.volume = src.ParseFloat();
+		}
+
+		// leadinVolume is used to allow light breaking leadin sounds to be much louder than the broken loop
+		else if (!token.Icmp("leadinVolume")) {
+			leadinVolume = src.ParseFloat();
+		}
+
+		// speaker masks
+		else if (!token.Icmp("mask_center")) {
+			speakerMask |= 1 << SPEAKER_CENTER;
+		}
+		else if (!token.Icmp("mask_left")) {
+			speakerMask |= 1 << SPEAKER_LEFT;
+		}
+		else if (!token.Icmp("mask_right")) {
+			speakerMask |= 1 << SPEAKER_RIGHT;
+		}
+		else if (!token.Icmp("mask_backright")) {
+			speakerMask |= 1 << SPEAKER_BACKRIGHT;
+		}
+		else if (!token.Icmp("mask_backleft")) {
+			speakerMask |= 1 << SPEAKER_BACKLEFT;
+		}
+		else if (!token.Icmp("mask_lfe")) {
+			speakerMask |= 1 << SPEAKER_LFE;
+		}
+
+		// soundClass
+		else if (!token.Icmp("soundClass")) {
+#ifdef PREY
+			if (!src.ReadToken(&token)) {
+				src.Warning("Expected classname after soundClass");
 				return false;
 			}
-			if ( soundSystemLocal.soundCache && numLeadins < maxSamples ) {
-				leadins[ numLeadins ] = soundSystemLocal.soundCache->FindSound( token.c_str(), onDemand );
+
+			if (!token.Icmp("SC_NORMAL")) {
+				parms.soundClass = SOUNDCLASS_NORMAL;
+			}
+			else if (!token.Icmp("SC_VOICEDUCKER")) {
+				parms.soundClass = SOUNDCLASS_VOICEDUCKER;
+			}
+			else if (!token.Icmp("SC_SPIRIT")) {
+				parms.soundClass = SOUNDCLASS_SPIRITWALK;
+			}
+			else if (!token.Icmp("SC_VOICE")) {
+				parms.soundClass = SOUNDCLASS_VOICE;
+			}
+			else if (!token.Icmp("SC_MUSIC")) {
+				parms.soundClass = SOUNDCLASS_MUSIC;
+			}
+			else {
+				src.Warning("SoundClass takes args of SC_NORMAL, SC_SPIRIT, SC_VOICE, SC_VOICEDUCKER");
+				return false;
+			}
+#else
+			parms.soundClass = src.ParseInt();
+			if (parms.soundClass < 0 || parms.soundClass >= SOUND_MAX_CLASSES) {
+				src.Warning("SoundClass out of range");
+				return false;
+			}
+#endif
+		}
+
+		// altSound
+		else if (!token.Icmp("altSound")) {
+			if (!src.ExpectAnyToken(&token)) {
+				return false;
+			}
+			altSound = declManager->FindSound(token.c_str());
+		}
+
+		// ordered -- unsupported
+		else if (!token.Icmp("ordered")) {
+		}
+
+		// no_dups
+		else if (!token.Icmp("no_dups")) {
+			parms.soundShaderFlags |= SSF_NO_DUPS;
+		}
+
+		// no_flicker
+		else if (!token.Icmp("no_flicker")) {
+			parms.soundShaderFlags |= SSF_NO_FLICKER;
+		}
+
+		// plain -- unsupported
+		else if (!token.Icmp("plain")) {
+		}
+
+		// looping
+		else if (!token.Icmp("looping")) {
+			parms.soundShaderFlags |= SSF_LOOPING;
+		}
+
+		// no occlusion
+		else if (!token.Icmp("no_occlusion")) {
+			parms.soundShaderFlags |= SSF_NO_OCCLUSION;
+		}
+
+#ifdef PREY
+		// HumanHead/Prey: no game portal sound flow
+		else if (!token.Icmp("noportalflow")) {
+#if GAMEPORTAL_SOUND
+			parms.soundShaderFlags |= SSF_NOPORTALFLOW;
+#endif
+		}
+
+		// HumanHead/Prey: no reverb
+		else if (!token.Icmp("noreverb")) {
+			parms.soundShaderFlags |= SSF_NOREVERB;
+		}
+
+		// HumanHead/Prey: include this shader in voice amplitude queries
+		else if (!token.Icmp("jawflap")) {
+			parms.soundShaderFlags |= SSF_VOICEAMPLITUDE;
+		}
+
+		// HumanHead/Prey: become omni when inside minDistance
+		else if (!token.Icmp("omniwhenclose")) {
+			parms.soundShaderFlags |= SSF_OMNI_WHEN_CLOSE;
+		}
+#endif
+
+		// private
+		else if (!token.Icmp("private")) {
+			parms.soundShaderFlags |= SSF_PRIVATE_SOUND;
+		}
+
+		// antiPrivate
+		else if (!token.Icmp("antiPrivate")) {
+			parms.soundShaderFlags |= SSF_ANTI_PRIVATE_SOUND;
+		}
+
+		// once
+		else if (!token.Icmp("playonce")) {
+			parms.soundShaderFlags |= SSF_PLAY_ONCE;
+		}
+
+		// global
+		else if (!token.Icmp("global")) {
+			parms.soundShaderFlags |= SSF_GLOBAL;
+		}
+
+		// unclamped
+		else if (!token.Icmp("unclamped")) {
+			parms.soundShaderFlags |= SSF_UNCLAMPED;
+		}
+
+		// omnidirectional
+		else if (!token.Icmp("omnidirectional")) {
+			parms.soundShaderFlags |= SSF_OMNIDIRECTIONAL;
+		}
+
+		// onDemand can't be a parms, because we must track all references and overrides would confuse it
+		else if (!token.Icmp("onDemand")) {
+			// no longer loading sounds on demand
+			// onDemand = true;
+		}
+
+#ifdef PREY
+		// HumanHead/Prey: profanity bleep data
+		else if (!token.Icmp("bleep")) {
+			parms.profanityIndex = src.ParseInt();
+			parms.profanityDelay = src.ParseFloat();
+			parms.profanityDuration = src.ParseFloat();
+		}
+
+		// HumanHead/Prey: subtitle / subtitlecombat parser
+		//
+		// Supported examples based on the decompiled parser:
+		//   subtitle 1.5 "text"
+		//   subtitle2 c1 1.5 "text"
+		//   subtitlecombat c2 0.25 "combat text"
+		//   subtitlecombat3 c4 2.0 "combat text"
+		else if (!token.Icmpn("subtitle", 8)) {
+			const bool combatSubtitle = (token.Icmpn("subtitlecombat", 14) == 0);
+
+			const char* numText;
+			if (combatSubtitle) {
+				numText = token.c_str() + 14;
+			}
+			else {
+				numText = token.c_str() + 8;
+			}
+
+			const int subNum = (numText[0] != '\0') ? atoi(numText) : 1;
+
+			if (!src.ReadToken(&token)) {
+				src.Warning("Expected time after subtext");
+				return false;
+			}
+
+			int subChannel = 0;
+
+			if (token.c_str()[0] == 'c' || token.c_str()[0] == 'C') {
+				const int channelNumber = atoi(token.c_str() + 1);
+				subChannel = channelNumber - 1;
+
+				if (subChannel < 0 || subChannel >= MAX_SUBTITLE_CHANNELS) {
+					src.Warning("Value '%i' is out of range for MAX_SUBTITLE_CHANNELS.", channelNumber);
+					return false;
+				}
+
+				if (!src.ReadToken(&token)) {
+					src.Warning("Expected time after subtitle channel");
+					return false;
+				}
+			}
+
+			const float subTime = atof(token.c_str());
+
+			if (!src.ReadToken(&token)) {
+				src.Warning("Expected text after subtext and time");
+				return false;
+			}
+
+			if (combatSubtitle) {
+				subChannel += 3;
+			}
+
+			if (parms.subIndex == 0) {
+				parms.subIndex = soundSystemLocal.GetSubtitleIndex(GetName());
+			}
+
+			soundSystemLocal.SetSubtitleData(parms.subIndex, subNum, token.c_str(), subTime, subChannel);
+		}
+#endif
+
+		// the leadin wave files
+		else if (!token.Icmp("leadin")) {
+			if (!src.ReadToken(&token)) {
+				src.Warning("Expected sound after leadin");
+				return false;
+			}
+
+			if (soundSystemLocal.soundCache && numLeadins < maxSamples) {
+#ifdef PREY
+				// Prey behavior: do not run the Doom 3 VO language substitution path here.
+				leadins[numLeadins] = soundSystemLocal.soundCache->FindSound(token.c_str(), onDemand);
+#else
+				leadins[numLeadins] = soundSystemLocal.soundCache->FindSound(token.c_str(), onDemand);
+#endif
 				numLeadins++;
 			}
-		} else if ( token.Find( ".wav", false ) != -1 || token.Find( ".ogg", false ) != -1 ) {
-			// add to the wav list
-			if ( soundSystemLocal.soundCache && numEntries < maxSamples ) {
+		}
+
+		// the regular wave files
+		else if (token.Find(".wav", false) != -1 || token.Find(".ogg", false) != -1) {
+			if (soundSystemLocal.soundCache && numEntries < maxSamples) {
 				token.BackSlashesToSlashes();
-				idStr lang = cvarSystem->GetCVarString( "sys_lang" );
-				if ( lang.Icmp( "english" ) != 0 && token.Find( "sound/vo/", false ) >= 0 ) {
+
+#ifdef PREY
+				// Prey behavior grabs sys_lang but does not do Doom 3's
+				// sound/vo/<lang>/ replacement lookup before FindSound.
+				idStr lang = cvarSystem->GetCVarString("sys_lang");
+#else
+				idStr lang = cvarSystem->GetCVarString("sys_lang");
+				if (lang.Icmp("english") != 0 && token.Find("sound/vo/", false) >= 0) {
 					idStr work = token;
 					work.ToLower();
-					work.StripLeading( "sound/vo/" );
-					work = va( "sound/vo/%s/%s", lang.c_str(), work.c_str() );
-					if ( fileSystem->ReadFile( work, NULL, NULL ) > 0 ) {
+					work.StripLeading("sound/vo/");
+					work = va("sound/vo/%s/%s", lang.c_str(), work.c_str());
+
+					if (fileSystem->ReadFile(work, NULL, NULL) > 0) {
 						token = work;
-					} else {
+					}
+					else {
 						// also try to find it with the .ogg extension
-						work.SetFileExtension( ".ogg" );
-						if ( fileSystem->ReadFile( work, NULL, NULL ) > 0 ) {
+						work.SetFileExtension(".ogg");
+						if (fileSystem->ReadFile(work, NULL, NULL) > 0) {
 							token = work;
 						}
 					}
-				} 					
-				entries[ numEntries ] = soundSystemLocal.soundCache->FindSound( token.c_str(), onDemand );
+				}
+#endif
+
+				entries[numEntries] = soundSystemLocal.soundCache->FindSound(token.c_str(), onDemand);
 				numEntries++;
 			}
-		} else {
-			src.Warning( "unknown token '%s'", token.c_str() );
+		}
+
+		else {
+			src.Warning("unknown token '%s'", token.c_str());
 			return false;
 		}
 	}
 
-	if ( parms.shakes > 0.0f ) {
+	if (parms.shakes > 0.0f) {
 		CheckShakesAndOgg();
 	}
 

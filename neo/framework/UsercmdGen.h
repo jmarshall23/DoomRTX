@@ -44,9 +44,15 @@ const int USERCMD_MSEC			= 1000 / USERCMD_HZ;
 const int BUTTON_ATTACK			= BIT(0);
 const int BUTTON_RUN			= BIT(1);
 const int BUTTON_ZOOM			= BIT(2);
+#ifdef PREY
+const int BUTTON_ATTACK_ALT		= BIT(3);
+const int BUTTON_SCORES			= BIT(4);
+const int BUTTON_MLOOK			= BIT(5);
+#else
 const int BUTTON_SCORES			= BIT(3);
 const int BUTTON_MLOOK			= BIT(4);
 const int BUTTON_5				= BIT(5);
+#endif
 const int BUTTON_6				= BIT(6);
 const int BUTTON_7				= BIT(7);
 
