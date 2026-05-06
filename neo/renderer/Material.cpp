@@ -1149,368 +1149,458 @@ An open brace has been parsed
 
 =================
 */
-void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
+void idMaterial::ParseStage(idLexer& src, const textureRepeat_t trpDefault) {
 	idToken				token;
-	const char			*str;
-	shaderStage_t		*ss;
-	textureStage_t		*ts;
+	const char* str;
+	shaderStage_t* ss;
+	textureStage_t* ts;
 	textureFilter_t		tf;
 	textureRepeat_t		trp;
 	textureDepth_t		td;
 	cubeFiles_t			cubeMap;
 	bool				allowPicmip;
+#ifdef PREY
+	bool				highres;
+	bool				preyTokenOnlyStage;
+#endif
 	char				imageName[MAX_IMAGE_NAME];
 	int					a, b;
 	int					matrix[2][3];
 	newShaderStage_t	newStage;
 
-	if ( numStages >= MAX_SHADER_STAGES ) {
-		SetMaterialFlag( MF_DEFAULTED );
-		common->Warning( "material '%s' exceeded %i stages", GetName(), MAX_SHADER_STAGES );
+	if (numStages >= MAX_SHADER_STAGES) {
+		SetMaterialFlag(MF_DEFAULTED);
+		common->Warning("material '%s' exceeded %i stages", GetName(), MAX_SHADER_STAGES);
 	}
 
 	tf = TF_DEFAULT;
 	trp = trpDefault;
 	td = TD_DEFAULT;
 	allowPicmip = true;
+#ifdef PREY
+	highres = false;
+	preyTokenOnlyStage = false;
+#endif
 	cubeMap = CF_2D;
 
 	imageName[0] = 0;
 
-	memset( &newStage, 0, sizeof( newStage ) );
+	memset(&newStage, 0, sizeof(newStage));
 
 	ss = &pd->parseStages[numStages];
 	ts = &ss->texture;
 
-	ClearStage( ss );
+	ClearStage(ss);
+#ifdef PREY
+	ss->isGlow = false;
+	ss->isScopeView = false;
+	ss->isShuttleView = false;
+	ss->isNotScopeView = false;
+	ss->isSpiritWalk = false;
+	ss->isNotSpiritWalk = false;
+	ss->specular.exponent = 22.0f;
+	ss->specular.brightness = 1.4f;
+#endif
 
-	while ( 1 ) {
-		if ( TestMaterialFlag( MF_DEFAULTED ) ) {	// we have a parse error
+	while (1) {
+		if (TestMaterialFlag(MF_DEFAULTED)) {	// we have a parse error
 			return;
 		}
-		if ( !src.ExpectAnyToken( &token ) ) {
-			SetMaterialFlag( MF_DEFAULTED );
+		if (!src.ExpectAnyToken(&token)) {
+			SetMaterialFlag(MF_DEFAULTED);
 			return;
 		}
 
 		// the close brace for the entire material ends the draw block
-		if ( token == "}" ) {
+		if (token == "}") {
 			break;
 		}
 
 		//BSM Nerve: Added for stage naming in the material editor
-		if( !token.Icmp( "name") ) {
+		if (!token.Icmp("name")) {
 			src.SkipRestOfLine();
 			continue;
 		}
 
 		// image options
-		if ( !token.Icmp( "blend" ) ) {
-			ParseBlend( src, ss );
+		if (!token.Icmp("blend")) {
+			ParseBlend(src, ss);
 			continue;
 		}
 
-		if (  !token.Icmp( "map" ) ) {
-			str = R_ParsePastImageProgram( src );
-			idStr::Copynz( imageName, str, sizeof( imageName ) );
+		if (!token.Icmp("map")) {
+			str = R_ParsePastImageProgram(src);
+			idStr::Copynz(imageName, str, sizeof(imageName));
 			continue;
 		}
 
-		if (  !token.Icmp( "remoteRenderMap" ) ) {
+		if (!token.Icmp("remoteRenderMap")) {
 			ts->dynamic = DI_REMOTE_RENDER;
 			ts->width = src.ParseInt();
 			ts->height = src.ParseInt();
 			continue;
 		}
 
-		if (  !token.Icmp( "mirrorRenderMap" ) ) {
+		if (!token.Icmp("mirrorRenderMap")) {
 			ts->dynamic = DI_MIRROR_RENDER;
 			ts->width = src.ParseInt();
 			ts->height = src.ParseInt();
 			ts->texgen = TG_SCREEN;
 			continue;
 		}
+#ifdef PREY
+		if (!token.Icmp("portalRenderMap")) {
+			ts->dynamic = DI_PORTAL_RENDER;
+			ts->width = src.ParseInt();
+			ts->height = src.ParseInt();
+			ts->texgen = TG_SCREEN;
+			continue;
+		}
+		if (!token.Icmp("skyboxRenderMap")) {
+			ts->dynamic = DI_SKYBOX_RENDER;
+			ts->width = src.ParseInt();
+			ts->height = src.ParseInt();
+			ts->texgen = TG_SCREEN;
+			continue;
+		}
+#endif
 
-		if (  !token.Icmp( "xrayRenderMap" ) ) {
+		if (!token.Icmp("xrayRenderMap")) {
 			ts->dynamic = DI_XRAY_RENDER;
 			ts->width = src.ParseInt();
 			ts->height = src.ParseInt();
 			ts->texgen = TG_SCREEN;
 			continue;
 		}
-		if (  !token.Icmp( "screen" ) ) {
+		if (!token.Icmp("screen")) {
 			ts->texgen = TG_SCREEN;
 			continue;
 		}
-		if (  !token.Icmp( "screen2" ) ) {
+		if (!token.Icmp("screen2")) {
 			ts->texgen = TG_SCREEN2;
 			continue;
 		}
-		if (  !token.Icmp( "glassWarp" ) ) {
+		if (!token.Icmp("glassWarp")) {
 			ts->texgen = TG_GLASSWARP;
 			continue;
 		}
 
-		if ( !token.Icmp( "videomap" ) ) {
+		if (!token.Icmp("videomap")) {
 			// note that videomaps will always be in clamp mode, so texture
 			// coordinates had better be in the 0 to 1 range
-			if ( !src.ReadToken( &token ) ) {
-				common->Warning( "missing parameter for 'videoMap' keyword in material '%s'", GetName() );
+			if (!src.ReadToken(&token)) {
+				common->Warning("missing parameter for 'videoMap' keyword in material '%s'", GetName());
 				continue;
 			}
 			bool loop = false;
-			if ( !token.Icmp( "loop" ) ) {
+			if (!token.Icmp("loop")) {
 				loop = true;
-				if ( !src.ReadToken( &token ) ) {
-					common->Warning( "missing parameter for 'videoMap' keyword in material '%s'", GetName() );
+				if (!src.ReadToken(&token)) {
+					common->Warning("missing parameter for 'videoMap' keyword in material '%s'", GetName());
 					continue;
 				}
 			}
 			ts->cinematic = idCinematic::Alloc();
-			ts->cinematic->InitFromFile( token.c_str(), loop );
+			ts->cinematic->InitFromFile(token.c_str(), loop);
 			continue;
 		}
 
-		if ( !token.Icmp( "soundmap" ) ) {
-			if ( !src.ReadToken( &token ) ) {
-				common->Warning( "missing parameter for 'soundmap' keyword in material '%s'", GetName() );
+		if (!token.Icmp("soundmap")) {
+			if (!src.ReadToken(&token)) {
+				common->Warning("missing parameter for 'soundmap' keyword in material '%s'", GetName());
 				continue;
 			}
 			ts->cinematic = new idSndWindow();
-			ts->cinematic->InitFromFile( token.c_str(), true );
+			ts->cinematic->InitFromFile(token.c_str(), true);
 			continue;
 		}
+#ifdef PREY
+		if (!token.Icmp("profilemap")) {
+			if (!src.ReadToken(&token)) {
+				common->Warning("missing parameter for 'profilemap' keyword in material '%s'", GetName());
+				continue;
+			}
+			// Prey creates an hhProfilerGraph cinematic here.  Consume the token so
+			// retail Prey materials parse even in builds without that runtime class.
+			preyTokenOnlyStage = true;
+			continue;
+		}
+#endif
 
-		if ( !token.Icmp( "cubeMap" ) ) {
-			str = R_ParsePastImageProgram( src );
-			idStr::Copynz( imageName, str, sizeof( imageName ) );
+		if (!token.Icmp("cubeMap")) {
+			str = R_ParsePastImageProgram(src);
+			idStr::Copynz(imageName, str, sizeof(imageName));
 			cubeMap = CF_NATIVE;
 			continue;
 		}
 
-		if ( !token.Icmp( "cameraCubeMap" ) ) {
-			str = R_ParsePastImageProgram( src );
-			idStr::Copynz( imageName, str, sizeof( imageName ) );
+		if (!token.Icmp("cameraCubeMap")) {
+			str = R_ParsePastImageProgram(src);
+			idStr::Copynz(imageName, str, sizeof(imageName));
 			cubeMap = CF_CAMERA;
 			continue;
 		}
 
-		if ( !token.Icmp( "ignoreAlphaTest" ) ) {
+		if (!token.Icmp("ignoreAlphaTest")) {
 			ss->ignoreAlphaTest = true;
 			continue;
 		}
-		if ( !token.Icmp( "nearest" ) ) {
+		if (!token.Icmp("nearest")) {
 			tf = TF_NEAREST;
 			continue;
 		}
-		if ( !token.Icmp( "linear" ) ) {
+		if (!token.Icmp("linear")) {
 			tf = TF_LINEAR;
 			continue;
 		}
-		if ( !token.Icmp( "clamp" ) ) {
+		if (!token.Icmp("clamp")) {
 			trp = TR_CLAMP;
 			continue;
 		}
-		if ( !token.Icmp( "noclamp" ) ) {
+		if (!token.Icmp("noclamp")) {
 			trp = TR_REPEAT;
 			continue;
 		}
-		if ( !token.Icmp( "zeroclamp" ) ) {
+		if (!token.Icmp("zeroclamp")) {
 			trp = TR_CLAMP_TO_ZERO;
 			continue;
 		}
-		if ( !token.Icmp( "alphazeroclamp" ) ) {
+		if (!token.Icmp("alphazeroclamp")) {
 			trp = TR_CLAMP_TO_ZERO_ALPHA;
 			continue;
 		}
-		if ( !token.Icmp( "uncompressed" ) || !token.Icmp( "highquality" ) ) {
-			if ( !globalImages->image_ignoreHighQuality.GetInteger() ) {
+		if (!token.Icmp("uncompressed") || !token.Icmp("highquality")) {
+			if (!globalImages->image_ignoreHighQuality.GetInteger()) {
 				td = TD_HIGH_QUALITY;
 			}
 			continue;
 		}
-		if ( !token.Icmp( "forceHighQuality" ) ) {
+		if (!token.Icmp("forceHighQuality")) {
 			td = TD_HIGH_QUALITY;
 			continue;
 		}
-		if ( !token.Icmp( "nopicmip" ) ) {
+		if (!token.Icmp("nopicmip")) {
 			allowPicmip = false;
 			continue;
 		}
-		if ( !token.Icmp( "vertexColor" ) ) {
+#ifdef PREY
+		if (!token.Icmp("highres")) {
+			// The Hex-Rays build records this and passes it to Prey's image manager.
+			// This Doom 3-side patch only needs to accept the token safely.
+			highres = true;
+			continue;
+		}
+#endif
+		if (!token.Icmp("vertexColor")) {
 			ss->vertexColor = SVC_MODULATE;
 			continue;
 		}
-		if ( !token.Icmp( "inverseVertexColor" ) ) {
+		if (!token.Icmp("inverseVertexColor")) {
 			ss->vertexColor = SVC_INVERSE_MODULATE;
 			continue;
 		}
 
 		// privatePolygonOffset
-		else if ( !token.Icmp( "privatePolygonOffset" ) ) {
-			if ( !src.ReadTokenOnLine( &token ) ) {
+		else if (!token.Icmp("privatePolygonOffset")) {
+			if (!src.ReadTokenOnLine(&token)) {
 				ss->privatePolygonOffset = 1;
 				continue;
 			}
 			// explict larger (or negative) offset
-			src.UnreadToken( &token );
+			src.UnreadToken(&token);
 			ss->privatePolygonOffset = src.ParseFloat();
 			continue;
 		}
 
+#ifdef PREY
+		if (!token.Icmp("glowStage")) {
+			ss->isGlow = true;
+			continue;
+		}
+		if (!token.Icmp("scopeView")) {
+			ss->isScopeView = true;
+			continue;
+		}
+		if (!token.Icmp("shuttleView")) {
+			ss->isShuttleView = true;
+			continue;
+		}
+		if (!token.Icmp("notScopeView")) {
+			ss->isNotScopeView = true;
+			continue;
+		}
+		if (!token.Icmp("spiritWalk")) {
+			ss->isSpiritWalk = true;
+			continue;
+		}
+		if (!token.Icmp("notSpiritWalk")) {
+			ss->isNotSpiritWalk = true;
+			continue;
+		}
+#endif
+
 		// texture coordinate generation
-		if ( !token.Icmp( "texGen" ) ) {
-			src.ExpectAnyToken( &token );
-			if ( !token.Icmp( "normal" ) ) {
+		if (!token.Icmp("texGen")) {
+			src.ExpectAnyToken(&token);
+			if (!token.Icmp("normal")) {
 				ts->texgen = TG_DIFFUSE_CUBE;
-			} else if ( !token.Icmp( "reflect" ) ) {
+			}
+			else if (!token.Icmp("reflect")) {
 				ts->texgen = TG_REFLECT_CUBE;
-			} else if ( !token.Icmp( "skybox" ) ) {
+			}
+			else if (!token.Icmp("skybox")) {
 				ts->texgen = TG_SKYBOX_CUBE;
-			} else if ( !token.Icmp( "wobbleSky" ) ) {
+			}
+			else if (!token.Icmp("wobbleSky")) {
 				ts->texgen = TG_WOBBLESKY_CUBE;
-				texGenRegisters[0] = ParseExpression( src );
-				texGenRegisters[1] = ParseExpression( src );
-				texGenRegisters[2] = ParseExpression( src );
-			} else {
-				common->Warning( "bad texGen '%s' in material %s", token.c_str(), GetName() );
-				SetMaterialFlag( MF_DEFAULTED );
+				texGenRegisters[0] = ParseExpression(src);
+				texGenRegisters[1] = ParseExpression(src);
+				texGenRegisters[2] = ParseExpression(src);
+#ifdef PREY
+			}
+			else if (!token.Icmp("screen")) {
+				ts->texgen = TG_SCREEN;
+#endif
+			}
+			else {
+				common->Warning("bad texGen '%s' in material %s", token.c_str(), GetName());
+				SetMaterialFlag(MF_DEFAULTED);
 			}
 			continue;
 		}
-		if ( !token.Icmp( "scroll" ) || !token.Icmp( "translate" ) ) {
-			a = ParseExpression( src );
-			MatchToken( src, "," );
-			b = ParseExpression( src );
-			matrix[0][0] = GetExpressionConstant( 1 );
-			matrix[0][1] = GetExpressionConstant( 0 );
+		if (!token.Icmp("scroll") || !token.Icmp("translate")) {
+			a = ParseExpression(src);
+			MatchToken(src, ",");
+			b = ParseExpression(src);
+			matrix[0][0] = GetExpressionConstant(1);
+			matrix[0][1] = GetExpressionConstant(0);
 			matrix[0][2] = a;
-			matrix[1][0] = GetExpressionConstant( 0 );
-			matrix[1][1] = GetExpressionConstant( 1 );
+			matrix[1][0] = GetExpressionConstant(0);
+			matrix[1][1] = GetExpressionConstant(1);
 			matrix[1][2] = b;
 
-			MultiplyTextureMatrix( ts, matrix );
+			MultiplyTextureMatrix(ts, matrix);
 			continue;
 		}
-		if ( !token.Icmp( "scale" ) ) {
-			a = ParseExpression( src );
-			MatchToken( src, "," );
-			b = ParseExpression( src );
+		if (!token.Icmp("scale")) {
+			a = ParseExpression(src);
+			MatchToken(src, ",");
+			b = ParseExpression(src);
 			// this just scales without a centering
 			matrix[0][0] = a;
-			matrix[0][1] = GetExpressionConstant( 0 );
-			matrix[0][2] = GetExpressionConstant( 0 );
-			matrix[1][0] = GetExpressionConstant( 0 );
+			matrix[0][1] = GetExpressionConstant(0);
+			matrix[0][2] = GetExpressionConstant(0);
+			matrix[1][0] = GetExpressionConstant(0);
 			matrix[1][1] = b;
-			matrix[1][2] = GetExpressionConstant( 0 );
+			matrix[1][2] = GetExpressionConstant(0);
 
-			MultiplyTextureMatrix( ts, matrix );
+			MultiplyTextureMatrix(ts, matrix);
 			continue;
 		}
-		if ( !token.Icmp( "centerScale" ) ) {
-			a = ParseExpression( src );
-			MatchToken( src, "," );
-			b = ParseExpression( src );
+		if (!token.Icmp("centerScale")) {
+			a = ParseExpression(src);
+			MatchToken(src, ",");
+			b = ParseExpression(src);
 			// this subtracts 0.5, then scales, then adds 0.5
 			matrix[0][0] = a;
-			matrix[0][1] = GetExpressionConstant( 0 );
-			matrix[0][2] = EmitOp( GetExpressionConstant( 0.5 ), EmitOp( GetExpressionConstant( 0.5 ), a, OP_TYPE_MULTIPLY ), OP_TYPE_SUBTRACT );
-			matrix[1][0] = GetExpressionConstant( 0 );
+			matrix[0][1] = GetExpressionConstant(0);
+			matrix[0][2] = EmitOp(GetExpressionConstant(0.5), EmitOp(GetExpressionConstant(0.5), a, OP_TYPE_MULTIPLY), OP_TYPE_SUBTRACT);
+			matrix[1][0] = GetExpressionConstant(0);
 			matrix[1][1] = b;
-			matrix[1][2] = EmitOp( GetExpressionConstant( 0.5 ), EmitOp( GetExpressionConstant( 0.5 ), b, OP_TYPE_MULTIPLY ), OP_TYPE_SUBTRACT );
+			matrix[1][2] = EmitOp(GetExpressionConstant(0.5), EmitOp(GetExpressionConstant(0.5), b, OP_TYPE_MULTIPLY), OP_TYPE_SUBTRACT);
 
-			MultiplyTextureMatrix( ts, matrix );
+			MultiplyTextureMatrix(ts, matrix);
 			continue;
 		}
-		if ( !token.Icmp( "shear" ) ) {
-			a = ParseExpression( src );
-			MatchToken( src, "," );
-			b = ParseExpression( src );
+		if (!token.Icmp("shear")) {
+			a = ParseExpression(src);
+			MatchToken(src, ",");
+			b = ParseExpression(src);
 			// this subtracts 0.5, then shears, then adds 0.5
-			matrix[0][0] = GetExpressionConstant( 1 );
+			matrix[0][0] = GetExpressionConstant(1);
 			matrix[0][1] = a;
-			matrix[0][2] = EmitOp( GetExpressionConstant( -0.5 ), a, OP_TYPE_MULTIPLY );
+			matrix[0][2] = EmitOp(GetExpressionConstant(-0.5), a, OP_TYPE_MULTIPLY);
 			matrix[1][0] = b;
-			matrix[1][1] = GetExpressionConstant( 1 );
-			matrix[1][2] = EmitOp( GetExpressionConstant( -0.5 ), b, OP_TYPE_MULTIPLY );
+			matrix[1][1] = GetExpressionConstant(1);
+			matrix[1][2] = EmitOp(GetExpressionConstant(-0.5), b, OP_TYPE_MULTIPLY);
 
-			MultiplyTextureMatrix( ts, matrix );
+			MultiplyTextureMatrix(ts, matrix);
 			continue;
 		}
-		if ( !token.Icmp( "rotate" ) ) {
-			const idDeclTable *table;
+		if (!token.Icmp("rotate")) {
+			const idDeclTable* table;
 			int		sinReg, cosReg;
 
 			// in cycles
-			a = ParseExpression( src );
+			a = ParseExpression(src);
 
-			table = static_cast<const idDeclTable *>( declManager->FindType( DECL_TABLE, "sinTable", false ) );
-			if ( !table ) {
-				common->Warning( "no sinTable for rotate defined" );
-				SetMaterialFlag( MF_DEFAULTED );
+			table = static_cast<const idDeclTable*>(declManager->FindType(DECL_TABLE, "sinTable", false));
+			if (!table) {
+				common->Warning("no sinTable for rotate defined");
+				SetMaterialFlag(MF_DEFAULTED);
 				return;
 			}
-			sinReg = EmitOp( table->Index(), a, OP_TYPE_TABLE );
+			sinReg = EmitOp(table->Index(), a, OP_TYPE_TABLE);
 
-			table = static_cast<const idDeclTable *>( declManager->FindType( DECL_TABLE, "cosTable", false ) );
-			if ( !table ) {
-				common->Warning( "no cosTable for rotate defined" );
-				SetMaterialFlag( MF_DEFAULTED );
+			table = static_cast<const idDeclTable*>(declManager->FindType(DECL_TABLE, "cosTable", false));
+			if (!table) {
+				common->Warning("no cosTable for rotate defined");
+				SetMaterialFlag(MF_DEFAULTED);
 				return;
 			}
-			cosReg = EmitOp( table->Index(), a, OP_TYPE_TABLE );
+			cosReg = EmitOp(table->Index(), a, OP_TYPE_TABLE);
 
 			// this subtracts 0.5, then rotates, then adds 0.5
 			matrix[0][0] = cosReg;
-			matrix[0][1] = EmitOp( GetExpressionConstant( 0 ), sinReg, OP_TYPE_SUBTRACT );
-			matrix[0][2] = EmitOp( EmitOp( EmitOp( GetExpressionConstant( -0.5 ), cosReg, OP_TYPE_MULTIPLY ), 
-										EmitOp( GetExpressionConstant( 0.5 ), sinReg, OP_TYPE_MULTIPLY ), OP_TYPE_ADD ),
-										GetExpressionConstant( 0.5 ), OP_TYPE_ADD );
+			matrix[0][1] = EmitOp(GetExpressionConstant(0), sinReg, OP_TYPE_SUBTRACT);
+			matrix[0][2] = EmitOp(EmitOp(EmitOp(GetExpressionConstant(-0.5), cosReg, OP_TYPE_MULTIPLY),
+				EmitOp(GetExpressionConstant(0.5), sinReg, OP_TYPE_MULTIPLY), OP_TYPE_ADD),
+				GetExpressionConstant(0.5), OP_TYPE_ADD);
 
 			matrix[1][0] = sinReg;
 			matrix[1][1] = cosReg;
-			matrix[1][2] = EmitOp( EmitOp( EmitOp( GetExpressionConstant( -0.5 ), sinReg, OP_TYPE_MULTIPLY ), 
-										EmitOp( GetExpressionConstant( -0.5 ), cosReg, OP_TYPE_MULTIPLY ), OP_TYPE_ADD ),
-										GetExpressionConstant( 0.5 ), OP_TYPE_ADD );
+			matrix[1][2] = EmitOp(EmitOp(EmitOp(GetExpressionConstant(-0.5), sinReg, OP_TYPE_MULTIPLY),
+				EmitOp(GetExpressionConstant(-0.5), cosReg, OP_TYPE_MULTIPLY), OP_TYPE_ADD),
+				GetExpressionConstant(0.5), OP_TYPE_ADD);
 
-			MultiplyTextureMatrix( ts, matrix );
+			MultiplyTextureMatrix(ts, matrix);
 			continue;
 		}
 
 		// color mask options
-		if ( !token.Icmp( "maskRed" ) ) {
+		if (!token.Icmp("maskRed")) {
 			ss->drawStateBits |= GLS_REDMASK;
 			continue;
-		}		
-		if ( !token.Icmp( "maskGreen" ) ) {
+		}
+		if (!token.Icmp("maskGreen")) {
 			ss->drawStateBits |= GLS_GREENMASK;
 			continue;
-		}		
-		if ( !token.Icmp( "maskBlue" ) ) {
+		}
+		if (!token.Icmp("maskBlue")) {
 			ss->drawStateBits |= GLS_BLUEMASK;
 			continue;
-		}		
-		if ( !token.Icmp( "maskAlpha" ) ) {
+		}
+		if (!token.Icmp("maskAlpha")) {
 			ss->drawStateBits |= GLS_ALPHAMASK;
 			continue;
-		}		
-		if ( !token.Icmp( "maskColor" ) ) {
+		}
+		if (!token.Icmp("maskColor")) {
 			ss->drawStateBits |= GLS_COLORMASK;
 			continue;
-		}		
-		if ( !token.Icmp( "maskDepth" ) ) {
+		}
+		if (!token.Icmp("maskDepth")) {
 			ss->drawStateBits |= GLS_DEPTHMASK;
 			continue;
-		}		
-		if ( !token.Icmp( "alphaTest" ) ) {
+		}
+		if (!token.Icmp("alphaTest")) {
 			ss->hasAlphaTest = true;
-			ss->alphaTestRegister = ParseExpression( src );
+			ss->alphaTestRegister = ParseExpression(src);
 			coverage = MC_PERFORATED;
 			continue;
-		}		
+		}
 
 		// shorthand for 2D modulated
-		if ( !token.Icmp( "colored" ) ) {
+		if (!token.Icmp("colored")) {
 			ss->color.registers[0] = EXP_REG_PARM0;
 			ss->color.registers[1] = EXP_REG_PARM1;
 			ss->color.registers[2] = EXP_REG_PARM2;
@@ -1519,58 +1609,110 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 			continue;
 		}
 
-		if ( !token.Icmp( "color" ) ) {
-			ss->color.registers[0] = ParseExpression( src );
-			MatchToken( src, "," );
-			ss->color.registers[1] = ParseExpression( src );
-			MatchToken( src, "," );
-			ss->color.registers[2] = ParseExpression( src );
-			MatchToken( src, "," );
-			ss->color.registers[3] = ParseExpression( src );
+		if (!token.Icmp("color")) {
+			ss->color.registers[0] = ParseExpression(src);
+			MatchToken(src, ",");
+			ss->color.registers[1] = ParseExpression(src);
+			MatchToken(src, ",");
+			ss->color.registers[2] = ParseExpression(src);
+			MatchToken(src, ",");
+			ss->color.registers[3] = ParseExpression(src);
 			continue;
 		}
-		if ( !token.Icmp( "red" ) ) {
-			ss->color.registers[0] = ParseExpression( src );
+		if (!token.Icmp("red")) {
+			ss->color.registers[0] = ParseExpression(src);
 			continue;
 		}
-		if ( !token.Icmp( "green" ) ) {
-			ss->color.registers[1] = ParseExpression( src );
+		if (!token.Icmp("green")) {
+			ss->color.registers[1] = ParseExpression(src);
 			continue;
 		}
-		if ( !token.Icmp( "blue" ) ) {
-			ss->color.registers[2] = ParseExpression( src );
+		if (!token.Icmp("blue")) {
+			ss->color.registers[2] = ParseExpression(src);
 			continue;
 		}
-		if ( !token.Icmp( "alpha" ) ) {
-			ss->color.registers[3] = ParseExpression( src );
+		if (!token.Icmp("alpha")) {
+			ss->color.registers[3] = ParseExpression(src);
 			continue;
 		}
-		if ( !token.Icmp( "rgb" ) ) {
-			ss->color.registers[0] = ss->color.registers[1] = 
-				ss->color.registers[2] = ParseExpression( src );
+		if (!token.Icmp("rgb")) {
+			ss->color.registers[0] = ss->color.registers[1] =
+				ss->color.registers[2] = ParseExpression(src);
 			continue;
 		}
-		if ( !token.Icmp( "rgba" ) ) {
-			ss->color.registers[0] = ss->color.registers[1] = 
-				ss->color.registers[2] = ss->color.registers[3] = ParseExpression( src );
+		if (!token.Icmp("rgba")) {
+			ss->color.registers[0] = ss->color.registers[1] =
+				ss->color.registers[2] = ss->color.registers[3] = ParseExpression(src);
+			continue;
+		}
+#ifdef PREY
+		if (!token.Icmp("specularExp")) {
+			ss->specular.exponent = src.ParseFloat();
+			MatchToken(src, ",");
+			ss->specular.brightness = src.ParseFloat();
+			continue;
+		}
+#endif
+
+		if (!token.Icmp("if")) {
+			ss->conditionRegister = ParseExpression(src);
 			continue;
 		}
 
-		if ( !token.Icmp( "if" ) ) {
-			ss->conditionRegister = ParseExpression( src );
+#ifdef PREY
+		if (!token.Icmp("program")) {
+			if (!src.ReadTokenOnLine(&token)) {
+				common->Warning("missing parameter for 'program' keyword in material '%s'", GetName());
+			}
+			preyTokenOnlyStage = true;
+			continue;
+		}
+		if (!token.Icmp("fragmentProgram")) {
+			if (!src.ReadTokenOnLine(&token)) {
+				common->Warning("missing parameter for 'fragmentProgram' keyword in material '%s'", GetName());
+			}
+			preyTokenOnlyStage = true;
+			continue;
+		}
+		if (!token.Icmp("vertexProgram")) {
+			if (!src.ReadTokenOnLine(&token)) {
+				common->Warning("missing parameter for 'vertexProgram' keyword in material '%s'", GetName());
+			}
+			preyTokenOnlyStage = true;
+			continue;
+		}
+		if (!token.Icmp("megaTexture")) {
+			// Full Prey allocates idMegaTexture and binds megaTexture.vfp.
+			// Keep this parser-only path dependency-free.
+			if (!src.ReadTokenOnLine(&token)) {
+				common->Warning("missing parameter for 'megaTexture' keyword in material '%s'", GetName());
+			}
+			preyTokenOnlyStage = true;
+			continue;
+		}
+		if (!token.Icmp("vertexParm") || !token.Icmp("fragmentParm") || !token.Icmp("fragmentMap")) {
+			// These are all single-line shader-program directives in the dump.
+			src.SkipRestOfLine();
+			preyTokenOnlyStage = true;
 			continue;
 		}
 
+		if (!token.Icmp("shaderLevel1") || !token.Icmp("shaderLevel2") || !token.Icmp("shaderLevel3") ||
+			!token.Icmp("shaderFallback1") || !token.Icmp("shaderFallback2") || !token.Icmp("shaderFallback3")) {
+			preyTokenOnlyStage = true;
+			continue;
+		}
+#endif
 
-		common->Warning( "unknown token '%s' in material '%s'", token.c_str(), GetName() );
-		SetMaterialFlag( MF_DEFAULTED );
+		common->Warning("unknown token '%s' in material '%s'", token.c_str(), GetName());
+		SetMaterialFlag(MF_DEFAULTED);
 		return;
 	}
 
 
 	// if we are using newStage, allocate a copy of it
-	if ( newStage.fragmentProgram || newStage.vertexProgram ) {
-		ss->newStage = (newShaderStage_t *)Mem_Alloc( sizeof( newStage ) );
+	if (newStage.fragmentProgram || newStage.vertexProgram) {
+		ss->newStage = (newShaderStage_t*)Mem_Alloc(sizeof(newStage));
 		*(ss->newStage) = newStage;
 	}
 
@@ -1578,8 +1720,8 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 	numStages++;
 
 	// select a compressed depth based on what the stage is
-	if ( td == TD_DEFAULT ) {
-		switch( ss->lighting ) {
+	if (td == TD_DEFAULT) {
+		switch (ss->lighting) {
 		case SL_BUMP:
 			td = TD_BUMP;
 			break;
@@ -1595,13 +1737,21 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 	}
 
 	// now load the image with all the parms we parsed
-	if ( imageName[0] ) {
-		ts->image = globalImages->ImageFromFile( imageName, tf, allowPicmip, trp, td, cubeMap );
-		if ( !ts->image ) {
+#ifdef PREY
+	(void)highres;	// parsed for Prey material compatibility; Doom 3 ImageFromFile has no highres arg.
+#endif
+	if (imageName[0]) {
+		ts->image = globalImages->ImageFromFile(imageName, tf, allowPicmip, trp, td, cubeMap);
+		if (!ts->image) {
 			ts->image = globalImages->defaultImage;
 		}
-	} else if ( !ts->cinematic && !ts->dynamic && !ss->newStage ) {
-		common->Warning( "material '%s' had stage with no image", GetName() );
+	}
+	else if (!ts->cinematic && !ts->dynamic && !ss->newStage
+#ifdef PREY
+		&& !preyTokenOnlyStage
+#endif
+		) {
+		common->Warning("material '%s' had stage with no image", GetName());
 		ts->image = globalImages->defaultImage;
 	}
 }
@@ -1611,83 +1761,83 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 idMaterial::ParseDeform
 ===============
 */
-void idMaterial::ParseDeform( idLexer &src ) {
+void idMaterial::ParseDeform(idLexer& src) {
 	idToken token;
 
-	if ( !src.ExpectAnyToken( &token ) ) {
+	if (!src.ExpectAnyToken(&token)) {
 		return;
 	}
 
-	if ( !token.Icmp( "sprite" ) ) {
+	if (!token.Icmp("sprite")) {
 		deform = DFRM_SPRITE;
 		cullType = CT_TWO_SIDED;
-		SetMaterialFlag( MF_NOSHADOWS );
+		SetMaterialFlag(MF_NOSHADOWS);
 		return;
 	}
-	if ( !token.Icmp( "tube" ) ) {
+	if (!token.Icmp("tube")) {
 		deform = DFRM_TUBE;
 		cullType = CT_TWO_SIDED;
-		SetMaterialFlag( MF_NOSHADOWS );
+		SetMaterialFlag(MF_NOSHADOWS);
 		return;
 	}
-	if ( !token.Icmp( "flare" ) ) {
+	if (!token.Icmp("flare")) {
 		deform = DFRM_FLARE;
 		cullType = CT_TWO_SIDED;
-		deformRegisters[0] = ParseExpression( src );
-		SetMaterialFlag( MF_NOSHADOWS );
+		deformRegisters[0] = ParseExpression(src);
+		SetMaterialFlag(MF_NOSHADOWS);
 		return;
 	}
-	if ( !token.Icmp( "expand" ) ) {
+	if (!token.Icmp("expand")) {
 		deform = DFRM_EXPAND;
-		deformRegisters[0] = ParseExpression( src );
+		deformRegisters[0] = ParseExpression(src);
 		return;
 	}
-	if ( !token.Icmp( "move" ) ) {
+	if (!token.Icmp("move")) {
 		deform = DFRM_MOVE;
-		deformRegisters[0] = ParseExpression( src );
+		deformRegisters[0] = ParseExpression(src);
 		return;
 	}
-	if ( !token.Icmp( "turbulent" ) ) {
+	if (!token.Icmp("turbulent")) {
 		deform = DFRM_TURB;
 
-		if ( !src.ExpectAnyToken( &token ) ) {
-			src.Warning( "deform particle missing particle name" );
-			SetMaterialFlag( MF_DEFAULTED );
+		if (!src.ExpectAnyToken(&token)) {
+			src.Warning("deform particle missing particle name");
+			SetMaterialFlag(MF_DEFAULTED);
 			return;
 		}
-		deformDecl = declManager->FindType( DECL_TABLE, token.c_str(), true );
+		deformDecl = declManager->FindType(DECL_TABLE, token.c_str(), true);
 
-		deformRegisters[0] = ParseExpression( src );
-		deformRegisters[1] = ParseExpression( src );
-		deformRegisters[2] = ParseExpression( src );
+		deformRegisters[0] = ParseExpression(src);
+		deformRegisters[1] = ParseExpression(src);
+		deformRegisters[2] = ParseExpression(src);
 		return;
 	}
-	if ( !token.Icmp( "eyeBall" ) ) {
+	if (!token.Icmp("eyeBall")) {
 		deform = DFRM_EYEBALL;
 		return;
 	}
-	if ( !token.Icmp( "particle" ) ) {
+	if (!token.Icmp("particle")) {
 		deform = DFRM_PARTICLE;
-		if ( !src.ExpectAnyToken( &token ) ) {
-			src.Warning( "deform particle missing particle name" );
-			SetMaterialFlag( MF_DEFAULTED );
+		if (!src.ExpectAnyToken(&token)) {
+			src.Warning("deform particle missing particle name");
+			SetMaterialFlag(MF_DEFAULTED);
 			return;
 		}
-		deformDecl = declManager->FindType( DECL_PARTICLE, token.c_str(), true );
+		deformDecl = declManager->FindType(DECL_PARTICLE, token.c_str(), true);
 		return;
 	}
-	if ( !token.Icmp( "particle2" ) ) {
+	if (!token.Icmp("particle2")) {
 		deform = DFRM_PARTICLE2;
-		if ( !src.ExpectAnyToken( &token ) ) {
-			src.Warning( "deform particle missing particle name" );
-			SetMaterialFlag( MF_DEFAULTED );
+		if (!src.ExpectAnyToken(&token)) {
+			src.Warning("deform particle missing particle name");
+			SetMaterialFlag(MF_DEFAULTED);
 			return;
 		}
-		deformDecl = declManager->FindType( DECL_PARTICLE, token.c_str(), true );
+		deformDecl = declManager->FindType(DECL_PARTICLE, token.c_str(), true);
 		return;
 	}
-	src.Warning( "Bad deform type '%s'", token.c_str() );
-	SetMaterialFlag( MF_DEFAULTED );
+	src.Warning("Bad deform type '%s'", token.c_str());
+	SetMaterialFlag(MF_DEFAULTED);
 }
 
 /*

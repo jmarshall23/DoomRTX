@@ -95,6 +95,10 @@ typedef enum {
 	DI_CUBE_RENDER,
 	DI_MIRROR_RENDER,
 	DI_XRAY_RENDER,
+#ifdef PREY
+	DI_PORTAL_RENDER,	// HUMANHEAD
+	DI_SKYBOX_RENDER,	// HUMANHEAD tmj
+#endif
 	DI_REMOTE_RENDER
 } dynamicidImage_t;
 
@@ -115,6 +119,9 @@ typedef enum {
 	OP_TYPE_AND,
 	OP_TYPE_OR,
 	OP_TYPE_SOUND
+#ifdef PREY
+	, OP_TYPE_FRAGMENTPROGRAMS	// HUMANHEAD CJR: fragment program support toggle
+#endif
 } expOpType_t;
 
 typedef enum {
@@ -188,6 +195,9 @@ typedef enum {
 	SL_BUMP,
 	SL_DIFFUSE,
 	SL_SPECULAR
+#ifdef PREY
+	, SL_SHADER
+#endif
 } stageLighting_t;
 
 // cross-blended terrain textures need to modulate the color by
@@ -199,12 +209,21 @@ typedef enum {
 } stageVertexColor_t;
 
 static const int	MAX_FRAGMENT_IMAGES = 8;
+#ifdef PREY
+static const int	MAX_VERTEX_PARMS = 8;
+static const int	MAX_FRAGMENT_PARMS = 8;
+#else
 static const int	MAX_VERTEX_PARMS = 4;
+#endif
 
 typedef struct {
 	int					vertexProgram;
 	int					numVertexParms;
 	int					vertexParms[MAX_VERTEX_PARMS][4];	// evaluated register indexes
+#ifdef PREY
+	int					numFragmentParms;
+	int					fragmentParms[MAX_FRAGMENT_PARMS][4];	// evaluated register indexes
+#endif
 
 	int					fragmentProgram;
 	int					numFragmentProgramImages;
@@ -212,6 +231,14 @@ typedef struct {
 
 	idMegaTexture* megaTexture;		// handles all the binding and parameter setting 
 } newShaderStage_t;
+
+#ifdef PREY
+// HUMANHEAD bjk: specular exponent/brightness parsed by specularExp.
+typedef struct {
+	float				exponent;
+	float				brightness;
+} specData_t;
+#endif
 
 typedef struct {
 	int					conditionRegister;	// if registers[conditionRegister] == 0, skip stage
@@ -225,8 +252,20 @@ typedef struct {
 	bool				ignoreAlphaTest;	// this stage should act as translucent, even
 	// if the surface is alpha tested
 	float				privatePolygonOffset;	// a per-stage polygon offset
+#ifdef PREY
+
+	bool				isGlow;				// HUMANHEAD CJR: Glow overlay
+	bool				isScopeView;			// HUMANHEAD CJR: Scope view
+	bool				isShuttleView;			// HUMANHEAD pdm: shuttle view
+	bool				isNotScopeView;		// HUMANHEAD CJR
+	bool				isSpiritWalk;			// HUMANHEAD CJR
+	bool				isNotSpiritWalk;		// HUMANHEAD CJR
+#endif
 
 	newShaderStage_t* newStage;			// vertex / fragment program based stage
+#ifdef PREY
+	specData_t			specular;			// HUMANHEAD bjk
+#endif
 } shaderStage_t;
 
 typedef enum {
@@ -268,7 +307,11 @@ const int MAX_SHADER_STAGES = 256;
 
 const int MAX_TEXGEN_REGISTERS = 4;
 
+#ifdef PREY
+const int MAX_ENTITY_SHADER_PARMS = 13;	// HUMANHEAD pdm: increased from 12
+#else
 const int MAX_ENTITY_SHADER_PARMS = 12;
+#endif
 
 // material flags
 typedef enum {
@@ -675,6 +718,9 @@ private:
 	void				ParseSort(idLexer& src);
 	void				ParseBlend(idLexer& src, shaderStage_t* stage);
 	void				ParseVertexParm(idLexer& src, newShaderStage_t* newStage);
+#ifdef PREY
+	void				ParseFragmentParm(idLexer& src, newShaderStage_t* newStage);
+#endif
 	void				ParseFragmentMap(idLexer& src, newShaderStage_t* newStage);
 	void				ParseStage(idLexer& src, const textureRepeat_t trpDefault = TR_REPEAT);
 	void				ParseDeform(idLexer& src);
