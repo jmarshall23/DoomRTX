@@ -3238,7 +3238,9 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Dedicated Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ResourceCompile>
-    <ResourceCompile Include="sys\win32\rc\doom.rc" />
+    <ResourceCompile Include="sys\win32\rc\doom.rc">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Prey Debug|x64'">PREY</PreprocessorDefinitions>
+    </ResourceCompile>
     <ResourceCompile Include="sys\win32\rc\GuiEd.rc">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">true</ExcludedFromBuild>
