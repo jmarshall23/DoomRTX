@@ -1142,13 +1142,13 @@ void R_RenderView( viewDef_t *parms ) {
 	R_SortDrawSurfs();
 
 	// generate any subviews (mirrors, cameras, etc) before adding this view
-	if ( R_GenerateSubViews() ) {
-		// if we are debugging subviews, allow the skipping of the
-		// main view draw
-		if ( r_subviewOnly.GetBool() ) {
-			return;
-		}
-	}
+	//if ( R_GenerateSubViews() ) {
+	//	// if we are debugging subviews, allow the skipping of the
+	//	// main view draw
+	//	if ( r_subviewOnly.GetBool() ) {
+	//		return;
+	//	}
+	//}
 
 	// write everything needed to the demo file
 	if ( session->writeDemo ) {

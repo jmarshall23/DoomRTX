@@ -871,17 +871,26 @@ const char *idFileSystemLocal::OSPathToRelativePath( const char *OSPath ) {
 	}
 #else
 	// look for the first complete directory name
+const char *basegamedir = BASE_GAMEDIR;
+#ifdef PREY
+	base = (char*)strstr(OSPath, BASE_GAMEDIR);
+	if (base == NULL) {
+		basegamedir = "base";
+		base = (char*)strstr(OSPath, "base");
+	}
+#else
 	base = (char *)strstr( OSPath, BASE_GAMEDIR );
+#endif
 	while ( base ) {
 		char c1 = '\0', c2;
 		if ( base > OSPath ) {
 			c1 = *(base - 1);
 		}
-		c2 = *( base + strlen( BASE_GAMEDIR ) );
+		c2 = *( base + strlen(basegamedir) );
 		if ( ( c1 == '/' || c1 == '\\' ) && ( c2 == '/' || c2 == '\\' ) ) {
 			break;
 		}
-		base = strstr( base + 1, BASE_GAMEDIR );
+		base = strstr( base + 1, basegamedir);
 	}
 #endif
 	// fs_game and fs_game_base support - look for first complete name with a mod path

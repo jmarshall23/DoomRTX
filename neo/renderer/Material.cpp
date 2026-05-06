@@ -570,7 +570,6 @@ int idMaterial::ParseEmitOp( idLexer &src, int a, expOpType_t opType, int priori
 	b = ParseExpressionPriority( src, priority );
 	return EmitOp( a, b, opType );
 }
-
 /*
 =================
 idMaterial::ParseTerm
@@ -578,142 +577,155 @@ idMaterial::ParseTerm
 Returns a register index
 =================
 */
-int idMaterial::ParseTerm( idLexer &src ) {
+int idMaterial::ParseTerm(idLexer& src) {
 	idToken token;
 	int		a, b;
 
-	src.ReadToken( &token );
+	src.ReadToken(&token);
 
-	if ( token == "(" ) {
-		a = ParseExpression( src );
-		MatchToken( src, ")" );
+	if (token == "(") {
+		a = ParseExpression(src);
+		MatchToken(src, ")");
 		return a;
 	}
 
-	if ( !token.Icmp( "time" ) ) {
+#ifdef PREY
+	if (!token.Icmp("distance")) {
+		pd->registersAreConstant = false;
+		SetMaterialFlag(MF_USESDISTANCE);
+		return EXP_REG_DISTANCE;
+	}
+#endif
+
+	if (!token.Icmp("time")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_TIME;
 	}
-	if ( !token.Icmp( "parm0" ) ) {
+	if (!token.Icmp("parm0")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM0;
 	}
-	if ( !token.Icmp( "parm1" ) ) {
+	if (!token.Icmp("parm1")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM1;
 	}
-	if ( !token.Icmp( "parm2" ) ) {
+	if (!token.Icmp("parm2")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM2;
 	}
-	if ( !token.Icmp( "parm3" ) ) {
+	if (!token.Icmp("parm3")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM3;
 	}
-	if ( !token.Icmp( "parm4" ) ) {
+	if (!token.Icmp("parm4")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM4;
 	}
-	if ( !token.Icmp( "parm5" ) ) {
+	if (!token.Icmp("parm5")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM5;
 	}
-	if ( !token.Icmp( "parm6" ) ) {
+	if (!token.Icmp("parm6")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM6;
 	}
-	if ( !token.Icmp( "parm7" ) ) {
+	if (!token.Icmp("parm7")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM7;
 	}
-	if ( !token.Icmp( "parm8" ) ) {
+	if (!token.Icmp("parm8")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM8;
 	}
-	if ( !token.Icmp( "parm9" ) ) {
+	if (!token.Icmp("parm9")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM9;
 	}
-	if ( !token.Icmp( "parm10" ) ) {
+	if (!token.Icmp("parm10")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM10;
 	}
-	if ( !token.Icmp( "parm11" ) ) {
+	if (!token.Icmp("parm11")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_PARM11;
 	}
-	if ( !token.Icmp( "global0" ) ) {
+	if (!token.Icmp("global0")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL0;
 	}
-	if ( !token.Icmp( "global1" ) ) {
+	if (!token.Icmp("global1")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL1;
 	}
-	if ( !token.Icmp( "global2" ) ) {
+	if (!token.Icmp("global2")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL2;
 	}
-	if ( !token.Icmp( "global3" ) ) {
+	if (!token.Icmp("global3")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL3;
 	}
-	if ( !token.Icmp( "global4" ) ) {
+	if (!token.Icmp("global4")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL4;
 	}
-	if ( !token.Icmp( "global5" ) ) {
+	if (!token.Icmp("global5")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL5;
 	}
-	if ( !token.Icmp( "global6" ) ) {
+	if (!token.Icmp("global6")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL6;
 	}
-	if ( !token.Icmp( "global7" ) ) {
+	if (!token.Icmp("global7")) {
 		pd->registersAreConstant = false;
 		return EXP_REG_GLOBAL7;
 	}
-	if ( !token.Icmp( "fragmentPrograms" ) ) {
-		return GetExpressionConstant( (float) glConfig.ARBFragmentProgramAvailable );
+	if (!token.Icmp("fragmentPrograms")) {
+#ifdef PREY
+		pd->registersAreConstant = false;
+		return EmitOp(0, 0, OP_TYPE_FRAGMENTPROGRAMS);
+#else
+		return GetExpressionConstant((float)glConfig.ARBFragmentProgramAvailable);
+#endif
 	}
 
-	if ( !token.Icmp( "sound" ) ) {
+	if (!token.Icmp("sound")) {
 		pd->registersAreConstant = false;
-		return EmitOp( 0, 0, OP_TYPE_SOUND );
+		return EmitOp(0, 0, OP_TYPE_SOUND);
 	}
 
 	// parse negative numbers
-	if ( token == "-" ) {
-		src.ReadToken( &token );
-		if ( token.type == TT_NUMBER || token == "." ) {
-			return GetExpressionConstant( -(float) token.GetFloatValue() );
+	if (token == "-") {
+		src.ReadToken(&token);
+		if (token.type == TT_NUMBER || token == ".") {
+			return GetExpressionConstant(-(float)token.GetFloatValue());
 		}
-		src.Warning( "Bad negative number '%s'", token.c_str() );
-		SetMaterialFlag( MF_DEFAULTED );
+		src.Warning("Bad negative number '%s'", token.c_str());
+		SetMaterialFlag(MF_DEFAULTED);
 		return 0;
 	}
 
-	if ( token.type == TT_NUMBER || token == "." || token == "-" ) {
-		return GetExpressionConstant( (float) token.GetFloatValue() );
+	if (token.type == TT_NUMBER || token == "." || token == "-") {
+		return GetExpressionConstant((float)token.GetFloatValue());
 	}
 
 	// see if it is a table name
-	const idDeclTable *table = static_cast<const idDeclTable *>( declManager->FindType( DECL_TABLE, token.c_str(), false ) );
-	if ( !table ) {
-		src.Warning( "Bad term '%s'", token.c_str() );
-		SetMaterialFlag( MF_DEFAULTED );
+	const idDeclTable* table = static_cast<const idDeclTable*>(declManager->FindType(DECL_TABLE, token.c_str(), false));
+	if (!table) {
+		src.Warning("Bad term '%s'", token.c_str());
+		SetMaterialFlag(MF_DEFAULTED);
 		return 0;
 	}
 
 	// parse a table expression
-	MatchToken( src, "[" );
+	MatchToken(src, "[");
 
-	b = ParseExpression( src );
+	b = ParseExpression(src);
 
-	MatchToken( src, "]" );
+	MatchToken(src, "]");
 
-	return EmitOp( table->Index(), b, OP_TYPE_TABLE );
+	return EmitOp(table->Index(), b, OP_TYPE_TABLE);
 }
 
 /*

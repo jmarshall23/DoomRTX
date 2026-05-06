@@ -588,17 +588,6 @@ void idImage::GenerateImage( const byte *pic, int width, int height,
 		}
 	}
 
-	// swap the red and alpha for rxgb support
-	// do this even on tga normal maps so we only have to use
-	// one fragment program
-	// if the image is precompressed ( either in palletized mode or true rxgb mode )
-	// then it is loaded above and the swap never happens here
-//	if ( depth == TD_BUMP && globalImages->image_useNormalCompression.GetInteger() != 1 ) {
-//		for ( int i = 0; i < scaled_width * scaled_height * 4; i += 4 ) {
-//			scaledBuffer[ i + 3 ] = scaledBuffer[ i ];
-//			scaledBuffer[ i ] = 0;
-//		}
-//	}
 	// upload the main image level
 	Bind();
 
