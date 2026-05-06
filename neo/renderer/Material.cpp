@@ -931,6 +931,11 @@ void idMaterial::ParseBlend( idLexer &src, shaderStage_t *stage ) {
 		stage->lighting = SL_DIFFUSE;
 		return;
 	}
+	if (!token.Icmp("glowmap")) {
+		stage->lighting = SL_GLOWMAP;
+		return;
+	}
+	
 	if ( !token.Icmp( "specularmap" ) ) {
 		stage->lighting = SL_SPECULAR;
 		return;
@@ -1896,6 +1901,20 @@ idImage* idMaterial::GetBumpImage(void) const {
 }
 
 /*
+===================
+idMaterial::GetGlowImage
+===================
+*/
+idImage* idMaterial::GetGlowImage(void) const {
+	for (int i = 0; i < numStages; i++) {
+		if ((stages[i].lighting == SL_GLOWMAP  || stages[i].isGlow) && stages[i].texture.image) {
+			return stages[i].texture.image;
+		}
+	}
+	return NULL;
+}
+
+/*
 ==============
 idMaterial::AddImplicitStages
 
@@ -2254,12 +2273,18 @@ void idMaterial::ParseMaterial(idLexer& src) {
 			src.ParseRestOfLine(renderBump);
 			continue;
 		}
-#ifdef PREY
+
 		else if (!token.Icmp("glowmap")) {
-			src.ReadTokenOnLine(&token);
+			str = R_ParsePastImageProgram(src);
+			idStr::snPrintf(buffer, sizeof(buffer), "blend glowmap\nmap %s\n}\n", str);
+			newSrc.LoadMemory(buffer, strlen(buffer), "glowmap");
+			newSrc.SetFlags(LEXFL_NOFATALERRORS | LEXFL_NOSTRINGCONCAT | LEXFL_NOSTRINGESCAPECHARS | LEXFL_ALLOWPATHNAMES);
+			ParseStage(newSrc, trpDefault);
+			newSrc.FreeSource();
 			continue;
 		}
 
+#ifdef PREY
 		else if (!token.Icmp("highres")) {
 			continue;
 		}

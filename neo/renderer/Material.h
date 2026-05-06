@@ -194,7 +194,8 @@ typedef enum {
 	SL_AMBIENT,						// execute after lighting
 	SL_BUMP,
 	SL_DIFFUSE,
-	SL_SPECULAR
+	SL_SPECULAR,
+	SL_GLOWMAP
 #ifdef PREY
 	, SL_SHADER
 #endif
@@ -506,6 +507,7 @@ public:
 	// jmarshall
 	idImage* GetDiffuseImage(void) const;
 	idImage* GetBumpImage(void) const;
+	idImage* GetGlowImage(void) const;
 	bool				IsSky(void) const;
 	// jmarshall end
 							// returns true if the material will generate interactions with normal lights

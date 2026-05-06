@@ -2255,3 +2255,16 @@ extern "C" {
 #endif
 
 void glRaytracingLightingSetVolumetricScattering(glRaytracingLight_t* light, float strength);
+
+// QD3D12 glow-map extension additions for opengl.h
+#ifndef GL_GLOW_MAP_BINDING_QD3D12
+#define GL_GLOW_MAP_BINDING_QD3D12 0x6005
+#endif
+
+// Glow-map material tagging / binding. Tagging is optional but lets the shim
+// auto-discover a glow map from bound texture units. Explicit binding wins.
+void APIENTRY glTagTextureGlowMap(GLuint texture, GLboolean isGlowMap);
+void APIENTRY glTextureGlowMap(GLuint texture, GLboolean isGlowMap); // alias
+void APIENTRY glBindGlowMapTexture(GLuint texture);                  // 0 disables explicit glow map
+void APIENTRY glGlowMapTexture(GLuint texture);                      // alias
+void APIENTRY glGlowMapStrengthf(GLfloat strength);                  // default 1.0; >1 allows overbright emission

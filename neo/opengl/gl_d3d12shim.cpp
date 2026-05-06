@@ -129,6 +129,9 @@ using Microsoft::WRL::ComPtr;
 #ifndef GL_NORMAL_MAP_BINDING_QD3D12
 #define GL_NORMAL_MAP_BINDING_QD3D12 0x6002
 #endif
+#ifndef GL_GLOW_MAP_BINDING_QD3D12
+#define GL_GLOW_MAP_BINDING_QD3D12 0x6005
+#endif
 
 // Optional material/ray-visibility tags for the DXR path.  These are private
 // shim enums; they deliberately live next to the normal-map compatibility enums.
@@ -186,6 +189,11 @@ void APIENTRY glBinormal3f(GLfloat x, GLfloat y, GLfloat z);
 void APIENTRY glBinormal3fv(const GLfloat* v);
 void APIENTRY glGlassMaterialQD3D12(GLboolean enable);
 void APIENTRY glMaterialGlassQD3D12(GLboolean enable);
+void APIENTRY glTagTextureGlowMap(GLuint texture, GLboolean isGlowMap);
+void APIENTRY glTextureGlowMap(GLuint texture, GLboolean isGlowMap);
+void APIENTRY glBindGlowMapTexture(GLuint texture);
+void APIENTRY glGlowMapTexture(GLuint texture);
+void APIENTRY glGlowMapStrengthf(GLfloat strength);
 void APIENTRY glRaytracingMaterialFlagsQD3D12(GLuint flags);
 void APIENTRY glRaytracingMaterialFlagQD3D12(GLuint flag, GLboolean enable);
 
@@ -195,6 +203,7 @@ void APIENTRY glRaytracingMaterialFlagQD3D12(GLuint flag, GLboolean enable);
 void glRaytracingLightingSetExternalDenoiser(int enable);
 void glRaytracingLightingSetPathTracingOptions(uint32_t samplesPerPixel, uint32_t maxBounces, int enableDenoiser, float denoiseStrength);
 void glRaytracingLightingSetVolumetricScattering(glRaytracingLight_t* light, float strength);
+void glRaytracingLightingSetEmissiveInput(ID3D12Resource* texture, DXGI_FORMAT format);
 void glRaytracingSetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle, uint32_t materialFlags);
 void glRaytracingSetMeshGlass(glRaytracingMeshHandle_t meshHandle, int isGlass);
 uint32_t glRaytracingGetMeshMaterialFlags(glRaytracingMeshHandle_t meshHandle);
@@ -312,15 +321,18 @@ enum QD3D12RTVSlotGroup
 	QD3D12_RTV_NORMAL_RENDER = 1,
 	QD3D12_RTV_POSITION_RENDER = 2,
 	QD3D12_RTV_VELOCITY_RENDER = 3,
-	QD3D12_RTV_SCENE_RESOLVED = 4,
-	QD3D12_RTV_NORMAL_RESOLVED = 5,
-	QD3D12_RTV_POSITION_RESOLVED = 6,
-	QD3D12_RTV_VELOCITY_RESOLVED = 7,
-	QD3D12_RTV_BACKBUFFER = 8,
-	QD3D12_RTV_GROUP_COUNT = 9
+	QD3D12_RTV_EMISSIVE_RENDER = 4,
+	QD3D12_RTV_SCENE_RESOLVED = 5,
+	QD3D12_RTV_NORMAL_RESOLVED = 6,
+	QD3D12_RTV_POSITION_RESOLVED = 7,
+	QD3D12_RTV_VELOCITY_RESOLVED = 8,
+	QD3D12_RTV_EMISSIVE_RESOLVED = 9,
+	QD3D12_RTV_BACKBUFFER = 10,
+	QD3D12_RTV_GROUP_COUNT = 11
 };
 
 static const DXGI_FORMAT QD3D12_SceneColorFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+static const DXGI_FORMAT QD3D12_EmissiveFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 static const DXGI_FORMAT QD3D12_StreamlineOutputFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 static const DXGI_FORMAT QD3D12_VelocityFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 static const DXGI_FORMAT QD3D12_DepthFormat = DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
@@ -444,11 +456,12 @@ struct TextureResource
 	bool gpuValid = false;
 	D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COPY_DEST;
 
-	// Optional material role tag. Tagged textures are not treated as diffuse
-	// inputs by default; they are selected as tangent-space normal maps for the
-	// fixed-function G-buffer path when bound through glNormalMapTexture() or any
-	// active texture unit.
+	// Optional material role tags. Tagged textures are not treated as diffuse
+	// inputs by default; they are selected as tangent-space normal/glow maps for
+	// the fixed-function G-buffer path when explicitly bound or auto-discovered
+	// from any active texture unit.
 	bool isNormalMap = false;
+	bool isGlowMap = false;
 };
 
 static void QD3D12_ShutdownMipWorkers();
@@ -523,7 +536,7 @@ struct GLBufferObject
 const char* vendor = "Justin Marshall";
 const char* renderer = "Quake D3D12 Wrapper";
 const char* version = "1.1-quake-d3d12";
-const char* extensions = "GL_SGIS_multitexture GL_ARB_multitexture GL_EXT_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_compression GL_EXT_texture_compression_s3tc GL_ARB_vertex_program GL_ARB_fragment_program GL_EXT_texture_cube_map GL_EXT_depth_bounds_test GL_EXT_stencil_two_side GL_ATI_separate_stencil GL_QD3D12_normal_map GL_QD3D12_glass_material GL_QD3D12_volumetric_light";
+const char* extensions = "GL_SGIS_multitexture GL_ARB_multitexture GL_EXT_texture_env_add GL_ARB_texture_env_combine GL_ARB_texture_compression GL_EXT_texture_compression_s3tc GL_ARB_vertex_program GL_ARB_fragment_program GL_EXT_texture_cube_map GL_EXT_depth_bounds_test GL_EXT_stencil_two_side GL_ATI_separate_stencil GL_QD3D12_normal_map GL_QD3D12_glow_map GL_QD3D12_glass_material GL_QD3D12_volumetric_light";
 
 enum TexEnvModeShader
 {
@@ -568,6 +581,9 @@ struct BatchKey
 	float useNormalMap = 0.0f;
 	float normalMapStrength = 1.0f;
 	float normalMapYSign = 1.0f;
+	UINT glowMapSrvIndex = 0;
+	float useGlowMap = 0.0f;
+	float glowMapStrength = 1.0f;
 
 	bool useARBPrograms = false;
 	GLuint arbVertexProgram = 0;
@@ -676,6 +692,9 @@ static bool BatchKeyEquals(const BatchKey& a, const BatchKey& b)
 		a.useNormalMap == b.useNormalMap &&
 		a.normalMapStrength == b.normalMapStrength &&
 		a.normalMapYSign == b.normalMapYSign &&
+		a.glowMapSrvIndex == b.glowMapSrvIndex &&
+		a.useGlowMap == b.useGlowMap &&
+		a.glowMapStrength == b.glowMapStrength &&
 		a.alphaRef == b.alphaRef &&
 		a.alphaFunc == b.alphaFunc &&
 		a.useTex0 == b.useTex0 &&
@@ -779,6 +798,9 @@ struct QD3D12Window
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> velocityBuffers;
 	D3D12_RESOURCE_STATES velocityBufferState[QD3D12_FrameCount] = {};
 
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> emissiveBuffers;
+	D3D12_RESOURCE_STATES emissiveBufferState[QD3D12_FrameCount] = {};
+
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> sceneColorMsaaBuffers;
 	D3D12_RESOURCE_STATES sceneColorMsaaState[QD3D12_FrameCount] = {};
 
@@ -790,6 +812,9 @@ struct QD3D12Window
 
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> velocityMsaaBuffers;
 	D3D12_RESOURCE_STATES velocityMsaaState[QD3D12_FrameCount] = {};
+
+	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> emissiveMsaaBuffers;
+	D3D12_RESOURCE_STATES emissiveMsaaState[QD3D12_FrameCount] = {};
 
 	std::array<ComPtr<ID3D12Resource>, QD3D12_FrameCount> backBuffers;
 	D3D12_RESOURCE_STATES backBufferState[QD3D12_FrameCount] = {};
@@ -824,6 +849,10 @@ struct QD3D12Window
 	D3D12_CPU_DESCRIPTOR_HANDLE velocitySrvCpu[QD3D12_FrameCount]{};
 	D3D12_GPU_DESCRIPTOR_HANDLE velocitySrvGpu[QD3D12_FrameCount]{};
 
+	UINT emissiveSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
+	D3D12_CPU_DESCRIPTOR_HANDLE emissiveSrvCpu[QD3D12_FrameCount]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE emissiveSrvGpu[QD3D12_FrameCount]{};
+
 	UINT slOutputSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
 	D3D12_CPU_DESCRIPTOR_HANDLE slOutputSrvCpu[QD3D12_FrameCount]{};
 	D3D12_GPU_DESCRIPTOR_HANDLE slOutputSrvGpu[QD3D12_FrameCount]{};
@@ -847,6 +876,10 @@ struct QD3D12Window
 	UINT velocityMsaaSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
 	D3D12_CPU_DESCRIPTOR_HANDLE velocityMsaaSrvCpu[QD3D12_FrameCount]{};
 	D3D12_GPU_DESCRIPTOR_HANDLE velocityMsaaSrvGpu[QD3D12_FrameCount]{};
+
+	UINT emissiveMsaaSrvIndex[QD3D12_FrameCount] = { UINT_MAX, UINT_MAX };
+	D3D12_CPU_DESCRIPTOR_HANDLE emissiveMsaaSrvCpu[QD3D12_FrameCount]{};
+	D3D12_GPU_DESCRIPTOR_HANDLE emissiveMsaaSrvGpu[QD3D12_FrameCount]{};
 
 	D3D12_VIEWPORT viewport{};
 	D3D12_RECT scissor{};
@@ -1119,6 +1152,8 @@ struct GLState
 	GLuint currentNormalMapTexture = 0;
 	float currentNormalMapStrength = 1.0f;
 	float currentNormalMapYSign = 1.0f;
+	GLuint currentGlowMapTexture = 0;
+	float currentGlowMapStrength = 1.0f;
 	ImmediateVertexBuffer immediateVerts;
 
 	GLenum matrixMode = GL_MODELVIEW;
@@ -1703,6 +1738,12 @@ static D3D12_CPU_DESCRIPTOR_HANDLE CurrentVelocityRTV()
 	return QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RENDER, w.frameIndex);
 }
 
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentEmissiveRTV()
+{
+	QD3D12Window& w = *g_currentWindow;
+	return QD3D12_RtvAt(w, QD3D12_RTV_EMISSIVE_RENDER, w.frameIndex);
+}
+
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedSceneColorRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
@@ -1725,6 +1766,12 @@ static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedVelocityRTV()
 {
 	QD3D12Window& w = *g_currentWindow;
 	return QD3D12_RtvAt(w, QD3D12_RTV_VELOCITY_RESOLVED, w.frameIndex);
+}
+
+static D3D12_CPU_DESCRIPTOR_HANDLE CurrentResolvedEmissiveRTV()
+{
+	QD3D12Window& w = *g_currentWindow;
+	return QD3D12_RtvAt(w, QD3D12_RTV_EMISSIVE_RESOLVED, w.frameIndex);
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferRTV()
@@ -1815,6 +1862,12 @@ static bool QD3D12_IsTextureTaggedNormalMap(GLuint id)
 	return tex && tex->isNormalMap;
 }
 
+static bool QD3D12_IsTextureTaggedGlowMap(GLuint id)
+{
+	TextureResource* tex = QD3D12_FindTextureResource(id);
+	return tex && tex->isGlowMap;
+}
+
 static TextureResource* QD3D12_SelectNormalMapTexture(TextureResource* const* allTextures)
 {
 	// Explicit material binding wins. This lets callers bind a normal map even
@@ -1841,6 +1894,45 @@ static TextureResource* QD3D12_SelectNormalMapTexture(TextureResource* const* al
 	{
 		TextureResource* tex = QD3D12_FindTextureResource(g_gl.boundTexture[i]);
 		if (tex && tex->isNormalMap)
+			return tex;
+	}
+
+	return nullptr;
+}
+
+static TextureResource* QD3D12_SelectGlowMapTexture(TextureResource* const* allTextures)
+{
+	// Explicit material binding wins. Tagging enables automatic discovery from
+	// arbitrary texture units without consuming the diffuse/lightmap slots.
+	if (g_gl.currentGlowMapTexture != 0)
+	{
+		TextureResource* explicitGlow = QD3D12_FindTextureResource(g_gl.currentGlowMapTexture);
+		if (explicitGlow)
+		{
+			// Common integration mistake: passing shader->GetBumpImage()->texnum
+			// to glBindGlowMapTexture().  Never treat a texture explicitly tagged
+			// as a normal map as emissive unless it was also explicitly tagged glow.
+			if (explicitGlow->isNormalMap && !explicitGlow->isGlowMap)
+				return nullptr;
+
+			return explicitGlow;
+		}
+	}
+
+	if (allTextures)
+	{
+		for (UINT i = 0; i < QD3D12_MaxTextureUnits; ++i)
+		{
+			TextureResource* tex = allTextures[i];
+			if (tex && tex != &g_gl.whiteTexture && tex->isGlowMap)
+				return tex;
+		}
+	}
+
+	for (UINT i = 0; i < QD3D12_MaxTextureUnits; ++i)
+	{
+		TextureResource* tex = QD3D12_FindTextureResource(g_gl.boundTexture[i]);
+		if (tex && tex->isGlowMap)
 			return tex;
 	}
 
@@ -2005,14 +2097,18 @@ cbuffer DrawCB : register(b0)
 #define gUseNormalMap       gMotionPad.x
 #define gNormalMapStrength  gMotionPad.y
 #define gNormalMapYSign     gMotionPad.z
-#define gParallaxScale      gMotionPad.w
+#define gParallaxScale      0.0
+#define gUseGlowMap         gMotionPad.w
+#define gGlowMapStrength    gMotionPad.w
 
 Texture2D gTex0 : register(t0);
 Texture2D gTex1 : register(t1);
 Texture2D gNormalMap : register(t2);
+Texture2D gGlowMap : register(t3);
 SamplerState gSamp0 : register(s0);
 SamplerState gSamp1 : register(s1);
 SamplerState gSamp2 : register(s2);
+SamplerState gSamp3 : register(s3);
 
 struct VSIn
 {
@@ -2048,6 +2144,7 @@ struct PSOut
     float4 normal   : SV_Target1;
     float4 position : SV_Target2;
     float4 velocity : SV_Target3;
+    float4 emissive : SV_Target4;
 };
 
 float4 QD3D12_GetTexEnvSource(float source, float4 texel, float4 primary, float4 previous, float4 constantColor)
@@ -2306,20 +2403,60 @@ float3 BuildGBufferNormal(VSOut i)
         n);
 }
 
+float2 QD3D12_BuildMaterialUV0(VSOut i)
+{
+    float2 uv0 = i.uv0;
+    float n = TinyNoise(int2(i.pos.xy)) * 0.0005;
+    uv0 += float2(n, -n);
+
+    if (gUseNormalMap > 0.5)
+        uv0 = QD3D12_ComputeParallaxUV(i, uv0);
+
+    return uv0;
+}
+
+float4 QD3D12_SampleGlow(VSOut i)
+{
+    if (gUseGlowMap <= 0.0)
+        return float4(0.0, 0.0, 0.0, 0.0);
+
+    float4 glow = gGlowMap.Sample(gSamp3, QD3D12_BuildMaterialUV0(i));
+
+    // RGB-only glow maps are uploaded with an opaque alpha channel.  Treat an
+    // all-white/forced alpha as "no alpha mask" and derive coverage from RGB;
+    // otherwise black areas of an RGB glow texture make the base material vanish.
+    float rgbMask = saturate(max(max(glow.r, glow.g), glow.b));
+    bool alphaLooksForcedOpaque = (glow.a >= 0.999);
+    float glowMask = alphaLooksForcedOpaque ? rgbMask : saturate(max(glow.a, rgbMask));
+    float emissionMask = alphaLooksForcedOpaque ? 1.0 : glowMask;
+
+    // Store bright HDR radiance in the FP16 emissive G-buffer. This is still
+    // direct/bloom-only; emissive lighting has intentionally stayed disabled.
+    // The higher baseline lets normal idTech glow maps read as obvious emission
+    // without every material having to call glGlowMapStrengthf(3+).
+    const float kDefaultGlowBloomRadiance = 3.25;
+    float strength = max(gGlowMapStrength, 0.0);
+
+    // Low-value glow maps looked too weak after the no-light hotfix. Give the
+    // emissive RGB a mild artist-friendly lift while preserving black texels.
+    float3 glowRgb = max(glow.rgb, 0.0);
+    float3 glowLift = sqrt(saturate(glowRgb));
+    float3 emissionColor = max(glowRgb, glowLift * 0.55);
+    float3 emission = emissionColor * emissionMask * strength * kDefaultGlowBloomRadiance;
+
+    return float4(emission, glowMask);
+}
+
 float4 BuildTexturedColor(VSOut i)
 {
     float4 primary = i.col;
     float4 outColor = primary;
 
-    float2 uv0 = i.uv0;
+    float2 uv0 = QD3D12_BuildMaterialUV0(i);
     float2 uv1 = i.uv1;
 
     float n = TinyNoise(int2(i.pos.xy)) * 0.0005;
-    uv0 += float2(n, -n);
     uv1 += float2(-n, n);
-
-    if (gUseNormalMap > 0.5)
-        uv0 = QD3D12_ComputeParallaxUV(i, uv0);
 
     if (gUseTex0 > 0.5)
     {
@@ -2335,10 +2472,21 @@ float4 BuildTexturedColor(VSOut i)
                                    gTexComb1RGB, gTexComb1Alpha, gTexComb1Operand, gTexEnvColor1);
     }
 
+    if (gUseGlowMap > 0.0)
+    {
+        float glowMask = saturate(QD3D12_SampleGlow(i).a);
+        outColor.rgb *= (1.0 - glowMask);
+    }
+
     // outColor.xyz = ApplySoftwareRendererLook(outColor.xyz);
     outColor = ApplyFog(outColor, i.fogCoord);
 
     return outColor;
+}
+
+float4 BuildGlowEmission(VSOut i)
+{
+    return QD3D12_SampleGlow(i);
 }
 
 float2 ClipToUv(float4 clipPos)
@@ -2397,6 +2545,7 @@ PSOut PSMain(VSOut i)
     o.normal = float4(BuildGBufferNormal(i), i.attr.y);
     o.position = float4(i.worldPos, i.attr.x);
     o.velocity = BuildVelocity(i);
+    o.emissive = BuildGlowEmission(i);
     return o;
 }
 
@@ -2408,6 +2557,7 @@ PSOut PSMainAlphaTest(VSOut i)
     o.normal = float4(BuildGBufferNormal(i), i.attr.y);
     o.position = float4(i.worldPos, i.attr.x);
     o.velocity = BuildVelocity(i);
+    o.emissive = BuildGlowEmission(i);
     return o;
 }
 
@@ -2418,18 +2568,22 @@ PSOut PSMainUntextured(VSOut i)
     o.normal = float4(BuildGBufferNormal(i), i.attr.y);
     o.position = float4(i.worldPos, i.attr.x);
     o.velocity = BuildVelocity(i);
+    o.emissive = float4(0.0, 0.0, 0.0, 0.0);
     return o;
 }
 
 float4 PSMainColorOnly(VSOut i) : SV_Target0
 {
-    return BuildTexturedColor(i);
+    float4 c = BuildTexturedColor(i);
+    c.rgb += BuildGlowEmission(i).rgb;
+    return c;
 }
 
 float4 PSMainAlphaTestColorOnly(VSOut i) : SV_Target0
 {
     float4 c = BuildTexturedColor(i);
     QD3D12_AlphaTest(c.a);
+    c.rgb += BuildGlowEmission(i).rgb;
     return c;
 }
 
@@ -2445,6 +2599,7 @@ Texture2DMS<float>  gDepthMS    : register(t1);
 Texture2DMS<float4> gNormalMS   : register(t2);
 Texture2DMS<float4> gPositionMS : register(t3);
 Texture2DMS<float4> gVelocityMS : register(t4);
+Texture2DMS<float4> gEmissiveMS : register(t5);
 SamplerState gSamp0 : register(s0);
 
 struct VSOut
@@ -2471,9 +2626,61 @@ float4 PSCopy(VSOut i) : SV_Target0
     return gTex0.Sample(gSamp0, i.uv);
 }
 
+float3 QD3D12_LoadPostRadiance(float2 uv)
+{
+    // Clamp bloom taps so a single bad HDR edge sample cannot flood the LDR
+    // scene-color composite.  The direct center emissive value is still added by
+    // PSAdd below, so this only limits the halo.
+    return min(max(gTex0.Sample(gSamp0, saturate(uv)).rgb, 0.0), 12.0);
+}
+
+float3 QD3D12_EmissiveBloom(float2 uv)
+{
+    uint srcW, srcH;
+    gTex0.GetDimensions(srcW, srcH);
+    float2 texel = 1.0 / max(float2((float)srcW, (float)srcH), float2(1.0, 1.0));
+
+    // Strong threshold-free bloom kernel. Direct emissive is still added by
+    // PSAdd; this wider halo makes glow maps read even when the final color
+    // buffer is LDR and clamps the swap-chain output.
+    float3 bloom = 0.0;
+    bloom += QD3D12_LoadPostRadiance(uv) * 0.180;
+
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 1.0,  0.0)) * 0.220;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2(-1.0,  0.0)) * 0.220;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0,  1.0)) * 0.220;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0, -1.0)) * 0.220;
+
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 2.0,  2.0)) * 0.135;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2(-2.0,  2.0)) * 0.135;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 2.0, -2.0)) * 0.135;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2(-2.0, -2.0)) * 0.135;
+
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 4.0,  0.0)) * 0.090;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2(-4.0,  0.0)) * 0.090;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0,  4.0)) * 0.090;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0, -4.0)) * 0.090;
+
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 8.0,  0.0)) * 0.060;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2(-8.0,  0.0)) * 0.060;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0,  8.0)) * 0.060;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0, -8.0)) * 0.060;
+
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 14.0,  0.0)) * 0.035;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2(-14.0,  0.0)) * 0.035;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0,  14.0)) * 0.035;
+    bloom += QD3D12_LoadPostRadiance(uv + texel * float2( 0.0, -14.0)) * 0.035;
+
+    return min(bloom * 0.62, 5.0);
+}
+
 float4 PSAdd(VSOut i) : SV_Target0
 {
-    return gTex0.Sample(gSamp0, i.uv);
+    float4 center = gTex0.Sample(gSamp0, i.uv);
+    float3 direct = max(center.rgb, 0.0);
+    float3 bloom = QD3D12_EmissiveBloom(i.uv);
+
+    return float4(direct + bloom, saturate(center.a));
 }
 
 float PSDepthCopy(VSOut i) : SV_Depth
@@ -2531,6 +2738,7 @@ struct PSGBufferPointResolveOut
     float4 normal   : SV_Target0;
     float4 position : SV_Target1;
     float4 velocity : SV_Target2;
+    float4 emissive : SV_Target3;
 };
 
 PSGBufferPointResolveOut PSGBufferPointResolveMS(VSOut i)
@@ -2553,6 +2761,7 @@ PSGBufferPointResolveOut PSGBufferPointResolveMS(VSOut i)
     o.normal   = gNormalMS.Load(int2(srcPixel), sampleIndex);
     o.position = gPositionMS.Load(int2(srcPixel), sampleIndex);
     o.velocity = gVelocityMS.Load(int2(srcPixel), sampleIndex);
+    o.emissive = gEmissiveMS.Load(int2(srcPixel), sampleIndex);
 
     return o;
 }
@@ -2970,6 +3179,19 @@ static BatchKey BuildCurrentBatchKey(GLenum originalMode, const TextureResource*
 	}
 	key.normalMapStrength = g_gl.currentNormalMapStrength;
 	key.normalMapYSign = g_gl.currentNormalMapYSign;
+
+	TextureResource* glowMap = QD3D12_SelectGlowMapTexture(allTextures);
+	if (glowMap && glowMap->texture && glowMap->srvIndex != UINT_MAX)
+	{
+		key.glowMapSrvIndex = glowMap->srvIndex;
+		key.useGlowMap = 1.0f;
+	}
+	else
+	{
+		key.glowMapSrvIndex = g_gl.whiteTexture.srvIndex;
+		key.useGlowMap = 0.0f;
+	}
+	key.glowMapStrength = g_gl.currentGlowMapStrength;
 
 	key.useARBPrograms = QD3D12ARB_IsActive();
 	if (key.useARBPrograms)
@@ -4105,6 +4327,39 @@ static void QD3D12_PostFullscreenPass(ID3D12GraphicsCommandList* cl,
 	cl->DrawInstanced(3, 1, 0, 0);
 }
 
+static void QD3D12_CompositeEmissiveIntoSceneColor(QD3D12Window& w)
+{
+	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
+	const UINT frame = w.frameIndex;
+	if (!cl || !g_gl.postAdditivePSO || !w.sceneColorBuffers[frame] || !w.emissiveBuffers[frame])
+		return;
+
+	QD3D12_TransitionResource(cl, w.sceneColorBuffers[frame].Get(), w.sceneColorState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
+	QD3D12_TransitionResource(cl, w.emissiveBuffers[frame].Get(), w.emissiveBufferState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	D3D12_VIEWPORT viewport{};
+	viewport.TopLeftX = 0.0f;
+	viewport.TopLeftY = 0.0f;
+	viewport.Width = (float)w.renderWidth;
+	viewport.Height = (float)w.renderHeight;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
+
+	D3D12_RECT scissor{};
+	scissor.left = 0;
+	scissor.top = 0;
+	scissor.right = (LONG)w.renderWidth;
+	scissor.bottom = (LONG)w.renderHeight;
+
+	QD3D12_PostFullscreenPass(
+		cl,
+		g_gl.postAdditivePSO.Get(),
+		w.emissiveSrvGpu[frame],
+		CurrentResolvedSceneColorRTV(),
+		viewport,
+		scissor);
+}
+
 static ID3D12Resource* QD3D12_PrepareStreamlineOutputForWrite(QD3D12Window& w)
 {
 	ID3D12GraphicsCommandList* cl = g_gl.cmdList.Get();
@@ -4775,6 +5030,25 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 
 	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 	{
+		if (useMsaa)
+		{
+			CreateTexture2D(w.emissiveMsaaBuffers[i], w.emissiveMsaaState[i], QD3D12_EmissiveFormat, velocityClear, true,
+				w.renderWidth, w.renderHeight, msaaSamples, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_EMISSIVE_RENDER, i), true);
+			CreateTexture2D(w.emissiveBuffers[i], w.emissiveBufferState[i], QD3D12_EmissiveFormat, velocityClear, false,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				QD3D12_RtvAt(w, QD3D12_RTV_EMISSIVE_RESOLVED, i), true);
+		}
+		else
+		{
+			CreateTexture2D(w.emissiveBuffers[i], w.emissiveBufferState[i], QD3D12_EmissiveFormat, velocityClear, true,
+				w.renderWidth, w.renderHeight, 1, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, D3D12_RESOURCE_STATE_RENDER_TARGET,
+				QD3D12_RtvAt(w, QD3D12_RTV_EMISSIVE_RENDER, i), true);
+		}
+	}
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+	{
 		D3D12_CPU_DESCRIPTOR_HANDLE backBufferRtv = QD3D12_RtvAt(w, QD3D12_RTV_BACKBUFFER, i);
 		if (w.swapChain)
 		{
@@ -4863,6 +5137,9 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 		CreateTextureSrv(w.velocityBuffers[i].Get(), QD3D12_VelocityFormat, w.velocitySrvIndex[i], w.velocitySrvCpu[i], w.velocitySrvGpu[i]);
 
 	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+		CreateTextureSrv(w.emissiveBuffers[i].Get(), QD3D12_EmissiveFormat, w.emissiveSrvIndex[i], w.emissiveSrvCpu[i], w.emissiveSrvGpu[i]);
+
+	for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 		CreateTextureSrv(w.slOutputBuffers[i].Get(), QD3D12_StreamlineOutputFormat, w.slOutputSrvIndex[i], w.slOutputSrvCpu[i], w.slOutputSrvGpu[i]);
 
 	if (useMsaa)
@@ -4875,6 +5152,9 @@ static void QD3D12_CreateRTVsForWindow(QD3D12Window& w)
 
 		for (UINT i = 0; i < QD3D12_FrameCount; ++i)
 			CreateTextureMsaaSrv(w.velocityMsaaBuffers[i].Get(), QD3D12_VelocityFormat, w.velocityMsaaSrvIndex[i], w.velocityMsaaSrvCpu[i], w.velocityMsaaSrvGpu[i]);
+
+		for (UINT i = 0; i < QD3D12_FrameCount; ++i)
+			CreateTextureMsaaSrv(w.emissiveMsaaBuffers[i].Get(), QD3D12_EmissiveFormat, w.emissiveMsaaSrvIndex[i], w.emissiveMsaaSrvCpu[i], w.emissiveMsaaSrvGpu[i]);
 	}
 }
 
@@ -5196,7 +5476,7 @@ static ComPtr<ID3DBlob> CompileShaderVariant(const char* entry, const char* targ
 
 static void QD3D12_CreatePostRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE ranges[5]{};
+	D3D12_DESCRIPTOR_RANGE ranges[6]{};
 	for (UINT i = 0; i < _countof(ranges); ++i)
 	{
 		ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -5206,7 +5486,7 @@ static void QD3D12_CreatePostRootSignature()
 		ranges[i].OffsetInDescriptorsFromTableStart = 0;
 	}
 
-	D3D12_ROOT_PARAMETER params[5]{};
+	D3D12_ROOT_PARAMETER params[6]{};
 	for (UINT i = 0; i < _countof(params); ++i)
 	{
 		params[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -5363,13 +5643,14 @@ static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildPSODesc(
 
 	d.PrimitiveTopologyType = topoType;
 
-	d.NumRenderTargets = nativeColorOnly ? 1u : 4u;
+	d.NumRenderTargets = nativeColorOnly ? 1u : 5u;
 	d.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	if (!nativeColorOnly)
 	{
 		d.RTVFormats[1] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		d.RTVFormats[2] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		d.RTVFormats[3] = QD3D12_VelocityFormat;
+		d.RTVFormats[4] = QD3D12_EmissiveFormat;
 	}
 
 	d.DSVFormat = QD3D12_DepthDsvFormat;
@@ -5387,12 +5668,13 @@ static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildPSODesc(
 		d.BlendState.RenderTarget[1].RenderTargetWriteMask = key.colorWriteMask ? D3D12_COLOR_WRITE_ENABLE_ALL : 0;
 		d.BlendState.RenderTarget[2].RenderTargetWriteMask = key.colorWriteMask ? D3D12_COLOR_WRITE_ENABLE_ALL : 0;
 		d.BlendState.RenderTarget[3].RenderTargetWriteMask = key.colorWriteMask ? D3D12_COLOR_WRITE_ENABLE_ALL : 0;
+		d.BlendState.RenderTarget[4].RenderTargetWriteMask = key.colorWriteMask ? D3D12_COLOR_WRITE_ENABLE_ALL : 0;
 	}
 
 	d.BlendState.AlphaToCoverageEnable = FALSE;
 	d.BlendState.IndependentBlendEnable = nativeColorOnly ? FALSE : TRUE;
 
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < (nativeColorOnly ? 1 : 5); ++i)
 	{
 		auto& rt = d.BlendState.RenderTarget[i];
 		rt.BlendEnable = FALSE;
@@ -5500,16 +5782,17 @@ static void QD3D12_CreatePSOs()
 	gbufferResolveDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	gbufferResolveDesc.SampleDesc.Count = 1;
 	gbufferResolveDesc.SampleMask = UINT_MAX;
-	gbufferResolveDesc.NumRenderTargets = 3;
+	gbufferResolveDesc.NumRenderTargets = 4;
 	gbufferResolveDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	gbufferResolveDesc.RTVFormats[1] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	gbufferResolveDesc.RTVFormats[2] = QD3D12_VelocityFormat;
+	gbufferResolveDesc.RTVFormats[3] = QD3D12_EmissiveFormat;
 	gbufferResolveDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	gbufferResolveDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	gbufferResolveDesc.RasterizerState.DepthClipEnable = TRUE;
 	gbufferResolveDesc.BlendState.AlphaToCoverageEnable = FALSE;
 	gbufferResolveDesc.BlendState.IndependentBlendEnable = FALSE;
-	for (UINT rt = 0; rt < 3; ++rt)
+	for (UINT rt = 0; rt < 4; ++rt)
 	{
 		gbufferResolveDesc.BlendState.RenderTarget[rt].BlendEnable = FALSE;
 		gbufferResolveDesc.BlendState.RenderTarget[rt].LogicOpEnable = FALSE;
@@ -5628,13 +5911,14 @@ static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildARBPSODesc(
 	d.InputLayout.NumElements = _countof(kGLVertexInputLayoutARB);
 	d.PrimitiveTopologyType = topoType;
 
-	d.NumRenderTargets = nativeColorOnly ? 1u : 4u;
+	d.NumRenderTargets = nativeColorOnly ? 1u : 5u;
 	d.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	if (!nativeColorOnly)
 	{
 		d.RTVFormats[1] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		d.RTVFormats[2] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		d.RTVFormats[3] = QD3D12_VelocityFormat;
+		d.RTVFormats[4] = QD3D12_EmissiveFormat;
 	}
 
 	d.DSVFormat = QD3D12_DepthDsvFormat;
@@ -5649,7 +5933,7 @@ static D3D12_GRAPHICS_PIPELINE_STATE_DESC BuildARBPSODesc(
 	d.BlendState.AlphaToCoverageEnable = FALSE;
 	d.BlendState.IndependentBlendEnable = nativeColorOnly ? FALSE : TRUE;
 
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < (nativeColorOnly ? 1 : 5); ++i)
 	{
 		auto& rt = d.BlendState.RenderTarget[i];
 		rt.BlendEnable = FALSE;
@@ -6023,9 +6307,11 @@ void QD3D12_BeginFrame()
 	const float normalClear[4] = { 0.0f, 0.0f, 1.0f, 0.5f };
 	const float positionClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	const float velocityClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+	const float emissiveClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 	g_gl.cmdList->ClearRenderTargetView(CurrentNormalRTV(), normalClear, 0, nullptr);
 	g_gl.cmdList->ClearRenderTargetView(CurrentPositionRTV(), positionClear, 0, nullptr);
 	g_gl.cmdList->ClearRenderTargetView(CurrentVelocityRTV(), velocityClear, 0, nullptr);
+	g_gl.cmdList->ClearRenderTargetView(CurrentEmissiveRTV(), emissiveClear, 0, nullptr);
 
 	g_gl.frameOpen = true;
 	g_gl.frameOwner = &w;
@@ -6053,6 +6339,8 @@ void QD3D12_EndFrame()
 	if (!g_gl.sceneResolvedThisFrame)
 	{
 		QD3D12_ResolveGBufferForCurrentFrame(w);
+		if (!g_gl.raytracedLightingReadyThisFrame)
+			QD3D12_CompositeEmissiveIntoSceneColor(w);
 
 		QD3D12_TransitionResource(g_gl.cmdList.Get(), w.sceneColorBuffers[w.frameIndex].Get(), w.sceneColorState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 		QD3D12_TransitionResource(g_gl.cmdList.Get(), w.normalBuffers[w.frameIndex].Get(), w.normalBufferState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -7544,8 +7832,12 @@ static void FlushImmediate(GLenum mode, const GLVertex* src, size_t n)
 		const bool explicitNormalUnit = (!arbProgramsActive) &&
 			(g_gl.currentNormalMapTexture != 0) &&
 			(g_gl.boundTexture[unit] == g_gl.currentNormalMapTexture);
+		const bool taggedGlowUnit = (!arbProgramsActive) && QD3D12_IsTextureTaggedGlowMap(g_gl.boundTexture[unit]);
+		const bool explicitGlowUnit = (!arbProgramsActive) &&
+			(g_gl.currentGlowMapTexture != 0) &&
+			(g_gl.boundTexture[unit] == g_gl.currentGlowMapTexture);
 
-		const bool wantsUnit = arbUnit || fixedColorUnit || taggedNormalUnit || explicitNormalUnit;
+		const bool wantsUnit = arbUnit || fixedColorUnit || taggedNormalUnit || explicitNormalUnit || taggedGlowUnit || explicitGlowUnit;
 		if (!wantsUnit)
 			continue;
 
@@ -7569,6 +7861,13 @@ static void FlushImmediate(GLenum mode, const GLVertex* src, size_t n)
 	{
 		EnsureTextureResource(*normalMapTex);
 		UploadTexture(*normalMapTex);
+	}
+
+	TextureResource* glowMapTex = QD3D12_SelectGlowMapTexture(boundTextures);
+	if (glowMapTex && glowMapTex != &g_gl.whiteTexture && !glowMapTex->gpuValid)
+	{
+		EnsureTextureResource(*glowMapTex);
+		UploadTexture(*glowMapTex);
 	}
 
 	TextureResource* tex0 = boundTextures[0];
@@ -7876,9 +8175,11 @@ static void QD3D12_FlushQueuedBatches()
 	D3D12_GPU_DESCRIPTOR_HANDLE lastTex0{};
 	D3D12_GPU_DESCRIPTOR_HANDLE lastTex1{};
 	D3D12_GPU_DESCRIPTOR_HANDLE lastNormalMap{};
+	D3D12_GPU_DESCRIPTOR_HANDLE lastGlowMap{};
 	bool haveLastTex0 = false;
 	bool haveLastTex1 = false;
 	bool haveLastNormalMap = false;
+	bool haveLastGlowMap = false;
 	D3D12_PRIMITIVE_TOPOLOGY lastTopo = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
 	for (size_t i = 0; i < g_gl.queuedBatches.size(); ++i)
@@ -7904,6 +8205,7 @@ static void QD3D12_FlushQueuedBatches()
 			haveLastTex0 = false;
 			haveLastTex1 = false;
 			haveLastNormalMap = false;
+			haveLastGlowMap = false;
 			lastTopo = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
 		}
 
@@ -7971,6 +8273,7 @@ static void QD3D12_FlushQueuedBatches()
 		dc->_motionPad[0] = batch.key.useNormalMap;
 		dc->_motionPad[1] = batch.key.normalMapStrength;
 		dc->_motionPad[2] = batch.key.normalMapYSign;
+		dc->_motionPad[3] = (batch.key.useGlowMap > 0.5f) ? batch.key.glowMapStrength : 0.0f;
 
 		if (batch.key.useARBPrograms)
 		{
@@ -8026,6 +8329,7 @@ static void QD3D12_FlushQueuedBatches()
 			haveLastTex0 = false;
 			haveLastTex1 = false;
 			haveLastNormalMap = false;
+			haveLastGlowMap = false;
 		}
 		else
 		{
@@ -8061,6 +8365,18 @@ static void QD3D12_FlushQueuedBatches()
 				g_gl.cmdList->SetGraphicsRootDescriptorTable(3, normalMapGpu);
 				lastNormalMap = normalMapGpu;
 				haveLastNormalMap = true;
+			}
+
+			UINT glowSrvIndex = batch.key.glowMapSrvIndex;
+			if (glowSrvIndex == UINT_MAX)
+				glowSrvIndex = g_gl.whiteTexture.srvIndex;
+
+			D3D12_GPU_DESCRIPTOR_HANDLE glowMapGpu = QD3D12_SrvGpu(glowSrvIndex);
+			if (!haveLastGlowMap || glowMapGpu.ptr != lastGlowMap.ptr)
+			{
+				g_gl.cmdList->SetGraphicsRootDescriptorTable(4, glowMapGpu);
+				lastGlowMap = glowMapGpu;
+				haveLastGlowMap = true;
 			}
 		}
 
@@ -8192,11 +8508,13 @@ void APIENTRY glClear(GLbitfield mask)
 			const float normalClear[4] = { 0.0f, 0.0f, 1.0f, 0.5f };
 			const float positionClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 			const float velocityClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			const float emissiveClear[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 			g_gl.cmdList->ClearRenderTargetView(CurrentRTV(), cc, 1, &clearRect);
 			g_gl.cmdList->ClearRenderTargetView(CurrentNormalRTV(), normalClear, 1, &clearRect);
 			g_gl.cmdList->ClearRenderTargetView(CurrentPositionRTV(), positionClear, 1, &clearRect);
 			g_gl.cmdList->ClearRenderTargetView(CurrentVelocityRTV(), velocityClear, 1, &clearRect);
+			g_gl.cmdList->ClearRenderTargetView(CurrentEmissiveRTV(), emissiveClear, 1, &clearRect);
 		}
 	}
 
@@ -8543,6 +8861,9 @@ void APIENTRY glDeleteTextures(GLsizei n, const GLuint* textures)
 		if (g_gl.currentNormalMapTexture == deadId)
 			g_gl.currentNormalMapTexture = 0;
 
+		if (g_gl.currentGlowMapTexture == deadId)
+			g_gl.currentGlowMapTexture = 0;
+
 		auto it = g_gl.textures.find(deadId);
 		if (it != g_gl.textures.end())
 		{
@@ -8604,6 +8925,49 @@ void APIENTRY glNormalMapStrengthf(GLfloat strength)
 void APIENTRY glNormalMapYSignf(GLfloat sign)
 {
 	g_gl.currentNormalMapYSign = (sign < 0.0f) ? -1.0f : 1.0f;
+}
+
+void APIENTRY glTagTextureGlowMap(GLuint texture, GLboolean isGlowMap)
+{
+	if (texture == 0)
+	{
+		g_gl.lastError = GL_INVALID_VALUE;
+		return;
+	}
+
+	TextureResource& tex = QD3D12_EnsureTextureName(texture);
+	tex.isGlowMap = (isGlowMap != GL_FALSE);
+}
+
+void APIENTRY glTextureGlowMap(GLuint texture, GLboolean isGlowMap)
+{
+	glTagTextureGlowMap(texture, isGlowMap);
+}
+
+void APIENTRY glBindGlowMapTexture(GLuint texture)
+{
+	if (texture != 0)
+	{
+		TextureResource& tex = QD3D12_EnsureTextureName(texture);
+		if (tex.isNormalMap && !tex.isGlowMap)
+		{
+			QD3D12_Log("glBindGlowMapTexture(%u) ignored: texture is tagged as a normal map. Did you pass the bump image texnum instead of the glow image texnum?", texture);
+			g_gl.currentGlowMapTexture = 0;
+			return;
+		}
+	}
+
+	g_gl.currentGlowMapTexture = texture;
+}
+
+void APIENTRY glGlowMapTexture(GLuint texture)
+{
+	glBindGlowMapTexture(texture);
+}
+
+void APIENTRY glGlowMapStrengthf(GLfloat strength)
+{
+	g_gl.currentGlowMapStrength = (strength < 0.0f) ? 0.0f : strength;
 }
 
 void APIENTRY glRaytracingMaterialFlagsQD3D12(GLuint flags)
@@ -8740,6 +9104,10 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint* params)
 
 	case GL_NORMAL_MAP_BINDING_QD3D12:
 		*params = (GLint)g_gl.currentNormalMapTexture;
+		break;
+
+	case GL_GLOW_MAP_BINDING_QD3D12:
+		*params = (GLint)g_gl.currentGlowMapTexture;
 		break;
 
 	case GL_QD3D12_MATERIAL_FLAGS:
@@ -11301,6 +11669,11 @@ PROC WINAPI qd3d12_wglGetProcAddress(LPCSTR name) {
 		{ "glNormalMapTexture",          (PROC)glNormalMapTexture },
 		{ "glNormalMapStrengthf",        (PROC)glNormalMapStrengthf },
 		{ "glNormalMapYSignf",           (PROC)glNormalMapYSignf },
+		{ "glTagTextureGlowMap",         (PROC)glTagTextureGlowMap },
+		{ "glTextureGlowMap",            (PROC)glTextureGlowMap },
+		{ "glBindGlowMapTexture",        (PROC)glBindGlowMapTexture },
+		{ "glGlowMapTexture",            (PROC)glGlowMapTexture },
+		{ "glGlowMapStrengthf",          (PROC)glGlowMapStrengthf },
 		{ "glGlassMaterialQD3D12",       (PROC)glGlassMaterialQD3D12 },
 		{ "glMaterialGlassQD3D12",       (PROC)glMaterialGlassQD3D12 },
 		{ "glRaytracingMaterialFlagsQD3D12", (PROC)glRaytracingMaterialFlagsQD3D12 },
@@ -11560,8 +11933,8 @@ static void QD3D12_PointResolveMsaaGBufferToSingleSample(QD3D12Window& w)
 	const UINT frame = w.frameIndex;
 
 	if (!w.depthMsaaBuffer ||
-		!w.normalMsaaBuffers[frame] || !w.positionMsaaBuffers[frame] || !w.velocityMsaaBuffers[frame] ||
-		!w.normalBuffers[frame] || !w.positionBuffers[frame] || !w.velocityBuffers[frame])
+		!w.normalMsaaBuffers[frame] || !w.positionMsaaBuffers[frame] || !w.velocityMsaaBuffers[frame] || !w.emissiveMsaaBuffers[frame] ||
+		!w.normalBuffers[frame] || !w.positionBuffers[frame] || !w.velocityBuffers[frame] || !w.emissiveBuffers[frame])
 	{
 		return;
 	}
@@ -11570,16 +11943,19 @@ static void QD3D12_PointResolveMsaaGBufferToSingleSample(QD3D12Window& w)
 	QD3D12_TransitionResource(cl, w.normalMsaaBuffers[frame].Get(), w.normalMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	QD3D12_TransitionResource(cl, w.positionMsaaBuffers[frame].Get(), w.positionMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	QD3D12_TransitionResource(cl, w.velocityMsaaBuffers[frame].Get(), w.velocityMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	QD3D12_TransitionResource(cl, w.emissiveMsaaBuffers[frame].Get(), w.emissiveMsaaState[frame], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	QD3D12_TransitionResource(cl, w.normalBuffers[frame].Get(), w.normalBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
 	QD3D12_TransitionResource(cl, w.positionBuffers[frame].Get(), w.positionBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
 	QD3D12_TransitionResource(cl, w.velocityBuffers[frame].Get(), w.velocityBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
+	QD3D12_TransitionResource(cl, w.emissiveBuffers[frame].Get(), w.emissiveBufferState[frame], D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[3] =
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[4] =
 	{
 		CurrentResolvedNormalRTV(),
 		CurrentResolvedPositionRTV(),
-		CurrentResolvedVelocityRTV()
+		CurrentResolvedVelocityRTV(),
+		CurrentResolvedEmissiveRTV()
 	};
 
 	D3D12_VIEWPORT viewport{};
@@ -11600,17 +11976,18 @@ static void QD3D12_PointResolveMsaaGBufferToSingleSample(QD3D12Window& w)
 	cl->SetDescriptorHeaps(_countof(heaps), heaps);
 	cl->SetGraphicsRootSignature(g_gl.postRootSig.Get());
 	cl->SetPipelineState(g_gl.postGBufferPointResolveMsaaPSO.Get());
-	cl->OMSetRenderTargets(3, rtvs, FALSE, nullptr);
+	cl->OMSetRenderTargets(4, rtvs, FALSE, nullptr);
 	cl->RSSetViewports(1, &viewport);
 	cl->RSSetScissorRects(1, &scissor);
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	// t1..t4: depth + discontinuous G-buffer attributes. The shader uses
+	// t1..t5: depth + discontinuous G-buffer attributes. The shader uses
 	// Texture2DMS.Load(), selects a single depth-nearest sample, and never averages.
 	cl->SetGraphicsRootDescriptorTable(1, w.depthMsaaSrvGpu);
 	cl->SetGraphicsRootDescriptorTable(2, w.normalMsaaSrvGpu[frame]);
 	cl->SetGraphicsRootDescriptorTable(3, w.positionMsaaSrvGpu[frame]);
 	cl->SetGraphicsRootDescriptorTable(4, w.velocityMsaaSrvGpu[frame]);
+	cl->SetGraphicsRootDescriptorTable(5, w.emissiveMsaaSrvGpu[frame]);
 	cl->DrawInstanced(3, 1, 0, 0);
 }
 
@@ -11686,6 +12063,7 @@ static void QD3D12_BindLowResSceneTargets(QD3D12Window& w)
 		QD3D12_TransitionResource(cl, w.normalMsaaBuffers[w.frameIndex].Get(), w.normalMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 		QD3D12_TransitionResource(cl, w.positionMsaaBuffers[w.frameIndex].Get(), w.positionMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 		QD3D12_TransitionResource(cl, w.velocityMsaaBuffers[w.frameIndex].Get(), w.velocityMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.emissiveMsaaBuffers[w.frameIndex].Get(), w.emissiveMsaaState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 		QD3D12_TransitionResource(cl, w.depthMsaaBuffer.Get(), w.depthMsaaState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	}
 	else
@@ -11694,18 +12072,20 @@ static void QD3D12_BindLowResSceneTargets(QD3D12Window& w)
 		QD3D12_TransitionResource(cl, w.normalBuffers[w.frameIndex].Get(), w.normalBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 		QD3D12_TransitionResource(cl, w.positionBuffers[w.frameIndex].Get(), w.positionBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 		QD3D12_TransitionResource(cl, w.velocityBuffers[w.frameIndex].Get(), w.velocityBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+		QD3D12_TransitionResource(cl, w.emissiveBuffers[w.frameIndex].Get(), w.emissiveBufferState[w.frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 		QD3D12_TransitionResource(cl, w.depthBuffer.Get(), w.depthState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	}
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[4] =
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[5] =
 	{
 		CurrentRTV(),
 		CurrentNormalRTV(),
 		CurrentPositionRTV(),
-		CurrentVelocityRTV()
+		CurrentVelocityRTV(),
+		CurrentEmissiveRTV()
 	};
 	D3D12_CPU_DESCRIPTOR_HANDLE dsv = CurrentActiveSceneDepthDSV();
-	cl->OMSetRenderTargets(4, rtvs, FALSE, &dsv);
+	cl->OMSetRenderTargets(5, rtvs, FALSE, &dsv);
 	cl->RSSetViewports(1, &w.viewport);
 	cl->RSSetScissorRects(1, &w.scissor);
 }
@@ -11795,6 +12175,8 @@ static void QD3D12_ResolveSceneToOutputAndEnterNativePhase(QD3D12Window& w)
 	QD3D12_ResolveGBufferForCurrentFrame(w);
 
 	const bool useLightingUpscaleInput = QD3D12_UseLightingTextureAsUpscaleInput(w);
+	if (!g_gl.raytracedLightingReadyThisFrame)
+		QD3D12_CompositeEmissiveIntoSceneColor(w);
 
 	QD3D12_TransitionResource(cl, w.sceneColorBuffers[w.frameIndex].Get(), w.sceneColorState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	QD3D12_TransitionResource(cl, w.velocityBuffers[w.frameIndex].Get(), w.velocityBufferState[w.frameIndex], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -11862,9 +12244,10 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 	ID3D12Resource* sceneColor = window->sceneColorBuffers[frameIndex].Get();
 	ID3D12Resource* sceneNormal = window->normalBuffers[frameIndex].Get();
 	ID3D12Resource* scenePosition = window->positionBuffers[frameIndex].Get();
+	ID3D12Resource* sceneEmissive = window->emissiveBuffers[frameIndex].Get();
 	ID3D12Resource* sceneDepth = window->depthBuffer.Get();
 
-	if (!sceneColor || !sceneNormal || !scenePosition || !sceneDepth)
+	if (!sceneColor || !sceneNormal || !scenePosition || !sceneEmissive || !sceneDepth)
 		return;
 
 	QD3D12_TransitionResource(
@@ -11883,6 +12266,12 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 		cl,
 		scenePosition,
 		window->positionBufferState[frameIndex],
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+	QD3D12_TransitionResource(
+		cl,
+		sceneEmissive,
+		window->emissiveBufferState[frameIndex],
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	QD3D12_TransitionResource(
@@ -11926,6 +12315,7 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 		activeMaxBounces,
 		useDLSSRayReconstruction ? 0 : 1,
 		useDLSSRayReconstruction ? 0.0f : 1.0f);
+	glRaytracingLightingSetEmissiveInput(sceneEmissive, QD3D12_EmissiveFormat);
 
 	glRaytracingLightingPassDesc_t pass = {};
 	pass.albedoTexture = sceneColor;
@@ -11954,6 +12344,7 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 			QD3D12_TransitionResource(cl, window->normalMsaaBuffers[frameIndex].Get(), window->normalMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 			QD3D12_TransitionResource(cl, window->positionMsaaBuffers[frameIndex].Get(), window->positionMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 			QD3D12_TransitionResource(cl, window->velocityMsaaBuffers[frameIndex].Get(), window->velocityMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
+			QD3D12_TransitionResource(cl, window->emissiveMsaaBuffers[frameIndex].Get(), window->emissiveMsaaState[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET);
 			QD3D12_TransitionResource(cl, window->depthMsaaBuffer.Get(), window->depthMsaaState, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		}
 		else
@@ -11974,6 +12365,12 @@ void glLightScene(glRaytracingSceneHandle_t sceneHandle)
 				cl,
 				scenePosition,
 				window->positionBufferState[frameIndex],
+				D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+			QD3D12_TransitionResource(
+				cl,
+				sceneEmissive,
+				window->emissiveBufferState[frameIndex],
 				D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 			QD3D12_TransitionResource(

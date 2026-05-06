@@ -2287,6 +2287,8 @@ struct glRaytracingLightingState_t
 	DXGI_FORMAT denoiseFormat;
 	uint32_t frameCounter;
 	bool externalDenoiser;
+	ID3D12Resource* emissiveTexture;
+	DXGI_FORMAT emissiveFormat;
 	bool uploadToCurrentFrameResource;
 	bool initialized;
 
@@ -2311,6 +2313,8 @@ struct glRaytracingLightingState_t
 		currentHistoryIndex = 0;
 		frameCounter = 0;
 		externalDenoiser = false;
+		emissiveTexture = nullptr;
+		emissiveFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		uploadToCurrentFrameResource = false;
 		initialized = false;
 	}
@@ -2333,14 +2337,15 @@ enum glRaytracingLightingDescriptorIndex_t
 	GLR_DESC_DENOISE_B_SRV = 8,
 	GLR_DESC_HISTORY_SRV = 9,
 	GLR_DESC_TEMPORAL_SRV = 10,
-	GLR_DESC_PATHTRACE_UAV = 11,
-	GLR_DESC_DENOISE_A_UAV = 12,
-	GLR_DESC_DENOISE_B_UAV = 13,
-	GLR_DESC_OUTPUT_UAV = 14,
-	GLR_DESC_TEMPORAL_UAV = 15,
-	GLR_DESC_HISTORY_UAV = 16,
-	GLR_DESC_COUNT = 17,
-	GLR_DESC_SRV_COUNT = 11,
+	GLR_DESC_EMISSIVE_SRV = 11,
+	GLR_DESC_PATHTRACE_UAV = 12,
+	GLR_DESC_DENOISE_A_UAV = 13,
+	GLR_DESC_DENOISE_B_UAV = 14,
+	GLR_DESC_OUTPUT_UAV = 15,
+	GLR_DESC_TEMPORAL_UAV = 16,
+	GLR_DESC_HISTORY_UAV = 17,
+	GLR_DESC_COUNT = 18,
+	GLR_DESC_SRV_COUNT = 12,
 	GLR_DESC_UAV_COUNT = 6
 };
 
@@ -2434,6 +2439,7 @@ Texture2D<float>        gDepthTex    : register(t2);
 Texture2D<float4>       gNormalTex   : register(t3);
 Texture2D<float4>       gPositionTex : register(t4);
 RaytracingAccelerationStructure gSceneBVH : register(t5);
+Texture2D<float4>       gEmissiveTex : register(t11);
 RWTexture2D<float4>     gOutputTex   : register(u0);
 
 static const uint GL_RAYTRACING_LIGHT_TYPE_POINT = 0;
@@ -3373,6 +3379,61 @@ float TraceVisibilityBiased(float3 worldPos, float3 N, float3 dir, float maxT)
     return TraceShadow(origin, dir, max(maxT - gShadowBias * 0.5, 0.001));
 }
 
+
+float3 CompressEmissiveRadiance(float3 e, float peakLimit)
+{
+    e = max(e, 0.0);
+    float peak = max(max(e.r, e.g), e.b);
+    if (peak > peakLimit && peak > 1e-5)
+        e *= peakLimit / peak;
+    return e;
+}
+
+float3 LoadEmissiveRadianceClamped(int2 p)
+{
+    int2 maxPixel = int2((int)gScreenSize.x - 1, (int)gScreenSize.y - 1);
+    p = clamp(p, int2(0, 0), maxPixel);
+    return CompressEmissiveRadiance(gEmissiveTex.Load(int3(p, 0)).rgb, 7.50);
+}
+
+float3 EstimateEmissiveBloomAtPixel(uint2 pixel)
+{
+    int2 p = int2(pixel);
+
+    // Strong threshold-free bloom. This stays direct/bloom-only: no extra
+    // TraceRay calls, and no emissive lighting contribution. The goal is to make
+    // visible glow maps read as hot emissive surfaces in the DXR output.
+    float3 bloom = 0.0;
+    bloom += LoadEmissiveRadianceClamped(p) * 0.180;
+
+    bloom += LoadEmissiveRadianceClamped(p + int2( 1,  0)) * 0.220;
+    bloom += LoadEmissiveRadianceClamped(p + int2(-1,  0)) * 0.220;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0,  1)) * 0.220;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0, -1)) * 0.220;
+
+    bloom += LoadEmissiveRadianceClamped(p + int2( 2,  2)) * 0.135;
+    bloom += LoadEmissiveRadianceClamped(p + int2(-2,  2)) * 0.135;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 2, -2)) * 0.135;
+    bloom += LoadEmissiveRadianceClamped(p + int2(-2, -2)) * 0.135;
+
+    bloom += LoadEmissiveRadianceClamped(p + int2( 4,  0)) * 0.090;
+    bloom += LoadEmissiveRadianceClamped(p + int2(-4,  0)) * 0.090;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0,  4)) * 0.090;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0, -4)) * 0.090;
+
+    bloom += LoadEmissiveRadianceClamped(p + int2( 8,  0)) * 0.060;
+    bloom += LoadEmissiveRadianceClamped(p + int2(-8,  0)) * 0.060;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0,  8)) * 0.060;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0, -8)) * 0.060;
+
+    bloom += LoadEmissiveRadianceClamped(p + int2( 14,  0)) * 0.035;
+    bloom += LoadEmissiveRadianceClamped(p + int2(-14,  0)) * 0.035;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0,  14)) * 0.035;
+    bloom += LoadEmissiveRadianceClamped(p + int2( 0, -14)) * 0.035;
+
+    return bloom * 0.78;
+}
+
 float3 SafeNormalizeOr(float3 v, float3 fallback)
 {
     float lenSq = dot(v, v);
@@ -3717,7 +3778,8 @@ float EstimateVolumeDensityFromLight(Light Lgt)
 
     return clamp(2.25 / max(range, 32.0), 0.0015, 0.035);
 }
-
+)"
+R"(
 float3 EstimateSingleLightVolumetricScattering(uint2 pixel, float3 cameraPos, float3 worldPos, Light Lgt, inout uint rng)
 {
     if (Lgt.volumetricScattering <= 0.0)
@@ -3927,8 +3989,8 @@ float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 
     hitV = SafeNormalizeOr(hitV, -hitN);
     hitAlbedo = saturate(hitAlbedo);
 
-    // Treat unlit G-buffer surfaces as simple emissive bounce cards.  Clamp so a
-    // white UI/light-card cannot become an uncontrolled firefly in the GI path.
+    // Treat unlit G-buffer surfaces as simple bounce cards.  Glow-map emissive is
+    // intentionally excluded here so visible emissive no longer casts GI/light.
     if (hitIsUnlit)
         return clamp(hitAlbedo * 2.0 + GetSkyRadiance(hitN) * 0.04, 0.0, 6.0);
 
@@ -3938,6 +4000,10 @@ float3 EstimateDirectLightingForBounceHit(uint2 hitPixel, float3 hitPos, float3 
     // Real occluded sky contribution at the secondary hit.  The previous GI path
     // used a fixed sky term, so corners/cavities received too much indirect light.
     lighting += EstimateBounceSkyLighting(hitPos, hitN, rng) * (0.14 + 0.10 * upness);
+
+    // Glow-map emissive no longer participates in secondary GI. It remains a
+    // direct visible/bloom-only effect until real material-space emissive lighting
+    // is implemented.
 
     // Baseline: every light contributes to bounced radiance, so small dynamic
     // lights do not vanish just because they were not chosen by the stochastic
@@ -4299,6 +4365,9 @@ float3 PathTraceDeterministicLighting(
     lightingAccum += skyColor * (0.70 * skyVis);
     lightingAccum += ambientSkyVis * (skyColorRGB * 0.15);
 
+    // Glow-map emissive is direct/bloom-only for now. It is added after lighting
+    // in RayGen and is intentionally not injected into lightingAccum.
+
     //if (isSkeletal)
     //    lightingAccum += 0.1;
 
@@ -4344,11 +4413,15 @@ void RayGen()
         return;
 
     float4 albedoSample = gAlbedoTex.Load(int3(pixel, 0));
+    float4 emissiveSample = gEmissiveTex.Load(int3(pixel, 0));
+    float3 emissiveSurface = CompressEmissiveRadiance(emissiveSample.rgb, 6.50);
     float depthSample   = gDepthTex.Load(int3(pixel, 0));
+
+    float3 emissiveBloom = EstimateEmissiveBloomAtPixel(pixel);
 
     if (depthSample <= 0.0 || depthSample >= 1.0)
     {
-        gOutputTex[pixel] = albedoSample;
+        gOutputTex[pixel] = float4(albedoSample.rgb + emissiveSurface + emissiveBloom, albedoSample.a);
         return;
     }
 
@@ -4365,7 +4438,7 @@ void RayGen()
 
     if (isUnlit)
     {
-        gOutputTex[pixel] = float4(baseAlbedo, albedoSample.a);
+        gOutputTex[pixel] = float4(baseAlbedo + emissiveSurface + emissiveBloom, albedoSample.a);
         return;
     }
 
@@ -4453,6 +4526,12 @@ void RayGen()
     // denoises the stochastic volume/GI signal together with the rest of the ray result.
     uint volumeRng = InitRng(pixel, 0u, 0x51u);
     finalColor += EstimatePathTracedVolumetricScattering(pixel, worldPos, volumeRng);
+
+    // Glow-map emission is direct radiance from the primary surface. It is added
+    // after lighting so it remains visible in darkness and under ray-traced shadows.
+    // emissiveBloom is the threshold-free halo, so emissive always blooms even if
+    // the eventual swap-chain/backbuffer is LDR.
+    finalColor += emissiveSurface + emissiveBloom;
 
     gOutputTex[pixel] = float4(max(finalColor, 0.0), albedoSample.a);
 }
@@ -4623,7 +4702,10 @@ void DenoiseCS(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     if (depthSample <= 0.0 || depthSample >= 1.0)
     {
-        StoreDenoiseOutput(pixel, albedoSample);
+        // Preserve raygen's emissive bloom on background/no-depth pixels.
+        // Returning albedo here would erase the halo whenever the internal
+        // temporal/a-trous denoiser is active.
+        StoreDenoiseOutput(pixel, centerSource);
         return;
     }
 
@@ -4867,7 +4949,9 @@ static ComPtr<IDxcBlob> glRaytracingLightingCompileLibrary(const char* src)
 		L"-Zi",
 		L"-Qembed_debug",
 #endif
-		L"-O3",
+		// Keep the DXR library smaller to avoid long driver-side linking during
+		// CreateStateObject(). Compute/post shaders below still compile with O3.
+		L"-O1",
 		L"-all_resources_bound"
 	};
 
@@ -5662,6 +5746,14 @@ static void glRaytracingLightingCreatePerPassDescriptors(
 	g_glRaytracingCmd.device->CreateShaderResourceView(temporalTexture, &denoiseSrv,
 		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_TEMPORAL_SRV));
 
+	D3D12_SHADER_RESOURCE_VIEW_DESC emissiveSrv = {};
+	emissiveSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	emissiveSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	emissiveSrv.Format = g_glRaytracingLighting.emissiveFormat;
+	emissiveSrv.Texture2D.MipLevels = 1;
+	g_glRaytracingCmd.device->CreateShaderResourceView(g_glRaytracingLighting.emissiveTexture, &emissiveSrv,
+		glRaytracingOffsetCpu(base, g_glRaytracingLighting.descriptorStride, GLR_DESC_EMISSIVE_SRV));
+
 	D3D12_UNORDERED_ACCESS_VIEW_DESC rayOutputUav = {};
 	rayOutputUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	rayOutputUav.Format = GL_RAYTRACING_DENOISE_FORMAT;
@@ -6297,6 +6389,17 @@ void glRaytracingLightingSetExternalDenoiser(int enabled)
 void glRaytracingLightingUseExternalDenoiser(int enabled)
 {
 	glRaytracingLightingSetExternalDenoiser(enabled);
+}
+
+
+void glRaytracingLightingSetEmissiveInput(ID3D12Resource* texture, DXGI_FORMAT format)
+{
+	std::lock_guard<std::mutex> lock(g_glRaytracingMutex);
+
+	g_glRaytracingLighting.emissiveTexture = texture;
+	g_glRaytracingLighting.emissiveFormat = (format == DXGI_FORMAT_UNKNOWN)
+		? DXGI_FORMAT_R16G16B16A16_FLOAT
+		: format;
 }
 
 bool glRaytracingLightingExecuteForScene(const glRaytracingLightingPassDesc_t* pass, glRaytracingSceneHandle_t worldHandle)
